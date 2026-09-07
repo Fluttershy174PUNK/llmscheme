@@ -4,7 +4,8 @@ FROM node:22-alpine
 WORKDIR /app
 # non-root: the service only writes to /data
 # uid/gid pinned to 100:100 — host bind-mount ./data must be chown 100:100 (see README)
-RUN addgroup -S -g 100 llm && adduser -S -u 100 -G llm llm
+# -g/-u with || true: base image may already own gid 100 (node in alpine images)
+RUN addgroup -S -g 100 llm || true && adduser -S -u 100 -G llm llm || true
 COPY llmscheme-service-mcp/server.mjs .
 COPY llmscheme-service-mcp/core.mjs .
 COPY llmscheme-service-mcp/VERSION .
