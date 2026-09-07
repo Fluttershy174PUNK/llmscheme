@@ -446,32 +446,6 @@ route("POST", "/api/schemes", async (ctx) => {
 		send(ctx.res, 201, { name, rev: r.rev });
 	}
 });
-route("GET", "/api/scheme/:name!", async (ctx) => {
-	if (!hasScheme(ctx.auth, ctx.params.name))
-		return fail(ctx.res, 404, "no such scheme");
-	send(ctx.res, 200, readRaw(schemeRoot(ctx.auth, ctx.params.name)));
-});
-route("PUT", "/api/scheme/:name!", async (ctx) => {
-	if (!hasScheme(ctx.auth, ctx.params.name))
-		return fail(ctx.res, 404, "no such scheme");
-	const root = schemeRoot(ctx.auth, ctx.params.name);
-	const current = readRaw(root);
-	const next = parseJson(ctx.body);
-	// CAS: writer must send the rev it read; protects browser vs CLI vs MCP races
-	if (next.rev !== current.rev) throw new CasError(next.rev, current.rev);
-	next.meta.generator = "agent";
-	const r = saveUserScheme(root, next, "put");
-	send(ctx.res, 200, { ok: true, rev: r.rev });
-});
-route("DELETE", "/api/scheme/:name!", async (ctx) => {
-	if (!hasScheme(ctx.auth, ctx.params.name))
-		return fail(ctx.res, 404, "no such scheme");
-	fs.rmSync(schemeRoot(ctx.auth, ctx.params.name), {
-		recursive: true,
-		force: true,
-	});
-	send(ctx.res, 200, { ok: true });
-});
 route("GET", "/api/scheme/:name!/md", async (ctx) => {
 	if (!hasScheme(ctx.auth, ctx.params.name))
 		return fail(ctx.res, 404, "no such scheme");
@@ -531,6 +505,32 @@ route("GET", "/api/scheme/:name!/log", async (ctx) => {
 	send(ctx.res, 200, { entries });
 });
 
+route("GET", "/api/scheme/:name!", async (ctx) => {
+	if (!hasScheme(ctx.auth, ctx.params.name))
+		return fail(ctx.res, 404, "no such scheme");
+	send(ctx.res, 200, readRaw(schemeRoot(ctx.auth, ctx.params.name)));
+});
+route("PUT", "/api/scheme/:name!", async (ctx) => {
+	if (!hasScheme(ctx.auth, ctx.params.name))
+		return fail(ctx.res, 404, "no such scheme");
+	const root = schemeRoot(ctx.auth, ctx.params.name);
+	const current = readRaw(root);
+	const next = parseJson(ctx.body);
+	// CAS: writer must send the rev it read; protects browser vs CLI vs MCP races
+	if (next.rev !== current.rev) throw new CasError(next.rev, current.rev);
+	next.meta.generator = "agent";
+	const r = saveUserScheme(root, next, "put");
+	send(ctx.res, 200, { ok: true, rev: r.rev });
+});
+route("DELETE", "/api/scheme/:name!", async (ctx) => {
+	if (!hasScheme(ctx.auth, ctx.params.name))
+		return fail(ctx.res, 404, "no such scheme");
+	fs.rmSync(schemeRoot(ctx.auth, ctx.params.name), {
+		recursive: true,
+		force: true,
+	});
+	send(ctx.res, 200, { ok: true });
+});
 // ---- granular node/edge/zone ops ----
 function mutate(ctx, fn) {
 	if (!hasScheme(ctx.auth, ctx.params.name))

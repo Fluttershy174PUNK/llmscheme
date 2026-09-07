@@ -72,7 +72,13 @@ import { SHAPES } from "../../core/src/types.ts";
 	function undo() {
 		const prev = undoStack.pop();
 		if (!prev || !scheme) return;
-		Object.assign(scheme, prev.scheme);
+		// replace field-by-field with FRESH objects: assigning snapshot arrays
+		// directly would leave non-proxied state that Svelte can't track
+		scheme.nodes = prev.scheme.nodes.map((n) => ({ ...n }));
+		scheme.edges = prev.scheme.edges.map((e) => ({ ...e }));
+		scheme.zones = (prev.scheme.zones ?? []).map((z) => ({ ...z }));
+		scheme.rev = prev.scheme.rev;
+		scheme.meta = { ...prev.scheme.meta };
 		selectedId = null;
 		multiSel = [];
 		touch();
