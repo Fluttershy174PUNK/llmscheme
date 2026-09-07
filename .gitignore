@@ -51,3 +51,6 @@ editor-template.gen.html
 
 # vite build output
 dist/
+
+# local test env docs
+.test_on_local_proxmox/
