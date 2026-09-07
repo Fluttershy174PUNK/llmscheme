@@ -1071,7 +1071,7 @@ button:active{transform:translateY(1px)}
 .lang button{font-size:8px;padding:4px 8px}
 </style>
 <div class=card>
-<div class=lang><button id=langbtn onclick="setL(lang==='ru'?'en':'ru')">ru/en</button></div>
+<div class=lang><button id=langbtn onclick="setL()">ru/en</button></div>
 <div class=cat>${CAT_SVG}<div style="color:var(--dim);font-size:8px">·^·</div></div>
 <form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token)location='/admin';else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
 <h1>llmscheme</h1>
@@ -1091,12 +1091,14 @@ const T={
  en:{signin:'sign in',reset:'reset?',hint:'admin password is set once in .env (ADMIN_PASSWORD) at first start with an empty data dir; to change it: stop the service, edit .env, remove data/lightdb.json (schemes in data/schemes are kept), start again.',readme:'<b>llmscheme</b> — living logic schemes for humans and LLM. draw boxes and arrows, share schemes via REST and MCP, edit in browser.',lang:'ru/en'},
  ru:{signin:'войти',reset:'сброс?',hint:'пароль admin задаётся один раз в .env (ADMIN_PASSWORD) при первом старте с пустой папкой data; чтобы поменять: останови сервис, правь .env, удали data/lightdb.json (схемы в data/schemes сохранятся), запусти снова.',readme:'<b>llmscheme</b> — живые логические схемы для людей и LLM. рисуй узлы и стрелки, делись схемами через REST и MCP, правь в браузере.',lang:'en/ru'}
 };
-let lang='ru';
-function setL(l){lang=l;document.getElementById('langbtn').textContent=T[l].lang;document.querySelector('form button').textContent=T[l].signin;
+// keep lang on window: inline onclick resolves identifiers there, not in
+// this script's let-scope
+window.__lang = 'ru';
+function setL(l){l=l||(__lang==='ru'?'en':'ru');__lang=l;document.getElementById('langbtn').textContent=T[l].lang;document.querySelector('form button').textContent=T[l].signin;
 document.querySelector('.reset').textContent=T[l].reset;
 document.getElementById('reset-hint').textContent=T[l].hint;
-document.getElementById('readme').innerHTML=T[l].readme+' <a href="https://github.com/Fluttershy174PUNK/llmscheme#readme" target=_blank rel=noopener>README ↗</a>';return l}
-setL(lang);
+document.getElementById('readme').innerHTML=T[l].readme+' <a href="https://github.com/Fluttershy174PUNK/llmscheme#readme" target=_blank rel=noopener>README ↗</a>'}
+setL(__lang); // apply default lang (ru) explicitly
 </script>`;
 
 // ---------- /admin console: tabs, projects->schemes, users, mcp ----------
