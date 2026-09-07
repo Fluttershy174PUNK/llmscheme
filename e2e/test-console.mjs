@@ -82,8 +82,9 @@ export default define("console /admin", async ({ t, page, BASE, ADMIN, PASS, ran
 	await page.type("form[onsubmit*='createScheme'] input[name=proj]", "e2e");
 	await page.type("form[onsubmit*='createScheme'] input[name=sname]", "s1");
 	await page.evaluate(() => document.querySelector("form[onsubmit*='createScheme'] button").click());
-	await page.waitForFunction(() =>
-		document.getElementById("schemes")?.textContent.includes("📁"),
+	await page.waitForFunction(
+		() => document.getElementById("schemes")?.textContent.includes("s1"),
+		{ timeout: 5000 },
 	);
 	const tbl = await page.$eval("#schemes", (el) => el.textContent);
 	t.truthy(tbl.includes("e2e") && tbl.includes("s1"), "project/scheme row grouped");

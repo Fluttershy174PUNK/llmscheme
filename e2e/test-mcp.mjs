@@ -51,9 +51,11 @@ export default define("mcp", async ({ t, BASE, ADMIN, PASS, api, login, cleanupS
 	// put_scheme CAS: correct rev ok, stale rev -> error text
 	scheme.nodes.push({ id: "n9", shape: "rect", label: "mcp node", x: 10, y: 10 });
 	const put1 = await call("put_scheme", { name: full, scheme });
-	t.truthy(JSON.stringify(put1.json).includes('"ok"'), "put with fresh rev ok");
+	const put1text = put1.json.result?.content?.[0]?.text ?? "";
+	t.truthy(put1text.includes('"ok"'), `put with fresh rev ok (${put1text.slice(0, 60)})`);
 	const put2 = await call("put_scheme", { name: full, scheme });
-	t.truthy(JSON.stringify(put2.json).includes("changed on disk"), "stale rev CAS error");
+	const put2text = put2.json.result?.content?.[0]?.text ?? "";
+	t.truthy(put2text.includes("changed on disk"), "stale rev CAS error");
 
 	// get_scheme_md + diff
 	const md = await call("get_scheme_md", { name: full });
@@ -63,7 +65,8 @@ export default define("mcp", async ({ t, BASE, ADMIN, PASS, api, login, cleanupS
 
 	// node_add tool
 	const na = await call("node_add", { name: full, label: "via mcp" });
-	t.truthy(JSON.stringify(na.json).includes('"ok"'), "node_add ok");
+	const natext = na.json.result?.content?.[0]?.text ?? "";
+	t.truthy(natext.includes('"ok"'), "node_add ok");
 
 	// browser-side: editor SAVE from same user must not be clobbered (CAS holds)
 	await cleanupScheme(adminTok, full);

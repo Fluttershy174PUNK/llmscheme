@@ -387,6 +387,7 @@ import { SHAPES } from "../../core/src/types.ts";
 	// node resize: bottom-right / bottom-left corner handles set explicit w/h
 	function onNodeResizeDown(ev: PointerEvent, n: SchemeNode, corner: 1 | 3) {
 		ev.stopPropagation();
+		pushUndo(); // resize is a mutation — Ctrl+Z rolls it back
 		const p = svgPoint(ev);
 		drag = { type: "nresize", node: n, corner, sx: p.x, sy: p.y, ow: nodeW(n), oh: nodeH(n) };
 	}

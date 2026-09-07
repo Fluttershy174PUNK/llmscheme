@@ -76,7 +76,10 @@ export default define("editor", async ({ t, page, BASE, ADMIN, PASS, randUser, a
 	await page.keyboard.press("KeyV");
 	await page.keyboard.up("Control");
 	await sleep(400);
-	t.eq(await countNodes(page), n0 + 1, "paste adds a node");
+	const saveBoxTxt = await page.evaluate(
+		() => document.querySelector(".savebox")?.textContent || "(no savebox)",
+	);
+	t.eq(await countNodes(page), n0 + 1, `paste adds a node (savebox: ${saveBoxTxt.slice(0, 60)})`);
 
 	// move the pasted copy away (it spawns +40,+40 from its source)
 	await dragEl(page, ".node path", 2, 220, 160);
