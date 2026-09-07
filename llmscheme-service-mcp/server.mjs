@@ -1010,7 +1010,9 @@ try {
 	const faces = [
 		...fs
 			.readFileSync(TEMPLATE, "utf8")
-			.matchAll(/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g),
+			.matchAll(
+				/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g,
+			),
 	];
 	FONT_CSS = faces.map((m) => m[0]).join("");
 } catch {}
@@ -1065,16 +1067,22 @@ dialog h3{margin:0 0 12px;font-size:11px;color:var(--accent)}
 <span class=title>llmscheme</span><span class=who>· ${esc(u.login)} [${esc(u.role)}]</span><span class=spacer></span>
 <button onclick="logout()">выйти</button>
 </header>
-${admin?`<nav><button class="tab on" id=tab-edit onclick="tab('edit')">редактирование</button><button class="tab" id=tab-admin onclick="tab('admin')">администрирование</button></nav>
-<section id=sec-edit>`:`<main>`}
+${
+	admin
+		? `<nav><button class="tab on" id=tab-edit onclick="tab('edit')">редактирование</button><button class="tab" id=tab-admin onclick="tab('admin')">администрирование</button></nav>
+<section id=sec-edit>`
+		: `<main>`
+}
 <div id=editbox>
 <h2># мои проекты и схемы</h2>
-${admin?`<label class=chk><input type=checkbox id=allusers onchange="loadSchemes()"> показать схемы всех юзеров</label>`:""}
+${admin ? `<label class=chk><input type=checkbox id=allusers onchange="loadSchemes()"> показать схемы всех юзеров</label>` : ""}
 <table id=schemes></table>
 <h2>+ новая схема</h2>
 <form onsubmit="return createScheme(this)"><input name=proj placeholder="проект" pattern="[A-Za-z0-9._-]{1,32}"><input name=sname required placeholder="имя схемы" pattern="[A-Za-z0-9._-]{1,64}"><button>+ создать</button><span class=muted>проект можно оставить пустым</span><span class=err id=scherr></span></form>
 </div>
-${admin?`</section>
+${
+	admin
+		? `</section>
 <section id=sec-admin hidden>
 <div id=adminbox>
 <h2># пользователи</h2>
@@ -1084,12 +1092,14 @@ ${admin?`</section>
 <form onsubmit="return mcpUser(this)"><select name=login id=msel></select><button>показать конфиг</button><span class=muted>готовый JSON для mcp-клиента (ключ создаётся при необходимости)</span></form>
 <pre id=mcp hidden></pre>
 </div>
-</section>`:""}
-</${admin?"div":"main"}>
+</section>`
+		: ""
+}
+</${admin ? "div" : "main"}>
 <div id=flashbox></div>
 <dialog id=dkey><h3 id=dtitle></h3><pre id=dbody></pre><form method=dialog><button>закрыть</button></form></dialog>
 <script>
-const ADMIN=${admin?"true":"false"};
+const ADMIN=${admin ? "true" : "false"};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const flash=(m,err)=>{const d=document.createElement('div');d.className='flash'+(err?' err':'');d.textContent=m;document.getElementById('flashbox').append(d);setTimeout(()=>d.remove(),4000)};
 async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{'content-type':'application/json'}});if(r.status===401)location='/';const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
@@ -1116,7 +1126,9 @@ const name=(f.proj.value?f.proj.value+'/'+f.sname.value:f.sname.value);
 await api('/api/schemes',{method:'POST',body:JSON.stringify({name})});
 flash('схема создана: '+name);f.sname.value='';show('scherr','');loadSchemes()}catch(e){show('scherr',esc(e.message))}return false}
 async function delScheme(n){const d=decodeURIComponent(n);if(!confirm('удалить схему "'+d+'" со всей историей?'))return;try{await api('/api/scheme/'+n,{method:'DELETE'});flash('удалена: '+d);loadSchemes()}catch(e){flash(e.message,1)}}
-${admin?`
+${
+	admin
+		? `
 async function loadUsers(){try{const l=await api('/api/users');
 show('users','<tr><th>login</th><th>роль</th><th>ключи</th><th></th></tr>'+l.map(x=>'<tr><td>'+esc(x.login)+'</td><td>'+esc(x.role)+'</td><td>'+x.apiKeys+'</td><td><button onclick="genKey(\\''+encodeURIComponent(x.login)+'\\')">ключ</button> <button class=warn onclick="delUser(\\''+encodeURIComponent(x.login)+'\\','+x.id+')">x</button></td></tr>').join(''));
 const sel=document.getElementById('msel');sel.innerHTML='<option value="">— я —</option>'+l.map(x=>'<option value="'+encodeURIComponent(x.login)+'">'+esc(x.login)+'</option>').join('');
@@ -1125,7 +1137,9 @@ async function createUser(f){event.preventDefault();try{await api('/api/users',{
 async function delUser(n,id){const d=decodeURIComponent(n);if(!confirm('удалить пользователя "'+d+'" и ВСЕ его схемы?'))return;try{await api('/api/user/'+id,{method:'DELETE'});flash('удалён: '+d);loadUsers()}catch(e){flash(e.message,1)}}
 async function genKey(n){try{const j=await api('/api/apikey',{method:'POST',body:JSON.stringify({login:decodeURIComponent(n)})});dlg('api-ключ: '+decodeURIComponent(n)+' — показывается ОДИН раз, сохрани сейчас',j.apiKey)}catch(e){flash(e.message,1)}}
 async function mcpUser(f){event.preventDefault();try{const q=f.login.value?'?login='+f.login.value:'';const j=await api('/api/mcp-config'+q);const p=document.getElementById('mcp');p.hidden=false;p.textContent=JSON.stringify(j,null,2)}catch(e){flash(e.message,1)}return false}
-`:""}
+`
+		: ""
+}
 function dlg(title,body){document.getElementById('dtitle').textContent=title;document.getElementById('dbody').textContent=body;document.getElementById('dkey').showModal()}
 async function logout(){try{await api('/api/logout',{method:'POST',body:'{}'})}catch(e){}location='/'}
 loadSchemes();
