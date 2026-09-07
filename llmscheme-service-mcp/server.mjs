@@ -1163,7 +1163,20 @@ const server = http.createServer(async (req, res) => {
 		),
 	);
 	const u = new URL(req.url, originOf(req));
-	const pathname = u.pathname.replace(/\/+$/, "") || "/";
+	// decode AFTER splitting on real slashes: %2F inside a segment is a scheme-name
+	// separator (/editor/web%2Fauth), not a path separator
+	const pathname =
+		u.pathname
+			.split("/")
+			.map((seg) => {
+				try {
+					return decodeURIComponent(seg);
+				} catch {
+					return seg;
+				}
+			})
+			.join("/")
+			.replace(/\/+$/, "") || "/";
 	try {
 		const body = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method)
 			? await readBody(req)
