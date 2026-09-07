@@ -56,7 +56,7 @@ export default define("security", async ({ t, page, BASE, ADMIN, PASS, api, logi
 	// scheme name validation: traversal + deep path
 	t.eq((await api("/api/schemes", { method: "POST", token, body: { name: "../x" } })).status, 400, "traversal blocked");
 	t.eq((await api("/api/schemes", { method: "POST", token, body: { name: "a..b/x" } })).status, 400, ".. in name blocked");
-	t.eq((await api("/api/schemes", { method: "POST", token, body: { name: "ok-name_1" } })).status, 201, "normal name ok");
+	t.eq((await api("/api/schemes", { method: "POST", token, body: { name: "e2e-sec/ok" } })).status, 201, "normal name ok");
 
 	// revoked token stops working immediately
 	await api("/api/logout", { method: "POST", token, body: {} });

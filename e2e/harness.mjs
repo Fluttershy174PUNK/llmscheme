@@ -90,6 +90,24 @@ export async function run(suites) {
 		console.error("set E2E_PASSWORD (admin password of the target service)");
 		process.exit(2);
 	}
+	// idempotency: wipe leftovers from previous runs (e2e_* users, e2e-* schemes)
+	try {
+		const tok = await login(ADMIN, PASS);
+		const schemes = await api("/api/schemes?user=all", { token: tok });
+		for (const s of schemes.json) {
+			const full = s.project ? `${s.project}/${s.name}` : s.name;
+			if (full.startsWith("e2e") || full.startsWith("tmp/"))
+				await api("/api/scheme/" + encodeURIComponent(full), { method: "DELETE", token: tok });
+		}
+		const users = await api("/api/users", { token: tok });
+		for (const u of users.json) {
+			if (u.login.startsWith("e2e_"))
+				await api("/api/user/" + u.id, { method: "DELETE", token: tok });
+		}
+		out("cleanup: previous e2e data wiped");
+	} catch (e) {
+		console.error("cleanup skipped:", e.message);
+	}
 	const here = path.dirname(fileURLToPath(import.meta.url));
 	const files = fs
 		.readdirSync(here)

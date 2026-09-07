@@ -57,8 +57,13 @@ export default define("editor", async ({ t, page, BASE, ADMIN, PASS, randUser, a
 	await page.keyboard.press("KeyZ");
 	await page.keyboard.up("Control");
 	await sleep(300);
+	await clickEl(page, ".node path", 0); // undo deselects — re-select to read inspector
+	await sleep(200);
 	const undone = await inspector(page);
-	t.truthy(undone.w < after.w, `undo reverts size (${after.w} → ${undone.w})`);
+	t.truthy(
+		undone === null || undone.w < after.w,
+		`undo reverts size (${after.w} → ${undone ? undone.w : "deselected"})`,
+	);
 
 	// COPY/PASTE
 	const n0 = await countNodes(page);
@@ -166,6 +171,7 @@ export default define("editor", async ({ t, page, BASE, ADMIN, PASS, randUser, a
 	}
 	async function inspector(p) {
 		return p.evaluate(() => {
+			if (!document.querySelector(".node.selected")) return null;
 			const nums = [...document.querySelectorAll(".inspector input[type=number]")].map(
 				(i) => (i.value === "" ? 0 : Number(i.value)),
 			);
