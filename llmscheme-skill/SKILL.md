@@ -92,7 +92,7 @@ understand the intent, then continue. NEVER overwrite blindly.
 If a llmscheme-service (docker) is deployed and the user wants the scheme
 there, use its REST/MCP API instead of the CLI — see llmscheme-service-mcp/README.md
 in the project repository (same core, same CAS semantics; editor served at
-/editor/<name>?t=<token>).
+/editor/<name>?t=<token>). Repo map for coding agents: PROJECT.md at the repo root.
 
 ## Command map
 

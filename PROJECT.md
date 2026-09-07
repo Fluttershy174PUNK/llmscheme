@@ -24,11 +24,11 @@ src/core/src (TS, истина) ──build:skill──▶ llmscheme-skill/block
 src/app (Svelte 5) ───────build:app─────▶ llmscheme-skill/block_llm_core/editor-template.gen.html
 ```
 
-## Структура (67 файлов в git)
+## Структура (68 файлов в git)
 
 ```
+PROJECT.md                     — этот файл: карта репо, ЗДЕСЬ начинаешь
 README.md                      — пользовательская документация (3 способа установки)
-PROJECT.md                     — этот файл
 LICENSE                        — MIT
 .dockerignore                  — контекст сборки = корень репо (см. compose)
 .gitignore                     — data/, .env, editor-template.gen.html, локальная тестовая среда
@@ -36,7 +36,8 @@ LICENSE                        — MIT
 src/                           — ИСТОЧНИКИ (единственное место для правок логики)
   package.json                 — scripts: build:skill / build:core / build:app / check / test / typecheck
   core/src/                    — ядро, ~1000 строк TS, без зависимостей:
-    types.ts                   —   Scheme/Node/Edge/Zone, shape: rect|square|circle|diamond|table
+    types.ts                   —   Scheme/Node/Edge/Zone, shape: rect|square|circle|diamond|table;
+                                   опциональные n.w/n.h (resize override)
     validate.ts                —   валидация схемы (errors + warnings)
     ids.ts                     —   генерация id (n1, e1, z1), nextId в meta
     layout.ts                  —   auto-layout (autoPlace)
@@ -48,15 +49,28 @@ src/                           — ИСТОЧНИКИ (единственное 
     pathjail.ts                —   jail путей (refs не выходят за проект)
     index.ts                   —   публичные экспорты ядра (entry для esbuild)
   app/                         — Svelte 5 (runes) редактор:
-    src/App.svelte             —   весь редактор (~890 строк): канвас SVG, инсспектор,
+    src/App.svelte             —   весь редактор (~950 строк): канвас SVG, инспектор,
+                                   resize-хэндлы узлов (w/h), ctrl+click мультивыделение,
+                                   групповой drag, copy/paste, undo, перенос длинных строк,
+                                   кнопки: log (journal), 📂 open local, 📁 к проектам (server mode)
     src/app.css                —   палитра фигур, сетка/магнит, таблицы 10×50
     src/pristine.ts            —   PRISTINE_HTML (self-reference для сохранения tier A/B)
     src/main.ts, index.html    —   точки входа vite + vite-plugin-singlefile
     app.css дизайн             —   пиксель-стиль: Press Start 2P (base64), PICO-8 палитра
                                    --bg #1a1c2c --panel #29366f --accent #ffcd75 --err #ff004d
   scripts/build-skill.mjs      — сборщик артефактов + --check (CI): артефакты == исходникам,
-                                 бюджет editor-template ≤ 150КБ
+                                 бюджет editor-template ≤ 150КБ; инжект pi-lens-ignore в бандл
   test/core.test.mjs           — 22 теста (node --test): validate/CAS/layout/экспорты/CLI e2e
+
+e2e/                           — браузерные e2e тесты СЕРВИСА (puppeteer, 76 проверок):
+  run.mjs                      —   entry: node e2e/run.mjs [suite] (env: BASE, E2E_ADMIN, E2E_PASSWORD)
+  harness.mjs                  —   kit: page/browser, api-клиент, cleanup e2e-данных перед прогоном
+  test-login.mjs               —   логин-страница: стиль, кот, readme, lang, reset-hint, creds
+  test-console.mjs             —   вкладки, юзеры, api-ключи, mcp-конфиги, схемы, logout
+  test-editor.mjs              —   канвас, resize, undo, copy/paste, мультивыделение, log, SAVE
+  test-projects.mjs            —   проекты/схемы, валидация имён, изоляция юзеров, слайдер
+  test-mcp.mjs                 —   initialize/tools/call/CAS/md/diff/node_add
+  test-security.mjs            —   401-стены, cookie flags, login charset, traversal, revoke
 
 llmscheme-skill/               — 🎒 артефакт №1: скилл для агента (копируется в ~/.agents/skills/)
   SKILL.md                     — ритуалы агента (read-before-write, CAS, rev)
@@ -66,16 +80,19 @@ llmscheme-skill/               — 🎒 артефакт №1: скилл для
   block_llm_core/references/   — SCHEME_FORMAT.md, EDITOR.md (deep refs для агента)
 
 llmscheme-service-mcp/         — 🐳 артефакт №2: docker-сервис (один файл server.mjs)
-  server.mjs                   — ~1300 строк, ноль runtime-зависимостей (node:22-alpine):
+  server.mjs                   — ~1400 строк, ноль runtime-зависимостей (node:22-alpine):
                                    - HTTP-роутер + auth (scrypt пароли, bearer-токены,
-                                     api-ключи ls_, cookie-сессии ls_token HttpOnly)
-                                   - users: admin из env, роли admin|user, изоляция по uid
-                                   - schemes: <uid>/<project>/<scheme>/, CAS по rev
-                                   - консоль /admin (в этом же файле, шаблон-строка):
+                                     api-ключи llm_…, cookie-сессии ls_token HttpOnly)
+                                   - login-страница: pixel-стиль, кот, readme+link, reset-hint,
+                                     ru/en
+                                   - консоль /admin (шаблон-строка в этом же файле):
                                      вкладки редактирование/администрирование (у админа),
                                      проекты→схемы, слайдер «все юзеры» (?user=all),
                                      юзеры + api-ключи, MCP-конфиг на юзера
-                                   - login-страница, /editor/<name> автосоздаёт схему
+                                   - /editor/<project/scheme> автосоздаёт схему; /editor = default
+                                   - scheme name = project/scheme (1 уровень) или scheme
+                                   - API: схемы CRUD+node/edge/zone+md/diff/log, users CRUD,
+                                     api-ключи, mcp-config
                                    - MCP: POST /mcp JSON-RPC (12 инструментов)
                                    - lightdb.json: юзеры/ключи/токены (атомарно, квота)
   core.mjs                     — ядро (СГЕНЕРЕНО из src/core, копия скиллового)
@@ -119,6 +136,20 @@ npm run check         # CI: артефакты соответствуют исх
 npm run typecheck     # tsc по ядру
 ```
 
+## E2E-тесты сервиса (обязательно перед каждым деплоем)
+
+```bash
+cd e2e && npm i          # один раз (puppeteer)
+BASE=http://host:8080 E2E_ADMIN=admin E2E_PASSWORD=… node run.mjs          # все наборы
+BASE=… E2E_PASSWORD=… node run.mjs editor console                          # только эти
+```
+
+6 наборов, 76 проверок: `login`, `console`, `editor`, `projects`, `mcp`,
+`security`. Прогон идемпотентен: перед стартом сам чистит за собой
+(`e2e*`-схемы и `e2e_*`-юзеров). Тесты ловят реальный краш процесса:
+`/mcp` без ключа убивал сервис (401 вылетал из обработчика) — теперь
+`unhandledRejection` гасится логом, а `tools/list` отвечает 401.
+
 ## Сервис: запуск и деплой
 
 ```bash
@@ -155,7 +186,7 @@ delete_scheme, node_add, node_update, node_remove, edge_add, edge_remove, diff`
   в .gitignore
 - ❌ `editor-template.gen.html` копия в service-папке (мусор сборки) — в
   .gitignore
-- ❌ `node_modules/`, `dist/`, `.block_llm/cache/` — в .gitignore
+- ❌ `node_modules/`, `dist/`, `.block_llm/cache/`, `e2e/node_modules/` — в .gitignore
 - ❌ IP-адресов/паролей/токенов в коде — секреты только через env
 - ✅ `demo-example-skill/cats.txt`, картинки, схемы — публичные демо-данные
 - ✅ GitHub-URL в README/LICENSE — публичное имя репозитория, это ок
@@ -165,11 +196,28 @@ delete_scheme, node_add, node_update, node_remove, edge_add, edge_remove, diff`
 
 ## Известные упрощения (осознанные)
 
-- `server.mjs` — один файл ~1300 строк: роутер, auth, консоль, MCP вместе.
+- `server.mjs` — один файл ~1400 строк: роутер, auth, консоль, MCP вместе.
   Ноль зависимостей = так и задумано; разделять при росте — на `lib/*.mjs`.
-- Консоль — серверный шаблон-строка + vanilla JS (~120 строк клиента), без
+- Консоль — серверный шаблон-строка + vanilla JS (~130 строк клиента), без
   сборки. Не тащи React/Vite, пока не перестанет помещаться.
 - Проекты — один уровень (`a/b`); глубже — расширить `schemeRoot` и
   `listSchemes` (рекурсия уже частично написана).
 - lightdb — один JSON с квотой; SQL не нужен до тысяч юзеров.
 - TLS нет — только за reverse-proxy (задокументировано).
+- Логин-страница: подсказка reset описывает ручную процедуру (смена
+  ADMIN_PASSWORD + снос lightdb), UI-смена пароля не реализована.
+- mcp-config всегда выдаёт СВЕЖИЙ ключ и отзывает старые (хэш нельзя
+  показать дважды) — mcp-клиент перечитывает конфиг при ошибке 401.
+
+## Статус: что сделано, что дальше
+
+Сделано и покрыто e2e: логин (pixel, кот, readme, reset-hint, ru/en),
+консоль (вкладки, проекты→схемы, юзеры+ключи, MCP-конфиг на юзера,
+слайдер всех юзеров), редактор (resize, мультивыделение+групповой drag,
+copy/paste, undo, word-wrap, log, open local, SAVE tier S, CAS),
+изоляция юзеров, MCP (12 инструментов), security-стены.
+
+Дальше по схеме `📁 UI / page` (в сервисе): экран login — GIF-кот вместо
+SVG-заглушки и readme, тянущийся с живого README (n1/n2); UI-смена
+пароля admin (n5); «patch to project» (n35) — выгрузка схемы в локальный
+проект скиллом.

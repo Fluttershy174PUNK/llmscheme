@@ -4,6 +4,8 @@
 > api-ключи, схемы, редактор в браузере, полный REST. Один файл `server.mjs`,
 > ноль runtime-зависимостей. Данные — lightdb (один JSON) + папки схем на volume.
 
+> 🗺 Структура репозитория, golden rules и e2e-тесты: [PROJECT.md](../PROJECT.md)
+
 ## 🚀 Запуск (docker)
 
 ```bash
