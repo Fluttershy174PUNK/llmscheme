@@ -383,7 +383,11 @@ import { SHAPES } from "../../core/src/types.ts";
 	function onSvgDown(ev: PointerEvent) {
 		panning = true;
 		panStart = { x: ev.clientX - pan.x, y: ev.clientY - pan.y };
-		svgEl?.setPointerCapture(ev.pointerId);
+		try {
+			svgEl?.setPointerCapture(ev.pointerId);
+		} catch {
+			// pointer already released (synthetic/edge-case events) — panning still works
+		}
 	}
 
 	function onSvgMove(ev: PointerEvent) {
@@ -605,7 +609,7 @@ import { SHAPES } from "../../core/src/types.ts";
 		try {
 			const res = await fetch(
 				`/api/scheme/${encodeURIComponent(schemeName())}/log`,
-				{ headers: { authorization: `Bearer ${serverToken}` } },
+				{ headers: serverToken ? { authorization: `Bearer ${serverToken}` } : {} },
 			);
 			const data = await res.json();
 			if (!res.ok) {
@@ -655,7 +659,7 @@ import { SHAPES } from "../../core/src/types.ts";
 				method: "PUT",
 				headers: {
 					"content-type": "application/json",
-					authorization: `Bearer ${serverToken}`,
+					...(serverToken ? { authorization: `Bearer ${serverToken}` } : {}),
 				},
 				body: schemeJson(),
 			});
