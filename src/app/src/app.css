@@ -1,0 +1,406 @@
+/* block-llm editor — pixel style (Press Start 2P inlined by vite), ~5KB hand CSS */
+@font-face {
+	font-family: "Press Start 2P";
+	font-style: normal;
+	font-weight: 400;
+	font-display: block;
+	src: url("@fontsource/press-start-2p/files/press-start-2p-cyrillic-400-normal.woff2")
+		format("woff2");
+	unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+	font-family: "Press Start 2P";
+	font-style: normal;
+	font-weight: 400;
+	font-display: block;
+	src: url("@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2")
+		format("woff2");
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+	--bg: #1a1c2c;
+	--panel: #29366f;
+	--panel2: #3b5dc9;
+	--ink: #f4f4f4;
+	--accent: #ffcd75;
+	--ok: #38b764;
+	--warn: #ffcd75;
+	--err: #ff004d;
+	--dim: #94b0c2;
+	--edge: #41a6f6;
+	--grid: rgba(148, 176, 194, 0.09);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+	background: var(--bg);
+	color: var(--ink);
+	font-family: "Press Start 2P", monospace;
+	font-size: 10px;
+	line-height: 1.6;
+}
+
+#app {
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+button {
+	font: inherit;
+	background: var(--panel2);
+	color: var(--ink);
+	border: 0;
+	box-shadow:
+		inset -2px -2px 0 #091428,
+		inset 2px 2px 0 var(--accent);
+	padding: 6px 10px;
+	cursor: pointer;
+	image-rendering: pixelated;
+}
+button:hover {
+	filter: brightness(1.15);
+}
+button:active {
+	transform: translateY(1px);
+}
+button.on {
+	background: var(--accent);
+	color: #091428;
+}
+button:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+input,
+select,
+textarea {
+	font: inherit;
+	background: #091428;
+	color: var(--ink);
+	border: 0;
+	box-shadow:
+		inset 2px 2px 0 #091428,
+		inset -2px -2px 0 var(--panel2);
+	padding: 5px;
+	width: 100%;
+}
+textarea {
+	resize: vertical;
+	min-height: 48px;
+}
+
+.topbar {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 8px;
+	background: var(--panel);
+	box-shadow: inset 0 -2px 0 #091428;
+	flex-wrap: wrap;
+}
+.topbar .spacer {
+	flex: 1;
+}
+.title {
+	color: var(--accent);
+	font-size: 12px;
+}
+.rev {
+	color: var(--dim);
+}
+
+.statusbar {
+	display: flex;
+	gap: 14px;
+	align-items: center;
+	padding: 6px 8px;
+	background: var(--panel);
+	box-shadow: inset 0 2px 0 #091428;
+	color: var(--dim);
+	flex-wrap: wrap;
+}
+.statusbar .tier {
+	color: var(--accent);
+}
+.statusbar .conflict {
+	color: var(--err);
+}
+
+/* shape palette: vertical strip on the right edge (click -> arm a shape, click canvas -> drop) */
+.palette {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 8px 6px;
+	background: var(--panel);
+	box-shadow: inset -2px 0 0 #091428;
+	flex-shrink: 0;
+}
+.palette button {
+	padding: 6px;
+	line-height: 0;
+}
+.palette svg {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: 2;
+}
+.palette button.on svg {
+	stroke: #091428;
+}
+.palette button.on {
+	background: var(--accent);
+}
+
+.canvas-wrap svg.placing {
+	cursor: copy;
+}
+
+.main {
+	flex: 1;
+	display: flex;
+	min-height: 0;
+}
+.canvas-wrap {
+	flex: 1;
+	position: relative;
+	overflow: hidden;
+	background: var(--bg);
+}
+.canvas-wrap svg {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	cursor: grab;
+}
+.canvas-wrap svg.dragging {
+	cursor: grabbing;
+}
+
+.inspector {
+	width: 280px;
+	background: var(--panel);
+	box-shadow: inset 2px 0 0 #091428;
+	padding: 10px;
+	overflow-y: auto;
+	flex-shrink: 0;
+}
+.inspector h3 {
+	margin: 0 0 8px;
+	font-size: 10px;
+	color: var(--accent);
+}
+.inspector label {
+	display: block;
+	margin: 8px 0 2px;
+	color: var(--dim);
+}
+.inspector .row {
+	display: flex;
+	gap: 6px;
+}
+.inspector .row > * {
+	flex: 1;
+}
+.inspector .danger {
+	background: #ab5236;
+	margin-top: 10px;
+}
+
+/* interactive table editor (inspector): +/- buttons, per-cell inputs */
+.tbl-editor {
+	margin: 8px 0;
+}
+.tbl-toolbar {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+	color: var(--dim);
+	margin-bottom: 4px;
+}
+.tbl-toolbar button.mini {
+	padding: 2px 7px;
+	font-size: 9px;
+}
+.tbl-grid {
+	border-collapse: collapse;
+	width: 100%;
+}
+.tbl-grid th,
+.tbl-grid td {
+	padding: 0;
+	border: 1px solid var(--panel2);
+}
+.tbl-grid input {
+	border: 0;
+	box-shadow: none;
+	padding: 3px 4px;
+	font-size: 8px;
+}
+.tbl-grid th input {
+	color: var(--accent);
+}
+
+.warnlist {
+	margin: 6px 0 0;
+	padding: 0;
+	list-style: none;
+	color: var(--warn);
+}
+.warnlist li {
+	margin: 4px 0;
+	word-break: break-word;
+}
+
+.hint {
+	color: var(--dim);
+	margin: 8px 0 0;
+}
+
+.savebox {
+	margin-top: 10px;
+	padding: 8px;
+	background: #091428;
+	max-height: 260px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--accent);
+}
+
+/* svg canvas bits */
+.node-shape {
+	fill: var(--panel);
+	stroke: var(--edge);
+	stroke-width: 2;
+}
+.node.selected .node-shape {
+	stroke: var(--accent);
+}
+.node.orphan .node-shape {
+	stroke: var(--warn);
+}
+.node text {
+	fill: var(--ink);
+	font-family: inherit;
+	font-size: 9px;
+	pointer-events: none;
+}
+/* table shape: header + column heads + cells (pointer-events none = drag the box) */
+.node .tbl-head {
+	fill: var(--accent);
+	font-size: 8px;
+}
+.node .tbl-col {
+	fill: var(--dim);
+	font-size: 7px;
+}
+.node .tbl-cell {
+	fill: var(--ink);
+	font-size: 7px;
+}
+.edge-path {
+	fill: none;
+	stroke: var(--edge);
+	stroke-width: 2;
+}
+.edge-path.dashed {
+	stroke-dasharray: 6 4;
+}
+.edge-label {
+	fill: var(--dim);
+	font-family: inherit;
+	font-size: 8px;
+}
+.stale-badge {
+	fill: var(--err);
+	font-size: 8px;
+	font-family: inherit;
+}
+
+/* === v0.2: zones, ports, animated dashes, scheme path === */
+.topbar .path {
+	color: var(--dim);
+	font-size: 9px;
+	max-width: 40vw;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.zone rect {
+	fill: rgba(148, 176, 194, 0.06);
+	stroke: var(--dim);
+	stroke-width: 2;
+	stroke-dasharray: 8 5;
+}
+.zone.selected rect {
+	stroke: var(--accent);
+	fill: rgba(255, 205, 117, 0.07);
+}
+.zone-label {
+	fill: var(--dim);
+	font-size: 9px;
+	font-family: inherit;
+}
+.zone.selected .zone-label {
+	fill: var(--accent);
+}
+.zone .resize-handle {
+	fill: var(--accent);
+	stroke: #091428;
+	stroke-width: 2;
+	cursor: nwse-resize;
+}
+
+.port {
+	cursor: crosshair;
+}
+.port .port-bg {
+	fill: var(--ok);
+	stroke: #091428;
+	stroke-width: 2;
+}
+.port.armed .port-bg {
+	fill: var(--accent);
+}
+.port text {
+	fill: #091428;
+	font-size: 12px;
+	font-family: inherit;
+	pointer-events: none;
+}
+
+.edge-hit {
+	fill: none;
+	stroke: transparent;
+	stroke-width: 14;
+	cursor: pointer;
+}
+.edge-path.sel {
+	stroke: var(--accent);
+}
+.edge-path.dashed {
+	animation: dashmove 1.2s linear infinite;
+}
+@keyframes dashmove {
+	to {
+		stroke-dashoffset: -20;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.edge-path.dashed {
+		animation: none;
+	}
+}

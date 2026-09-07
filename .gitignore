@@ -34,3 +34,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# llmscheme
+node_modules/
+.llmscheme/
+config.json
+task*.txt
+task*.txt~
+*.log
+llmscheme-service-mcp/data/
+
+# service volume
+llmscheme-service-mcp/data/
+
+# vite build output
+dist/
