@@ -693,6 +693,34 @@ import { SHAPES } from "../../core/src/types.ts";
 		return seg ?? "default";
 	}
 
+	// open local scheme.json (offline tier A/B): file picker replaces the canvas
+	async function openLocal() {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".json,application/json";
+		input.onchange = async () => {
+			const file = input.files?.[0];
+			if (!file) return;
+			try {
+				const parsed = JSON.parse(await file.text());
+				if (parsed?.format !== "block-llm")
+					throw new Error('not a block-llm scheme (format != "block-llm")');
+				pushUndo();
+				scheme = parsed;
+				schemeLoaded = $state.snapshot(parsed) as Scheme;
+				revOnDisk = parsed.rev;
+				selectedId = null;
+				selectedKind = null;
+				multiSel = [];
+				touch();
+				saveBox = `${file.name}: rev ${parsed.rev} — ${lang === "ru" ? "открыт локальный файл" : "local file opened"}`;
+			} catch (e) {
+				errors = [(e as Error).message];
+			}
+		};
+		input.click();
+	}
+
 	async function doSave() {
 		if (serverMode) return serverSave();
 		if (!scheme) return;
@@ -773,6 +801,7 @@ import { SHAPES } from "../../core/src/types.ts";
 	<span class="rev">rev {scheme?.rev ?? "-"}</span>
 	<span class="path" title={schemeDir}>{schemeDir}</span>
 	<span class="spacer"></span>
+	{#if serverMode}<button onclick={() => location.href = "/admin"} title="{lang === "ru" ? "к проектам" : "to projects"}">📁</button>{/if}
 	<button onclick={() => { lang = lang === "en" ? "ru" : "en"; localStorage.setItem("blm-lang", lang); }}>{lang === "en" ? "RU" : "EN"}</button>
 	<button onclick={addNode}>{t.add}</button>
 	<button onclick={addZone}>{t.zone}</button>
@@ -782,7 +811,10 @@ import { SHAPES } from "../../core/src/types.ts";
 	<button onclick={autoPlace}>auto</button>
 	<button onclick={undo} disabled={!undoStack.length} title="ctrl+z">↩</button>
 	<button onclick={removeSelected} disabled={!selected}>{t.del}</button>
-	{#if !serverMode}<button onclick={saveMd} title="SCHEME.md">↓md</button>{/if}
+	{#if !serverMode}
+		<button onclick={openLocal} title="open scheme.json from disk">📂</button>
+		<button onclick={saveMd} title="SCHEME.md">↓md</button>
+	{/if}
 	{#if serverMode}<button onclick={showLog} title="write journal of this scheme">log</button>{/if}
 	<button onclick={doSave}>{t.save}</button>
 </div>

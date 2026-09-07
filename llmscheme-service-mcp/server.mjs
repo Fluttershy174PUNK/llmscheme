@@ -1013,11 +1013,73 @@ const mcpErr = (id, code, message) => ({
 
 // ---------- static editor (/editor and /editor/<name>) ----------
 // minimal login page for browsers: / and /editor without a token land here
-const LOGIN_HTML = `<!doctype html><meta charset=utf-8><title>llmscheme login</title>
-<style>body{font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0}form{display:grid;gap:8px;width:16rem}input,button{padding:8px;font:inherit}</style>
+// login page (scheme UI/page, zone z1: login/password/reset/lang + readme + cat)
+const CAT_SVG = `<svg width="96" height="64" viewBox="0 0 12 8" shape-rendering="crispEdges" aria-hidden="true">
+<g fill="#091428">
+<rect x="2" y="1" width="8" height="6"/><rect x="2" y="0" width="2" height="2"/><rect x="8" y="0" width="2" height="2"/>
+<rect x="1" y="4" width="1" height="3"/><rect x="10" y="4" width="1" height="3"/>
+</g>
+<g fill="#f4f4f4">
+<rect x="4" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/>
+<rect x="5" y="4" width="2" height="1"/>
+</g>
+<g fill="#ffcd75"><rect x="3" y="3" width="1" height="1"/><rect x="8" y="3" width="1" height="1"/></g>
+<g fill="#ff004d"><rect x="6" y="6" width="1" height="1"/></g>
+</svg>`;
+
+const LOGIN_HTML = `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>llmscheme login</title>
+<style>
+:root{--bg:#1a1c2c;--panel:#29366f;--panel2:#3b5dc9;--ink:#f4f4f4;--accent:#ffcd75;--err:#ff004d;--dim:#94b0c2;--dark:#091428;--edge:#41a6f6}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Press Start 2P",monospace;font-size:10px;line-height:1.8;display:grid;place-items:center;padding:16px}
+.card{display:grid;grid-template-columns:1fr auto;gap:18px;max-width:44rem;width:100%;background:var(--panel);box-shadow:inset -2px -2px 0 var(--dark),inset 2px 2px 0 var(--accent);padding:18px}
+@media (max-width:640px){.card{grid-template-columns:1fr}}
+h1{font-size:13px;color:var(--accent);margin:0 0 12px}
+.readme{grid-column:1/-1;background:var(--dark);box-shadow:inset -2px -2px 0 var(--panel2);padding:10px;font-size:9px;color:var(--dim)}
+.readme b{color:var(--ink);font-weight:400}
+.readme a{color:var(--edge);text-decoration:none}
+.readme a:hover{color:var(--accent)}
+form{display:grid;gap:10px;align-content:start}
+input,button{font:inherit;font-size:10px;border:0;padding:8px}
+input{background:var(--dark);color:var(--ink);box-shadow:inset 2px 2px 0 var(--dark),inset -2px -2px 0 var(--panel2)}
+input:focus{outline:2px solid var(--accent)}
+button{background:var(--panel2);color:var(--ink);box-shadow:inset -2px -2px 0 var(--dark),inset 2px 2px 0 var(--accent);cursor:pointer}
+button:hover{filter:brightness(1.15)}
+button:active{transform:translateY(1px)}
+.err{color:var(--err);min-height:1.6em;font-size:9px}
+.hint{font-size:8px;color:var(--dim)}
+.cat{display:grid;justify-items:center;gap:8px;align-content:start}
+.lang{justify-self:end}
+.lang button{font-size:8px;padding:4px 8px}
+</style>
+<div class=card>
+<div class=lang><button onclick="l=setL('ru');r=setL('en')">ru/en</button></div>
+<div class=cat>${CAT_SVG}<div style="color:var(--dim);font-size:8px">·^·</div></div>
 <form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token)location='/admin';else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
-<input name=l placeholder=login required><input name=p type=password placeholder=password required>
-<button>sign in</button><div id=err style="color:#b00"></div></form>`;
+<h1>llmscheme</h1>
+<input name=l placeholder="login" required autocomplete=username>
+<input name=p type=password placeholder="password" required autocomplete=current-password>
+<button>sign in</button>
+<div class=err id=err></div>
+<div class=hint id=reset-hint hidden>admin password is set once in .env (ADMIN_PASSWORD) when the service
+first starts with an empty data dir; to change it: stop, edit .env, delete data/lightdb.json
+(or the whole data dir — schemes are kept in data/schemes), start again.</div>
+<button type=button class=reset onclick="const h=document.getElementById('reset-hint');h.hidden=!h.hidden">reset?</button>
+</form>
+<div class=readme id=readme></div>
+</div>
+<script>
+const T={
+ en:{signin:'sign in',reset:'reset?',hint:'admin password is set once in .env (ADMIN_PASSWORD) at first start with an empty data dir; to change it: stop the service, edit .env, remove data/lightdb.json (schemes in data/schemes are kept), start again.',readme:'<b>llmscheme</b> — living logic schemes for humans and LLM. draw boxes and arrows, share schemes via REST and MCP, edit in browser.',lang:'ru/en'},
+ ru:{signin:'войти',reset:'сброс?',hint:'пароль admin задаётся один раз в .env (ADMIN_PASSWORD) при первом старте с пустой папкой data; чтобы поменять: останови сервис, правь .env, удали data/lightdb.json (схемы в data/schemes сохранятся), запусти снова.',readme:'<b>llmscheme</b> — живые логические схемы для людей и LLM. рисуй узлы и стрелки, делись схемами через REST и MCP, правь в браузере.',lang:'en/ru'}
+};
+let lang='ru';
+function setL(l){lang=l;document.querySelector('form button').textContent=T[l].signin;
+document.querySelector('.reset').textContent=T[l].reset;
+document.getElementById('reset-hint').textContent=T[l].hint;
+document.getElementById('readme').innerHTML=T[l].readme+' <a href="https://github.com/Fluttershy174PUNK/llmscheme#readme" target=_blank rel=noopener>README ↗</a>';return l}
+setL(lang);
+</script>`;
 
 // ---------- /admin console: tabs, projects->schemes, users, mcp ----------
 // pixel style: same palette + Press Start 2P (base64, from the editor build) as the canvas
@@ -1089,6 +1151,7 @@ dialog h3{margin:0 0 12px;font-size:11px;color:var(--accent)}
 </style>
 <header>
 <span class=title>llmscheme</span><span class=who>· ${esc(u.login)} [${esc(u.role)}]</span><span class=spacer></span>
+<button onclick="location='/editor/default'">editor</button>
 <button onclick="logout()">выйти</button>
 </header>
 ${
