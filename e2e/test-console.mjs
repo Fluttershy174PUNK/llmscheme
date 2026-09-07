@@ -20,7 +20,7 @@ export default define("console /admin", async ({ t, page, BASE, ADMIN, PASS, ran
 		await page.$eval("#sec-edit", (el) => !el.hidden),
 		"edit tab open by default",
 	);
-	await page.click("#tab-admin");
+	await page.evaluate(() => document.querySelector("#tab-admin").click());
 	await t.truthy(
 		await page.$eval("#sec-admin", (el) => !el.hidden),
 		"admin tab opens",
@@ -29,7 +29,7 @@ export default define("console /admin", async ({ t, page, BASE, ADMIN, PASS, ran
 	// create user via form -> appears in table
 	await page.type("#fusers input[name=login]", user);
 	await page.type("#fusers input[name=password]", user + "-pw");
-	await page.click("#fusers button");
+	await page.evaluate(() => document.querySelector("#fusers button").click());
 	await page.waitForFunction(
 		(u) => document.getElementById("users")?.textContent.includes(u),
 		{},
@@ -42,7 +42,7 @@ export default define("console /admin", async ({ t, page, BASE, ADMIN, PASS, ran
 
 	// mcp-config for that user -> JSON with key
 	await page.select("#msel", user);
-	await page.click("form[onsubmit*='mcpUser'] button");
+	await page.evaluate(() => document.querySelector("form[onsubmit*='mcpUser'] button").click());
 	await page.waitForFunction(() => {
 		const p = document.getElementById("mcp");
 		return !p.hidden && p.textContent.includes("mcpServers");
@@ -78,10 +78,10 @@ export default define("console /admin", async ({ t, page, BASE, ADMIN, PASS, ran
 	);
 
 	// schemes tab: create project/scheme via form -> grouped row
-	await page.click("#tab-edit");
+	await page.evaluate(() => document.querySelector("#tab-edit").click());
 	await page.type("form[onsubmit*='createScheme'] input[name=proj]", "e2e");
 	await page.type("form[onsubmit*='createScheme'] input[name=sname]", "s1");
-	await page.click("form[onsubmit*='createScheme'] button");
+	await page.evaluate(() => document.querySelector("form[onsubmit*='createScheme'] button").click());
 	await page.waitForFunction(() =>
 		document.getElementById("schemes")?.textContent.includes("📁"),
 	);

@@ -58,7 +58,7 @@ export default define("editor", async ({ t, page, BASE, ADMIN, PASS, randUser, a
 	await page.keyboard.up("Control");
 	await sleep(300);
 	const undone = await inspector(page);
-	t.truthy(undone.w === "" || undone.w < after.w, `undo reverts size (${undone.w})`);
+	t.truthy(undone.w < after.w, `undo reverts size (${after.w} → ${undone.w})`);
 
 	// COPY/PASTE
 	const n0 = await countNodes(page);
@@ -72,6 +72,10 @@ export default define("editor", async ({ t, page, BASE, ADMIN, PASS, randUser, a
 	await page.keyboard.up("Control");
 	await sleep(400);
 	t.eq(await countNodes(page), n0 + 1, "paste adds a node");
+
+	// move the pasted copy away (it spawns +40,+40 from its source)
+	await dragEl(page, ".node path", 2, 220, 160);
+	await sleep(200);
 
 	// MULTI-SELECT + GROUP DRAG
 	const paths = await page.$$(".node path");
@@ -163,7 +167,7 @@ export default define("editor", async ({ t, page, BASE, ADMIN, PASS, randUser, a
 	async function inspector(p) {
 		return p.evaluate(() => {
 			const nums = [...document.querySelectorAll(".inspector input[type=number]")].map(
-				(i) => i.value,
+				(i) => (i.value === "" ? 0 : Number(i.value)),
 			);
 			return { x: nums[0], y: nums[1], w: nums[2], h: nums[3] };
 		});

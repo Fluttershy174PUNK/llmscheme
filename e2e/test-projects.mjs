@@ -31,10 +31,12 @@ export default define("projects & isolation", async ({ t, page, browser, BASE, A
 		JSON.stringify(all.json).includes("myproj") && JSON.stringify(all.json).includes(user),
 		"?user=all shows other user's scheme with owner",
 	);
-	t.eq(
-		(await api("/api/schemes?user=all", { token: userTok })).status,
-		403 || 200,
-		"non-admin all-listing limited",
+	// non-admin ?user=all is accepted but scoped to their own schemes (param ignored)
+	const nonAdminAll = await api("/api/schemes?user=all", { token: userTok });
+	t.eq(nonAdminAll.status, 200, "non-admin all-listing responds");
+	t.falsy(
+		JSON.stringify(nonAdminAll.json).includes("admin"),
+		"non-admin all-listing contains no foreign schemes",
 	);
 
 	// editor for user's scheme: user ok, admin 404

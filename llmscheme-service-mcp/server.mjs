@@ -306,6 +306,9 @@ route("POST", "/api/users", async (ctx) => {
 	const { login, password, role } = parseJson(ctx.body || "{}");
 	if (!login || !password)
 		return fail(ctx.res, 400, "login and password required");
+	// same charset the console UI enforces — keeps lightdb/dir names safe
+	if (!/^[a-z0-9_.-]{1,32}$/.test(login))
+		return fail(ctx.res, 400, "login must match [a-z0-9_.-]{1,32}");
 	if (role && !["admin", "user"].includes(role))
 		return fail(ctx.res, 400, "role must be admin|user");
 	if (userBy((u) => u.login === login)) return fail(ctx.res, 409, "login taken");
@@ -369,21 +372,20 @@ route("GET", "/api/mcp-config", async (ctx) => {
 			? userBy((u) => u.login === ctx.query.login)
 			: ctx.auth;
 	if (!target) return fail(ctx.res, 404, "no such user");
-	let apiKey = (target.apiKeys || []).filter((k) => !k.revoked).at(-1);
-	if (!apiKey) {
-		const key = genApiKey();
-		target.apiKeys = [
-			...(target.apiKeys || []),
-			{ key: sha256(key), createdAt: new Date().toISOString() },
-		];
-		db.save();
-		apiKey = { key };
-	}
+	// stored keys are sha256 hashes — we can never re-show an old key, so
+	// mcp-config (re)issues a fresh key and revokes the previous ones
+	for (const k of target.apiKeys || []) k.revoked = true;
+	const key = genApiKey();
+	target.apiKeys = [
+		...(target.apiKeys || []),
+		{ key: sha256(key), createdAt: new Date().toISOString() },
+	];
+	db.save();
 	send(ctx.res, 200, {
 		mcpServers: {
 			llmscheme: {
 				url: `${ctx.origin}/mcp`,
-				headers: { "X-Api-Key": apiKey.key },
+				headers: { "X-Api-Key": key },
 			},
 		},
 	});
