@@ -9,12 +9,14 @@ export function escMermaid(label: string): string {
 // node size from label: the editor grows the box on newlines — md mirrors that
 // (one mermaid line per \\n via <br/>) so exports match what you see.
 export function nodeW(n: SchemeNode): number {
+	if (n.w !== undefined) return n.w;
 	if (n.shape === "circle") return Math.max(80, 24 + n.label.length * 7);
 	const lines = n.label.split("\n");
 	if (n.shape === "table") return 260; // fixed by cols; header may wrap, box does not
 	return Math.max(120, 20 + Math.max(...lines.map((l) => l.length)) * 7);
 }
 export function nodeH(n: SchemeNode): number {
+	if (n.h !== undefined) return n.h;
 	if (n.shape === "circle") return nodeW(n);
 	if (n.shape === "table") {
 		const rows = (n.table?.rows?.length ?? 0) + 1;

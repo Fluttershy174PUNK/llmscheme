@@ -31,6 +31,10 @@ export interface SchemeNode {
 	description?: string;
 	x: number;
 	y: number;
+	// explicit size override (editor resize handles); core auto-sizes from
+	// label when absent. undefined = auto.
+	w?: number;
+	h?: number;
 	refs?: string[];
 	table?: TableSpec;
 	[k: string]: unknown;
@@ -60,7 +64,7 @@ export interface SchemeZone {
 	y: number;
 	w: number;
 	h: number;
-	labelSide?: "top" | "bottom" | "left" | "right";
+	labelSide?: "top" | "bottom" | "left" | "right" | "center"; // editor label placement
 	[k: string]: unknown;
 }
 

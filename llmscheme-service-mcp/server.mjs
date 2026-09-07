@@ -507,6 +507,30 @@ route("GET", "/api/scheme/:name!/diff", async (ctx) => {
 	});
 });
 
+route("GET", "/api/scheme/:name!/log", async (ctx) => {
+	if (!hasScheme(ctx.auth, ctx.params.name))
+		return fail(ctx.res, 404, "no such scheme");
+	const root = schemeRoot(ctx.auth, ctx.params.name);
+	const journalFile = path.join(root, ".block_llm", "cache", "journal.jsonl");
+	const limit = Math.min(200, Number(ctx.query.limit) || 50);
+	const entries = fs.existsSync(journalFile)
+		? fs
+				.readFileSync(journalFile, "utf8")
+				.split("\n")
+				.filter(Boolean)
+				.map((line) => {
+					try {
+						return JSON.parse(line);
+					} catch {
+						return null;
+					}
+				})
+				.filter(Boolean)
+				.slice(-limit)
+		: [];
+	send(ctx.res, 200, { entries });
+});
+
 // ---- granular node/edge/zone ops ----
 function mutate(ctx, fn) {
 	if (!hasScheme(ctx.auth, ctx.params.name))

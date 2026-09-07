@@ -50,6 +50,10 @@ function validate(s) {
       err("desc", `node ${n.id}: description must be a string`, n.id);
     if (!Number.isFinite(n.x) || !Number.isFinite(n.y))
       err("coords", `node ${n.id}: x/y must be numbers`, n.id);
+    if (n.w !== void 0 && (!Number.isFinite(n.w) || n.w < 20))
+      err("size", `node ${n.id}: w must be a number \u2265 20`, n.id);
+    if (n.h !== void 0 && (!Number.isFinite(n.h) || n.h < 20))
+      err("size", `node ${n.id}: h must be a number \u2265 20`, n.id);
     if (n.refs !== void 0) {
       if (!Array.isArray(n.refs) || n.refs.some((r) => typeof r !== "string")) {
         err("refs", `node ${n.id}: refs must be string[]`, n.id);
@@ -284,12 +288,14 @@ function escMermaid(label) {
   return label.replace(/"/g, "#quot;");
 }
 function nodeW(n) {
+  if (n.w !== void 0) return n.w;
   if (n.shape === "circle") return Math.max(80, 24 + n.label.length * 7);
   const lines = n.label.split("\n");
   if (n.shape === "table") return 260;
   return Math.max(120, 20 + Math.max(...lines.map((l) => l.length)) * 7);
 }
 function nodeH(n) {
+  if (n.h !== void 0) return n.h;
   if (n.shape === "circle") return nodeW(n);
   if (n.shape === "table") {
     const rows = (n.table?.rows?.length ?? 0) + 1;

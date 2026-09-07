@@ -49,6 +49,10 @@ export function validate(s: Scheme): Validation {
 			err("desc", `node ${n.id}: description must be a string`, n.id);
 		if (!Number.isFinite(n.x) || !Number.isFinite(n.y))
 			err("coords", `node ${n.id}: x/y must be numbers`, n.id);
+		if (n.w !== undefined && (!Number.isFinite(n.w) || n.w < 20))
+			err("size", `node ${n.id}: w must be a number ≥ 20`, n.id);
+		if (n.h !== undefined && (!Number.isFinite(n.h) || n.h < 20))
+			err("size", `node ${n.id}: h must be a number ≥ 20`, n.id);
 		if (n.refs !== undefined) {
 			if (!Array.isArray(n.refs) || n.refs.some((r) => typeof r !== "string")) {
 				err("refs", `node ${n.id}: refs must be string[]`, n.id);

@@ -51,12 +51,61 @@ import { SHAPES } from "../../core/src/types.ts";
 	let zoom = $state(1);
 	let panning = false;
 	let panStart = { x: 0, y: 0 };
-	// drag payload: node move | zone move | zone resize
+	// drag payload: node move (single or multi) | zone move | zone resize | node resize
 	type Drag =
-		| { type: "node"; node: SchemeNode; dx: number; dy: number }
+		| { type: "node"; node: SchemeNode; dx: number; dy: number; group?: { n: SchemeNode; dx: number; dy: number }[] }
 		| { type: "zone"; zone: SchemeZone; dx: number; dy: number }
-		| { type: "resize"; zone: SchemeZone; corner: 0 | 1 | 2 | 3; sx: number; sy: number; ox: number; oy: number; ow: number; oh: number };
+		| { type: "resize"; zone: SchemeZone; corner: 0 | 1 | 2 | 3; sx: number; sy: number; ox: number; oy: number; ow: number; oh: number }
+		| { type: "nresize"; node: SchemeNode; corner: 1 | 3; sx: number; sy: number; ow: number; oh: number };
 	let drag: Drag | null = null;
+
+	// --- clipboard / undo / multi-select (ctrl+click) ---
+	let clipboard = $state<string[]>([]);
+	let multiSel = $state<string[]>([]); // extra selected node ids (ctrl+click)
+	type Snap = { scheme: Scheme };
+	let undoStack: Snap[] = [];
+	function pushUndo() {
+		if (!scheme) return;
+		undoStack.push({ scheme: $state.snapshot(scheme) as Scheme });
+		if (undoStack.length > 50) undoStack.shift();
+	}
+	function undo() {
+		const prev = undoStack.pop();
+		if (!prev || !scheme) return;
+		Object.assign(scheme, prev.scheme);
+		selectedId = null;
+		multiSel = [];
+		touch();
+		saveBox = lang === "ru" ? "отменено" : "undone";
+	}
+	function pasteClipboard() {
+		if (!scheme || !clipboard.length) return;
+		pushUndo();
+		const news: SchemeNode[] = [];
+		for (const id of clipboard) {
+			const src = scheme.nodes.find((n) => n.id === id);
+			if (!src) continue;
+			const nid = consumeNodeId(scheme);
+			const copy: SchemeNode = {
+				...$state.snapshot(src),
+				id: nid,
+				x: src.x + GRID * 2,
+				y: src.y + GRID * 2,
+			};
+			delete (copy as Record<string, unknown>).w;
+			delete (copy as Record<string, unknown>).h;
+			if (src.w !== undefined) copy.w = src.w;
+			if (src.h !== undefined) copy.h = src.h;
+			scheme.nodes.push(copy);
+			news.push(copy);
+		}
+		if (!news.length) return;
+		selectedId = news.at(-1)!.id;
+		selectedKind = "node";
+		multiSel = news.map((n) => n.id);
+		touch();
+		saveBox = lang === "ru" ? `вставлено: ${news.length}` : `pasted: ${news.length}`;
+	}
 
 	const schemeDir = $derived(
 		(() => {
@@ -106,22 +155,45 @@ import { SHAPES } from "../../core/src/types.ts";
 	function labelLines(n: SchemeNode): string[] {
 		return n.label.split("\n");
 	}
+	// word-wrap each explicit newline to ~34 chars so long labels fit the box;
+	// the auto box width mirrors this (nodeW counts the longest wrapped line)
+	function wrapLines(n: SchemeNode): string[] {
+		const out: string[] = [];
+		for (const raw of labelLines(n)) {
+			if (raw.length <= 34) {
+				out.push(raw);
+				continue;
+			}
+			let cur = "";
+			for (const word of raw.split(" ")) {
+				if (cur && (cur + " " + word).length > 34) {
+					out.push(cur);
+					cur = word;
+				} else cur = cur ? cur + " " + word : word;
+			}
+			if (cur) out.push(cur);
+		}
+		return out.length ? out : [""];
+	}
 	// mirror of core nodeW/nodeH (browser copy; core exports are for md/CLI)
+	// explicit n.w/n.h (resize handles) override the label-based estimate
 	function nodeW(n: SchemeNode): number {
+		if (typeof n.w === "number") return n.w;
 		if (n.shape === "table") {
 			const cols = Math.max(1, n.table?.cols?.length ?? 1);
 			return Math.max(160, 26 + cols * 64);
 		}
-		if (n.shape === "circle") return Math.max(80, 24 + labelLines(n)[0].length * 7);
-		return Math.max(120, 20 + Math.max(...labelLines(n).map((l) => l.length)) * 7);
+		if (n.shape === "circle") return Math.max(80, 24 + wrapLines(n)[0].length * 7);
+		return Math.max(120, 20 + Math.max(...wrapLines(n).map((l) => l.length)) * 7);
 	}
 	function nodeH(n: SchemeNode): number {
+		if (typeof n.h === "number") return n.h;
 		if (n.shape === "table") {
 			const rows = (n.table?.rows?.length ?? 0) + 1;
 			return 28 + rows * 18;
 		}
 		if (n.shape === "circle") return nodeW(n);
-		return Math.max(40, labelLines(n).length * 14 + 12);
+		return Math.max(40, wrapLines(n).length * 14 + 12);
 	}
 
 	function nodePath(n: SchemeNode): string {
@@ -217,10 +289,12 @@ import { SHAPES } from "../../core/src/types.ts";
 	}
 
 	function zoneLabelPos(z: SchemeZone): { x: number; y: number; anchor: string } {
-		switch (z.labelSide) {
+		const side: string = z.labelSide ?? "top";
+		switch (side) {
 			case "bottom": return { x: z.x + z.w / 2, y: z.y + z.h + 12, anchor: "middle" };
 			case "left": return { x: z.x - 6, y: z.y + 14, anchor: "end" };
 			case "right": return { x: z.x + z.w + 6, y: z.y + 14, anchor: "start" };
+			case "center": return { x: z.x + z.w / 2, y: z.y + 14, anchor: "middle" };
 			default: return { x: z.x + z.w / 2, y: z.y - 6, anchor: "middle" };
 		}
 	}
@@ -240,6 +314,7 @@ import { SHAPES } from "../../core/src/types.ts";
 		if (!connectMode) { connectMode = true; connectFrom = { id: n.id, side }; return; }
 		if (!connectFrom) { connectFrom = { id: n.id, side }; return; }
 		if (connectFrom.id !== n.id) {
+			pushUndo();
 			scheme.edges.push({
 				id: consumeEdgeId(scheme),
 				from: connectFrom.id,
@@ -260,10 +335,28 @@ import { SHAPES } from "../../core/src/types.ts";
 	function onNodeDown(ev: PointerEvent, n: SchemeNode) {
 		ev.stopPropagation();
 		if (connectMode) return; // nodes not clickable while wiring; use ports
+		// ctrl/meta+click: toggle node in the multi-selection, no drag
+		if (ev.ctrlKey || ev.metaKey) {
+			if (multiSel.includes(n.id)) multiSel = multiSel.filter((i) => i !== n.id);
+			else multiSel = [...multiSel, n.id];
+			selectedId = n.id;
+			selectedKind = "node";
+			return;
+		}
 		selectedId = n.id;
 		selectedKind = "node";
 		const p = svgPoint(ev);
-		drag = { type: "node", node: n, dx: p.x - n.x, dy: p.y - n.y };
+		const moving = multiSel.includes(n.id)
+			? scheme!.nodes.filter((x) => multiSel.includes(x.id))
+			: [n];
+		drag = {
+			type: "node",
+			node: n,
+			dx: p.x - n.x,
+			dy: p.y - n.y,
+			// extra nodes to move with the dragged one (multi-selection)
+			group: moving.map((m) => ({ n: m, dx: p.x - m.x, dy: p.y - m.y })),
+		} as Drag;
 	}
 
 	function onZoneDown(ev: PointerEvent, z: SchemeZone) {
@@ -278,6 +371,13 @@ import { SHAPES } from "../../core/src/types.ts";
 		ev.stopPropagation();
 		const p = svgPoint(ev);
 		drag = { type: "resize", zone: z, corner, sx: p.x, sy: p.y, ox: z.x, oy: z.y, ow: z.w, oh: z.h };
+	}
+
+	// node resize: bottom-right / bottom-left corner handles set explicit w/h
+	function onNodeResizeDown(ev: PointerEvent, n: SchemeNode, corner: 1 | 3) {
+		ev.stopPropagation();
+		const p = svgPoint(ev);
+		drag = { type: "nresize", node: n, corner, sx: p.x, sy: p.y, ow: nodeW(n), oh: nodeH(n) };
 	}
 
 	function onSvgDown(ev: PointerEvent) {
@@ -298,9 +398,26 @@ import { SHAPES } from "../../core/src/types.ts";
 		if (drag.type === "node") {
 			drag.node.x = snapv(p.x - drag.dx);
 			drag.node.y = snapv(p.y - drag.dy);
+			// multi-selection: move the whole group with the same delta
+			if (drag.group)
+				for (const g of drag.group) {
+					if (g.n === drag.node) continue;
+					g.n.x = snapv(p.x - g.dx);
+					g.n.y = snapv(p.y - g.dy);
+				}
 		} else if (drag.type === "zone") {
 			drag.zone.x = snapv(p.x - drag.dx);
 			drag.zone.y = snapv(p.y - drag.dy);
+		} else if (drag.type === "nresize") {
+			const dx = Math.round(p.x - drag.sx);
+			const dy = Math.round(p.y - drag.sy);
+			// corner 1 = bottom-right (w+h grow), 3 = bottom-left (h grows, x shifts)
+			if (drag.corner === 1) {
+				drag.node.w = Math.max(60, drag.ow + dx);
+				drag.node.h = Math.max(30, drag.oh + dy);
+			} else {
+				drag.node.h = Math.max(30, drag.oh + dy);
+			}
 		} else {
 			const dx = Math.round(p.x - drag.sx);
 			const dy = Math.round(p.y - drag.sy);
@@ -336,6 +453,7 @@ import { SHAPES } from "../../core/src/types.ts";
 
 	function addNode() {
 		if (!scheme) return;
+		pushUndo();
 		const n: SchemeNode = {
 			id: consumeNodeId(scheme),
 			shape: pendingShape ?? "rect",
@@ -346,6 +464,7 @@ import { SHAPES } from "../../core/src/types.ts";
 		scheme.nodes.push(n);
 		selectedId = n.id;
 		selectedKind = "node";
+		multiSel = [];
 		touch();
 	}
 
@@ -371,6 +490,7 @@ import { SHAPES } from "../../core/src/types.ts";
 
 	function addZone() {
 		if (!scheme) return;
+		pushUndo();
 		const z: SchemeZone = {
 			id: consumeZoneId(scheme),
 			label: lang === "ru" ? "зона" : "zone",
@@ -386,16 +506,19 @@ import { SHAPES } from "../../core/src/types.ts";
 
 	function removeSelected() {
 		if (!scheme || !selectedId) return;
+		pushUndo();
+		const ids = new Set([...multiSel, selectedId]);
 		if (selectedKind === "zone") {
 			scheme.zones = (scheme.zones ?? []).filter((z) => z.id !== selectedId);
 		} else if (selectedKind === "edge") {
 			scheme.edges = scheme.edges.filter((e) => e.id !== selectedId);
 		} else {
-			scheme.nodes = scheme.nodes.filter((n) => n.id !== selectedId);
-			scheme.edges = scheme.edges.filter((e) => e.from !== selectedId && e.to !== selectedId);
+			scheme.nodes = scheme.nodes.filter((n) => !ids.has(n.id));
+			scheme.edges = scheme.edges.filter((e) => !ids.has(e.from) && !ids.has(e.to));
 		}
 		selectedId = null;
 		selectedKind = null;
+		multiSel = [];
 		touch();
 	}
 
@@ -475,6 +598,28 @@ import { SHAPES } from "../../core/src/types.ts";
 	async function saveMd() {
 		download("SCHEME.md", schemeMd());
 		saveBox = t.mdSaved;
+	}
+
+	// journal of the current scheme (server mode): write ops with revs
+	async function showLog() {
+		try {
+			const res = await fetch(
+				`/api/scheme/${encodeURIComponent(schemeName())}/log`,
+				{ headers: { authorization: `Bearer ${serverToken}` } },
+			);
+			const data = await res.json();
+			if (!res.ok) {
+				saveBox = `${res.status}: ${data.error ?? "log unavailable"}`;
+				return;
+			}
+			const rows: string[] = (data.entries ?? []).map(
+				(e: { ts: string; actor: string; rev: number; op: string; summary: string }) =>
+					`${e.ts.slice(0, 19)} ${e.actor} rev=${e.rev} ${e.op}: ${e.summary}`,
+			);
+			saveBox = rows.length ? rows.join("\n") : "(empty journal)";
+		} catch (e) {
+			saveBox = `log failed: ${(e as Error).message}`;
+		}
 	}
 
 	function tierACommands(): string {
@@ -591,6 +736,20 @@ import { SHAPES } from "../../core/src/types.ts";
 			connectMode = false;
 			connectFrom = null;
 		}
+		// ignore hotkeys while typing in inputs/textarea/select
+		const tag = (e.target as HTMLElement)?.tagName;
+		if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+		const inSel = () => [...multiSel, selectedId].filter(Boolean) as string[];
+		if ((e.ctrlKey || e.metaKey) && e.key === "c" && selectedId) {
+			clipboard = inSel().length ? inSel() : [selectedId];
+			saveBox = `copied: ${clipboard.join(", ")}`;
+		} else if ((e.ctrlKey || e.metaKey) && e.key === "v" && clipboard.length) {
+			pasteClipboard();
+		} else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+			undo();
+		} else if (e.key === "Delete" && selectedId) {
+			removeSelected();
+		}
 	}}
 />
 
@@ -606,8 +765,10 @@ import { SHAPES } from "../../core/src/types.ts";
 	<button class:on={showGrid} onclick={() => { showGrid = !showGrid; localStorage.setItem("blm-grid", showGrid ? "on" : "off"); }} title="grid">#</button>
 	<button class:on={snap} onclick={() => { snap = !snap; localStorage.setItem("blm-snap", snap ? "on" : "off"); }} title="snap to grid">⊕</button>
 	<button onclick={autoPlace}>auto</button>
+	<button onclick={undo} disabled={!undoStack.length} title="ctrl+z">↩</button>
 	<button onclick={removeSelected} disabled={!selected}>{t.del}</button>
 	{#if !serverMode}<button onclick={saveMd} title="SCHEME.md">↓md</button>{/if}
+	{#if serverMode}<button onclick={showLog} title="write journal of this scheme">log</button>{/if}
 	<button onclick={doSave}>{t.save}</button>
 </div>
 
@@ -700,8 +861,8 @@ import { SHAPES } from "../../core/src/types.ts";
 							{/each}
 						{/each}
 					{:else}
-						<!-- multiline label: tspans grow the box downward -->
-						{@const lines = labelLines(n)}
+						<!-- multiline label: tspans grow the box downward; long lines wrap to the box width -->
+						{@const lines = wrapLines(n)}
 						{@const h = nodeH(n)}
 						<text
 							x={n.x + nodeW(n) / 2}
@@ -710,6 +871,21 @@ import { SHAPES } from "../../core/src/types.ts";
 						>{#each lines as line, li (li)}<tspan x={n.x + nodeW(n) / 2} dy={li === 0 ? 0 : 14}>{line}</tspan>{/each}</text>
 					{/if}
 				</g>
+					<!-- resize handles: bottom corners, only when selected (not tables — they size by content) -->
+					{#if selectedId === n.id && n.shape !== "table"}
+						{@const w = nodeW(n)}
+						{@const h = nodeH(n)}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<circle
+							class="resize-handle" cx={n.x + w} cy={n.y + h} r="5"
+							onpointerdown={(ev) => onNodeResizeDown(ev, n, 1)}
+						/>
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<circle
+							class="resize-handle" cx={n.x} cy={n.y + h} r="5"
+							onpointerdown={(ev) => onNodeResizeDown(ev, n, 3)}
+						/>
+					{/if}
 					<!-- ports: plus circles on 4 sides (connect mode or selected/hover) -->
 					{#if connectMode || selectedId === n.id}
 						{#each SIDES as side (side)}
@@ -734,7 +910,7 @@ import { SHAPES } from "../../core/src/types.ts";
 			<label>{t.label}
 				<!-- textarea (not input): Enter inserts \n, the node grows downward -->
 				<textarea
-					rows={Math.max(2, labelLines(n).length)}
+					rows={Math.max(2, wrapLines(n).length)}
 					bind:value={n.label}
 					oninput={touch}
 				></textarea></label>
@@ -786,7 +962,15 @@ import { SHAPES } from "../../core/src/types.ts";
 				<span><label>{t.x}<input type="number" bind:value={n.x} oninput={touch} /></label></span>
 				<span><label>{t.y}<input type="number" bind:value={n.y} oninput={touch} /></label></span>
 			</div>
-		{:else if selected && selectedKind === "edge"}
+			{#if n.shape !== "table"}
+				<div class="row">
+					<span><label>{t.w}<input type="number" bind:value={n.w} placeholder="auto" oninput={touch} /></label></span>
+					<span><label>{t.h}<input type="number" bind:value={n.h} placeholder="auto" oninput={touch} /></label></span>
+				</div>
+				{#if n.w !== undefined || n.h !== undefined}
+					<button class="mini" onclick={() => { delete n.w; delete n.h; touch(); }} title="auto-size from label">auto-size</button>
+				{/if}
+			{/if}
 			{@const e = selected as SchemeEdge}
 			<h3>{e.id} ({t.edge})</h3>
 			<label>{t.label}
@@ -823,6 +1007,7 @@ import { SHAPES } from "../../core/src/types.ts";
 					<option value="bottom">bottom</option>
 					<option value="left">left</option>
 					<option value="right">right</option>
+					<option value="center">center</option>
 				</select></label>
 			<div class="row">
 				<span><label>{t.x}<input type="number" bind:value={z.x} oninput={touch} /></label></span>
