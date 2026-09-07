@@ -293,6 +293,18 @@ route("POST", "/api/users", async (ctx) => {
 	db.save();
 	send(ctx.res, 201, me(u));
 });
+// delete a user and every scheme they own (admin only; cannot delete self)
+route("DELETE", "/api/user/:id", async (ctx) => {
+	if (ctx.auth.role !== "admin") return fail(ctx.res, 403, "admin only");
+	const id = Number(ctx.params.id);
+	const u = userBy((x) => x.id === id);
+	if (!u) return fail(ctx.res, 404, "no such user");
+	if (u.id === ctx.auth.id) return fail(ctx.res, 400, "cannot delete yourself");
+	fs.rmSync(userRoot(u), { recursive: true, force: true });
+	db.data.users = db.data.users.filter((x) => x.id !== id);
+	db.save();
+	send(ctx.res, 200, { ok: true });
+});
 // issue an api key (admin may target another user); key shown once
 route("POST", "/api/apikey", async (ctx) => {
 	const body = parseJson(ctx.body || "{}");
@@ -932,21 +944,124 @@ const mcpErr = (id, code, message) => ({
 // minimal login page for browsers: / and /editor without a token land here
 const LOGIN_HTML = `<!doctype html><meta charset=utf-8><title>llmscheme login</title>
 <style>body{font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0}form{display:grid;gap:8px;width:16rem}input,button{padding:8px;font:inherit}</style>
-<form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token)location='/editor?t='+j.token;else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
+<form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token){localStorage.setItem('ls_token',j.token);location='/admin'}else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
 <input name=l placeholder=login required><input name=p type=password placeholder=password required>
 <button>sign in</button><div id=err style="color:#b00"></div></form>`;
 
+// ---------- /admin console: schemes + users + mcp over the REST api ----------
+// pixel style: same palette + Press Start 2P (base64, from the editor build) as the canvas
+const esc = (s) =>
+	String(s).replace(
+		/[&<>"']/g,
+		(c) =>
+			({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+	);
+
+// Press Start 2P (latin+cyrillic woff2), extracted once from the editor template
+let FONT_CSS = "";
+try {
+	const faces = [
+		...fs
+			.readFileSync(TEMPLATE, "utf8")
+			.matchAll(/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g),
+	];
+	FONT_CSS = faces.map((m) => m[0]).join("");
+} catch {}
+
+function adminHtml(u) {
+	const admin = u.role === "admin";
+	return `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>llmscheme</title>
+<style>
+${FONT_CSS}
+:root{--bg:#1a1c2c;--panel:#29366f;--panel2:#3b5dc9;--ink:#f4f4f4;--accent:#ffcd75;--err:#ff004d;--dim:#94b0c2;--edge:#41a6f6;--dark:#091428}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Press Start 2P",monospace;font-size:10px;line-height:1.7}
+header{display:flex;gap:10px;align-items:center;padding:10px;background:var(--panel);box-shadow:inset 0 -2px 0 var(--dark);flex-wrap:wrap}
+header .title{color:var(--accent);font-size:12px}
+header .who{color:var(--dim)}
+header .spacer{flex:1}
+main{max-width:56rem;margin:0 auto;padding:14px}
+h2{font-size:10px;color:var(--accent);margin:22px 0 10px;text-transform:uppercase}
+table{border-collapse:collapse;width:100%;background:var(--dark);box-shadow:inset -2px -2px 0 var(--panel2)}
+th{color:var(--dim);font-weight:400;text-align:left}
+td,th{padding:7px 8px;border-bottom:1px solid var(--panel)}
+tr:last-child td{border-bottom:0}
+button{font:inherit;font-size:9px;background:var(--panel2);color:var(--ink);border:0;box-shadow:inset -2px -2px 0 var(--dark),inset 2px 2px 0 var(--accent);padding:6px 9px;cursor:pointer}
+button:hover{filter:brightness(1.15)}
+button:active{transform:translateY(1px)}
+button.warn{background:#ab5236}
+button:disabled{opacity:.4;cursor:default}
+input,select{font:inherit;font-size:9px;background:var(--dark);color:var(--ink);border:0;box-shadow:inset 2px 2px 0 var(--dark),inset -2px -2px 0 var(--panel2);padding:7px}
+input:focus,select:focus{outline:2px solid var(--accent)}
+form{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0;align-items:center}
+form input{width:14rem}
+a{color:var(--edge);text-decoration:none}
+a:hover{color:var(--accent)}
+.muted{color:var(--dim)}
+.err{color:var(--err)}
+pre{background:var(--dark);box-shadow:inset -2px -2px 0 var(--panel2);padding:10px;overflow:auto;white-space:pre-wrap;word-break:break-word;color:var(--accent);font-family:inherit;font-size:9px}
+.flash{position:fixed;top:10px;right:10px;background:var(--panel);box-shadow:inset -2px -2px 0 var(--dark),inset 2px 2px 0 var(--accent);padding:9px 12px;color:var(--accent);z-index:9}
+dialog{background:var(--panel);color:var(--ink);border:0;box-shadow:inset -2px -2px 0 var(--dark),inset 2px 2px 0 var(--accent);padding:14px;max-width:44rem;width:92vw}
+dialog::backdrop{background:rgba(9,20,40,.8)}
+dialog h3{margin:0 0 12px;font-size:11px;color:var(--accent)}
+@media (max-width:640px){body{font-size:9px}form input{width:100%}}
+</style>
+<header>
+<span class=title>llmscheme</span><span class=who>· ${esc(u.login)} [${esc(u.role)}]</span><span class=spacer></span>
+<button onclick="logout()">выйти</button>
+</header>
+<main>
+<h2># схемы</h2>
+<table id=schemes></table>
+<form onsubmit="return createScheme(this)"><input name=sname required pattern="[A-Za-z0-9._-]{1,64}" placeholder="имя схемы (a-z 0-9 _ -)"><button>+ создать</button><span class=err id=scherr></span></form>
+<h2 id=husers hidden># пользователи</h2>
+<table id=users hidden></table>
+<form id=fusers hidden onsubmit="return createUser(this)"><input name=login required pattern="[a-z0-9_.-]{1,32}" placeholder=login><input name=password required minlength=4 placeholder=password><select name=role><option value=user>user</option><option value=admin>admin</option></select><button>+ создать</button><span class=err id=usrerr></span></form>
+<h2># mcp</h2>
+<form onsubmit="return mcpUser(this)"><select name=login id=msel></select><button>конфиг</button><span class=muted>готовый JSON для mcp-клиента (ключ создаётся при необходимости)</span></form>
+<pre id=mcp hidden></pre>
+</main>
+<div id=flashbox></div>
+<dialog id=dkey><h3 id=dtitle></h3><pre id=dbody></pre><form method=dialog><button>закрыть</button></form></dialog>
+<script>
+const T=new URLSearchParams(location.search).get('t')||localStorage.getItem('ls_token');
+if(T)localStorage.setItem('ls_token',T);else location='/';
+const ADMIN=${admin?"true":"false"};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const H=()=>({authorization:'Bearer '+T,'content-type':'application/json'});
+const flash=(m,err)=>{const d=document.createElement('div');d.className='flash'+(err?' err':'');d.textContent=m;document.getElementById('flashbox').append(d);setTimeout(()=>d.remove(),4000)};
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:H()});if(r.status===401)location='/';const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
+function show(id,html){const el=document.getElementById(id);el.hidden=html==null;if(html!=null)el.innerHTML=html}
+async function loadSchemes(){try{const l=await api('/api/schemes');show('schemes',l.length?'<tr><th>имя</th><th>rev</th><th>узлы/связи</th><th>обновлена</th><th></th></tr>'+l.map(s=>'<tr><td>'+esc(s.name)+'</td><td>'+s.rev+'</td><td>'+s.nodes+' / '+s.edges+'</td><td class=muted>'+esc((s.updatedAt||'').slice(0,16).replace('T',' '))+'</td><td><a href="/editor/'+encodeURIComponent(s.name)+'?t='+T+'">[редактор]</a> <button class=warn onclick="delScheme(\\''+encodeURIComponent(s.name)+'\\')">x</button></td></tr>').join(''):'<tr><td class=muted>нет схем — создай первую</td></tr>')}catch(e){flash(e.message,1)}}
+async function createScheme(f){event.preventDefault();try{await api('/api/schemes',{method:'POST',body:JSON.stringify({name:f.sname.value})});flash('схема создана: '+f.sname.value);f.sname.value='';show('scherr','');loadSchemes()}catch(e){show('scherr',esc(e.message))}return false}
+async function delScheme(n){const d=decodeURIComponent(n);if(!confirm('удалить схему "'+d+'" со всей историей?'))return;try{await api('/api/scheme/'+n,{method:'DELETE'});flash('удалена: '+d);loadSchemes()}catch(e){flash(e.message,1)}}
+${admin?`
+async function loadUsers(){try{const l=await api('/api/users');show('husers','# пользователи');show('users','<tr><th>login</th><th>роль</th><th>ключи</th><th></th></tr>'+l.map(x=>'<tr><td>'+esc(x.login)+'</td><td>'+esc(x.role)+'</td><td>'+x.apiKeys+'</td><td><button onclick="genKey(\\''+encodeURIComponent(x.login)+'\\')">ключ</button> <button class=warn onclick="delUser(\\''+encodeURIComponent(x.login)+'\\','+x.id+')">x</button></td></tr>').join(''));const f=document.getElementById('fusers');f.hidden=false;const sel=document.getElementById('msel');sel.innerHTML='<option value="">— я (${esc(u.login)}) —</option>'+l.map(x=>'<option value="'+encodeURIComponent(x.login)+'">'+esc(x.login)+'</option>').join('')}catch(e){flash(e.message,1)}}
+async function createUser(f){event.preventDefault();try{await api('/api/users',{method:'POST',body:JSON.stringify({login:f.login.value,password:f.password.value,role:f.role.value})});flash('пользователь создан: '+f.login.value);f.password.value='';show('usrerr','');loadUsers()}catch(e){show('usrerr',esc(e.message))}return false}
+async function delUser(n,id){const d=decodeURIComponent(n);if(!confirm('удалить пользователя "'+d+'" и ВСЕ его схемы?'))return;try{await api('/api/user/'+id,{method:'DELETE'});flash('удалён: '+d);loadUsers()}catch(e){flash(e.message,1)}}
+async function genKey(n){try{const j=await api('/api/apikey',{method:'POST',body:JSON.stringify({login:decodeURIComponent(n)})});dlg('api-ключ: '+decodeURIComponent(n)+' — показывается ОДИН раз, сохрани сейчас',j.apiKey)}catch(e){flash(e.message,1)}}
+`:`document.getElementById('msel').innerHTML='<option value="">— я (${esc(u.login)}) —</option>'`}
+async function mcpUser(f){event.preventDefault();try{const q=f.login.value?'?login='+f.login.value:'';const j=await api('/api/mcp-config'+q);const p=document.getElementById('mcp');p.hidden=false;p.textContent=JSON.stringify(j,null,2)}catch(e){flash(e.message,1)}return false}
+function dlg(title,body){document.getElementById('dtitle').textContent=title;document.getElementById('dbody').textContent=body;document.getElementById('dkey').showModal()}
+async function logout(){try{await api('/api/logout',{method:'POST',body:'{}'})}catch(e){}localStorage.removeItem('ls_token');location='/'}
+loadSchemes();${admin?"loadUsers()":""}
+</script>`;
+}
+
 function serveEditor(res, name, auth0) {
-	let html = fs.readFileSync(TEMPLATE, "utf8");
-	if (name) {
-		if (!hasScheme(auth0, name)) return fail(res, 404, "no such scheme");
-		const s = readRaw(schemeRoot(auth0, name));
-		const script = `<script type="application/json" id="scheme-data">${JSON.stringify(s, null, 2).replace(/</g, "\\u003c")}</script>`;
-		html = html.replace(
-			/<script type="application\/json" id="scheme-data">[\s\S]*?<\/script>/,
-			() => script,
-		);
+	// template embeds scheme-data and refuses to boot without format:"block-llm",
+	// so /editor/<name> always opens a concrete scheme, creating it if missing
+	if (!hasScheme(auth0, name)) {
+		saveUserScheme(schemeRoot(auth0, name), emptyScheme(name), "init");
+		log("INFO", `created scheme ${name} for ${auth0.login} (via /editor)`);
 	}
+	const s = readRaw(schemeRoot(auth0, name));
+	let html = fs.readFileSync(TEMPLATE, "utf8");
+	const script = `<script type="application/json" id="scheme-data">${JSON.stringify(s, null, 2).replace(/</g, "\\u003c")}</script>`;
+	html = html.replace(
+		/<script type="application\/json" id="scheme-data">[\s\S]*?<\/script>/,
+		() => script,
+	);
 	send(res, 200, html, { "content-type": "text/html; charset=utf-8" });
 }
 
@@ -987,13 +1102,24 @@ const server = http.createServer(async (req, res) => {
 			}
 			const name =
 				pathname === "/editor"
-					? null
+					? "default" // template dies without a valid scheme — open/create "default"
 					: decodeURIComponent(pathname.slice("/editor/".length));
 			return serveEditor(res, name, a);
 		}
 
-		if (pathname === "/" && req.method === "GET")
-			return send(res, 302, "", { location: "/editor" });
+		// console: / and /admin — schemes + users + mcp-config, browser UI over the REST api
+		if (req.method === "GET" && (pathname === "/" || pathname === "/admin")) {
+			const a = auth(req, u.searchParams);
+			if (!a)
+				return (req.headers.accept || "").includes("text/html")
+					? send(res, 401, LOGIN_HTML, {
+							"content-type": "text/html; charset=utf-8",
+						})
+					: fail(res, 401, "unauthorized (Bearer token or X-Api-Key)");
+			return send(res, 200, adminHtml(a, u.origin), {
+				"content-type": "text/html; charset=utf-8",
+			});
+		}
 		if (pathname === "/mcp" && req.method === "POST")
 			return handleMcp(req, res, body);
 		if (pathname === "/health" && req.method === "GET")

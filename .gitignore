@@ -46,6 +46,8 @@ llmscheme-service-mcp/data/
 
 # service volume
 llmscheme-service-mcp/data/
+# template lives once in llmscheme-skill/, Dockerfile copies it — no local copies
+editor-template.gen.html
 
 # vite build output
 dist/
