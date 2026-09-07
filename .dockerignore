@@ -1,0 +1,4 @@
+# build context = repo root (see llmscheme-service-mcp/docker-compose.yml)
+.git
+**/node_modules
+**/data

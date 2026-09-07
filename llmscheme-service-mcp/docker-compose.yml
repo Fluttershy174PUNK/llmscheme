@@ -2,7 +2,10 @@
 # Volume lives next to this file: ./data (created by docker automatically).
 services:
   llmscheme:
-    build: .
+    # build from repo root — Dockerfile copies llmscheme-* paths relative to root
+    build:
+      context: ..
+      dockerfile: llmscheme-service-mcp/Dockerfile
     container_name: llmscheme
     restart: unless-stopped
     ports:

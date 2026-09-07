@@ -9,11 +9,13 @@
 ```bash
 cd llmscheme-service-mcp   # папка сервиса в репозитории
 cp .env.example .env      # ⚠️ и поменять ADMIN_PASSWORD
+mkdir -p data && sudo chown -R 100:100 data   # контейнер работает под uid 100 (llm)
 docker compose up -d --build
 ```
 
 Volume создаётся рядом с compose-файлом: `llmscheme-service-mcp/data/`
-(lightdb + схемы).
+(lightdb + схемы). Он должен принадлежать uid 100:100 — иначе сервис не
+сможет писать (compose-контекст уже настроен на корень репозитория).
 
 ## ⚙️ Конфиг (env)
 

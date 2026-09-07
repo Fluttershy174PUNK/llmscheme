@@ -929,6 +929,13 @@ const mcpErr = (id, code, message) => ({
 });
 
 // ---------- static editor (/editor and /editor/<name>) ----------
+// minimal login page for browsers: / and /editor without a token land here
+const LOGIN_HTML = `<!doctype html><meta charset=utf-8><title>llmscheme login</title>
+<style>body{font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0}form{display:grid;gap:8px;width:16rem}input,button{padding:8px;font:inherit}</style>
+<form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token)location='/editor?t='+j.token;else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
+<input name=l placeholder=login required><input name=p type=password placeholder=password required>
+<button>sign in</button><div id=err style="color:#b00"></div></form>`;
+
 function serveEditor(res, name, auth0) {
 	let html = fs.readFileSync(TEMPLATE, "utf8");
 	if (name) {
@@ -966,12 +973,18 @@ const server = http.createServer(async (req, res) => {
 		// editor: /editor (needs auth), /editor/<name> opens the scheme; token via ?t= or header
 		if (req.method === "GET" && pathname.startsWith("/editor")) {
 			const a = auth(req, u.searchParams);
-			if (!a)
+			if (!a) {
+				// browser gets a login page, scripts keep the JSON error
+				if ((req.headers.accept || "").includes("text/html"))
+					return send(res, 401, LOGIN_HTML, {
+						"content-type": "text/html; charset=utf-8",
+					});
 				return fail(
 					res,
 					401,
 					"login required: POST /api/login, then open /editor with ?t=<token> or X-Api-Key/Bearer header",
 				);
+			}
 			const name =
 				pathname === "/editor"
 					? null
@@ -979,6 +992,8 @@ const server = http.createServer(async (req, res) => {
 			return serveEditor(res, name, a);
 		}
 
+		if (pathname === "/" && req.method === "GET")
+			return send(res, 302, "", { location: "/editor" });
 		if (pathname === "/mcp" && req.method === "POST")
 			return handleMcp(req, res, body);
 		if (pathname === "/health" && req.method === "GET")

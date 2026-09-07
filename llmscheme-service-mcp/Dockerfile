@@ -3,7 +3,8 @@
 FROM node:22-alpine
 WORKDIR /app
 # non-root: the service only writes to /data
-RUN addgroup -S llm && adduser -S llm -G llm
+# uid/gid pinned to 100:100 — host bind-mount ./data must be chown 100:100 (see README)
+RUN addgroup -S -g 100 llm && adduser -S -u 100 -G llm llm
 COPY llmscheme-service-mcp/server.mjs .
 COPY llmscheme-service-mcp/core.mjs .
 COPY llmscheme-service-mcp/VERSION .
