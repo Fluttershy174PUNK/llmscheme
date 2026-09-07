@@ -1069,7 +1069,7 @@ ${admin?`<nav><button class="tab on" id=tab-edit onclick="tab('edit')">реда�
 <section id=sec-edit>`:`<main>`}
 <div id=editbox>
 <h2># мои проекты и схемы</h2>
-<label class=chk><input type=checkbox id=allusers onchange="loadSchemes()"> показать схемы всех юзеров</label>
+${admin?`<label class=chk><input type=checkbox id=allusers onchange="loadSchemes()"> показать схемы всех юзеров</label>`:""}
 <table id=schemes></table>
 <h2>+ новая схема</h2>
 <form onsubmit="return createScheme(this)"><input name=proj placeholder="проект" pattern="[A-Za-z0-9._-]{1,32}"><input name=sname required placeholder="имя схемы" pattern="[A-Za-z0-9._-]{1,64}"><button>+ создать</button><span class=muted>проект можно оставить пустым</span><span class=err id=scherr></span></form>
