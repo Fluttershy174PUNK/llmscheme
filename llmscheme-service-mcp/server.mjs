@@ -1079,7 +1079,7 @@ ${admin?`</section>
 <div id=adminbox>
 <h2># пользователи</h2>
 <table id=users></table>
-<form onsubmit="return createUser(this)"><input name=login required pattern="[a-z0-9_.-]{1,32}" placeholder=login><input name=password required minlength=4 placeholder=password><select name=role><option value=user>user</option><option value=admin>admin</option></select><button>+ создать</button><span class=err id=usrerr></span></form>
+<form id=fusers onsubmit="return createUser(this)"><input name=login required pattern="[a-z0-9_.-]{1,32}" placeholder=login><input name=password required minlength=4 placeholder=password><select name=role><option value=user>user</option><option value=admin>admin</option></select><button>+ создать</button><span class=err id=usrerr></span></form>
 <h2># mcp-конфиги</h2>
 <form onsubmit="return mcpUser(this)"><select name=login id=msel></select><button>показать конфиг</button><span class=muted>готовый JSON для mcp-клиента (ключ создаётся при необходимости)</span></form>
 <pre id=mcp hidden></pre>
