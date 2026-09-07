@@ -216,6 +216,8 @@ function auth(req, urlQuery) {
 	const raw =
 		(h["authorization"] || "").match(/^Bearer (.+)$/)?.[1] ||
 		urlQuery?.get("t") ||
+		// browser pages: token lives in a cookie (set by /api/login), not localStorage
+		(h["cookie"] || "").match(/(?:^|;\s*)ls_token=([a-f0-9]{64})/)?.[1] ||
 		"";
 	if (!raw) return null;
 	const tokenHash = raw.length === 64 ? raw : sha256(raw);
@@ -260,12 +262,17 @@ route("POST", "/api/login", async (ctx) => {
 		token: t.token,
 		expiresAt: new Date(t.expiresAt).toISOString(),
 		role: u.role,
+	}, {
+		// page navigation (console/editor) authenticates via cookie; XHR sends Bearer
+		"set-cookie": `ls_token=${t.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${ENV.tokenTtlDays * 86400}`,
 	});
 });
 route("POST", "/api/logout", async (ctx) => {
 	const m = (lower(ctx.req)["authorization"] || "").match(/^Bearer (.+)$/);
 	if (m) revokeToken(m[1].length === 64 ? m[1] : sha256(m[1]));
-	send(ctx.res, 200, { ok: true });
+	send(ctx.res, 200, { ok: true }, {
+		"set-cookie": "ls_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+	});
 });
 route("GET", "/api/me", async (ctx) => send(ctx.res, 200, me(ctx.auth)));
 route("GET", "/api/users", async (ctx) => {
@@ -944,7 +951,7 @@ const mcpErr = (id, code, message) => ({
 // minimal login page for browsers: / and /editor without a token land here
 const LOGIN_HTML = `<!doctype html><meta charset=utf-8><title>llmscheme login</title>
 <style>body{font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0}form{display:grid;gap:8px;width:16rem}input,button{padding:8px;font:inherit}</style>
-<form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token){localStorage.setItem('ls_token',j.token);location='/admin'}else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
+<form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token)location='/admin';else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
 <input name=l placeholder=login required><input name=p type=password placeholder=password required>
 <button>sign in</button><div id=err style="color:#b00"></div></form>`;
 
@@ -963,7 +970,9 @@ try {
 	const faces = [
 		...fs
 			.readFileSync(TEMPLATE, "utf8")
-			.matchAll(/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g),
+			.matchAll(
+				/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g,
+			),
 	];
 	FONT_CSS = faces.map((m) => m[0]).join("");
 } catch {}
@@ -1024,27 +1033,30 @@ dialog h3{margin:0 0 12px;font-size:11px;color:var(--accent)}
 <div id=flashbox></div>
 <dialog id=dkey><h3 id=dtitle></h3><pre id=dbody></pre><form method=dialog><button>закрыть</button></form></dialog>
 <script>
-const T=new URLSearchParams(location.search).get('t')||localStorage.getItem('ls_token');
-if(T)localStorage.setItem('ls_token',T);else location='/';
-const ADMIN=${admin?"true":"false"};
+const T=new URLSearchParams(location.search).get('t')||'';
+const ADMIN=${admin ? "true" : "false"};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const H=()=>({authorization:'Bearer '+T,'content-type':'application/json'});
+const H=()=>({'content-type':'application/json',...(T?{authorization:'Bearer '+T}:{})});
 const flash=(m,err)=>{const d=document.createElement('div');d.className='flash'+(err?' err':'');d.textContent=m;document.getElementById('flashbox').append(d);setTimeout(()=>d.remove(),4000)};
 async function api(path,opt={}){const r=await fetch(path,{...opt,headers:H()});if(r.status===401)location='/';const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
 function show(id,html){const el=document.getElementById(id);el.hidden=html==null;if(html!=null)el.innerHTML=html}
-async function loadSchemes(){try{const l=await api('/api/schemes');show('schemes',l.length?'<tr><th>имя</th><th>rev</th><th>узлы/связи</th><th>обновлена</th><th></th></tr>'+l.map(s=>'<tr><td>'+esc(s.name)+'</td><td>'+s.rev+'</td><td>'+s.nodes+' / '+s.edges+'</td><td class=muted>'+esc((s.updatedAt||'').slice(0,16).replace('T',' '))+'</td><td><a href="/editor/'+encodeURIComponent(s.name)+'?t='+T+'">[редактор]</a> <button class=warn onclick="delScheme(\\''+encodeURIComponent(s.name)+'\\')">x</button></td></tr>').join(''):'<tr><td class=muted>нет схем — создай первую</td></tr>')}catch(e){flash(e.message,1)}}
+async function loadSchemes(){try{const l=await api('/api/schemes');show('schemes',l.length?'<tr><th>имя</th><th>rev</th><th>узлы/связи</th><th>обновлена</th><th></th></tr>'+l.map(s=>'<tr><td>'+esc(s.name)+'</td><td>'+s.rev+'</td><td>'+s.nodes+' / '+s.edges+'</td><td class=muted>'+esc((s.updatedAt||'').slice(0,16).replace('T',' '))+'</td><td><a href="/editor/'+encodeURIComponent(s.name)+'+(T?'?t='+T:'')+'">[редактор]</a> <button class=warn onclick="delScheme(\\''+encodeURIComponent(s.name)+'\\')">x</button></td></tr>').join(''):'<tr><td class=muted>нет схем — создай первую</td></tr>')}catch(e){flash(e.message,1)}}
 async function createScheme(f){event.preventDefault();try{await api('/api/schemes',{method:'POST',body:JSON.stringify({name:f.sname.value})});flash('схема создана: '+f.sname.value);f.sname.value='';show('scherr','');loadSchemes()}catch(e){show('scherr',esc(e.message))}return false}
 async function delScheme(n){const d=decodeURIComponent(n);if(!confirm('удалить схему "'+d+'" со всей историей?'))return;try{await api('/api/scheme/'+n,{method:'DELETE'});flash('удалена: '+d);loadSchemes()}catch(e){flash(e.message,1)}}
-${admin?`
+${
+	admin
+		? `
 async function loadUsers(){try{const l=await api('/api/users');show('husers','# пользователи');show('users','<tr><th>login</th><th>роль</th><th>ключи</th><th></th></tr>'+l.map(x=>'<tr><td>'+esc(x.login)+'</td><td>'+esc(x.role)+'</td><td>'+x.apiKeys+'</td><td><button onclick="genKey(\\''+encodeURIComponent(x.login)+'\\')">ключ</button> <button class=warn onclick="delUser(\\''+encodeURIComponent(x.login)+'\\','+x.id+')">x</button></td></tr>').join(''));const f=document.getElementById('fusers');f.hidden=false;const sel=document.getElementById('msel');sel.innerHTML='<option value="">— я (${esc(u.login)}) —</option>'+l.map(x=>'<option value="'+encodeURIComponent(x.login)+'">'+esc(x.login)+'</option>').join('')}catch(e){flash(e.message,1)}}
 async function createUser(f){event.preventDefault();try{await api('/api/users',{method:'POST',body:JSON.stringify({login:f.login.value,password:f.password.value,role:f.role.value})});flash('пользователь создан: '+f.login.value);f.password.value='';show('usrerr','');loadUsers()}catch(e){show('usrerr',esc(e.message))}return false}
 async function delUser(n,id){const d=decodeURIComponent(n);if(!confirm('удалить пользователя "'+d+'" и ВСЕ его схемы?'))return;try{await api('/api/user/'+id,{method:'DELETE'});flash('удалён: '+d);loadUsers()}catch(e){flash(e.message,1)}}
 async function genKey(n){try{const j=await api('/api/apikey',{method:'POST',body:JSON.stringify({login:decodeURIComponent(n)})});dlg('api-ключ: '+decodeURIComponent(n)+' — показывается ОДИН раз, сохрани сейчас',j.apiKey)}catch(e){flash(e.message,1)}}
-`:`document.getElementById('msel').innerHTML='<option value="">— я (${esc(u.login)}) —</option>'`}
+`
+		: `document.getElementById('msel').innerHTML='<option value="">— я (${esc(u.login)}) —</option>'`
+}
 async function mcpUser(f){event.preventDefault();try{const q=f.login.value?'?login='+f.login.value:'';const j=await api('/api/mcp-config'+q);const p=document.getElementById('mcp');p.hidden=false;p.textContent=JSON.stringify(j,null,2)}catch(e){flash(e.message,1)}return false}
 function dlg(title,body){document.getElementById('dtitle').textContent=title;document.getElementById('dbody').textContent=body;document.getElementById('dkey').showModal()}
-async function logout(){try{await api('/api/logout',{method:'POST',body:'{}'})}catch(e){}localStorage.removeItem('ls_token');location='/'}
-loadSchemes();${admin?"loadUsers()":""}
+async function logout(){try{await api('/api/logout',{method:'POST',body:'{}'})}catch(e){}location='/'}
+loadSchemes();${admin ? "loadUsers()" : ""}
 </script>`;
 }
 
