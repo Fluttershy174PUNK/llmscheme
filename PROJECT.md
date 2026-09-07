@@ -31,7 +31,7 @@ README.md                      — пользовательская докуме
 PROJECT.md                     — этот файл
 LICENSE                        — MIT
 .dockerignore                  — контекст сборки = корень репо (см. compose)
-.gitignore                     — data/, .env, editor-template.gen.html, .test_on_local_proxmox/
+.gitignore                     — data/, .env, editor-template.gen.html, локальная тестовая среда
 
 src/                           — ИСТОЧНИКИ (единственное место для правок логики)
   package.json                 — scripts: build:skill / build:core / build:app / check / test / typecheck
@@ -151,7 +151,7 @@ delete_scheme, node_add, node_update, node_remove, edge_add, edge_remove, diff`
   `change-me-now`
 - ❌ `llmscheme-service-mcp/data/` (lightdb с хэшами паролей и api-ключами) —
   в .gitignore
-- ❌ `.test_on_local_proxmox/` (документация тестовой среды: IP, пароли LXC) —
+- ❌ документация локальной тестовой среды (IP, пароли песочницы) —
   в .gitignore
 - ❌ `editor-template.gen.html` копия в service-папке (мусор сборки) — в
   .gitignore
@@ -161,7 +161,7 @@ delete_scheme, node_add, node_update, node_remove, edge_add, edge_remove, diff`
 - ✅ GitHub-URL в README/LICENSE — публичное имя репозитория, это ок
 
 Перед push: `git status --porcelain` пуст; `git ls-files | grep -iE
-"env$|data/|proxmox|test_dev"` — ничего, кроме `.env.example`.
+"env$|data/|test_dev"` — ничего, кроме `.env.example`.
 
 ## Известные упрощения (осознанные)
 
