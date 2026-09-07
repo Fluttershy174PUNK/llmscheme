@@ -14,6 +14,16 @@
   хранит бэкапы/журнал/автосейвы в `cache/`. Браузер, CLI и MCP не затирают
   друг друга.
 
+## ⬇️ Скачивание
+
+```bash
+git clone https://github.com/Fluttershy174PUNK/llmscheme.git
+cd llmscheme
+```
+
+Без git: **Code → Download ZIP** на GitHub или
+[прямая ссылка](https://github.com/Fluttershy174PUNK/llmscheme/archive/refs/heads/main.zip).
+
 ```
 llmscheme-skill/         🎒 скилл для агента (SKILL.md + block_llm_core + block_llm_tools)
 llmscheme-service-mcp/   🐳 docker-сервис: REST API + MCP-сервер + хостинг редактора
@@ -29,7 +39,8 @@ demo-example-skill/      🐱 демо-проект «генератор кот�
 
 ```bash
 # установка для всех проектов (pi / Gemini CLI / Codex читают ~/.agents/skills):
-cp -r llmscheme-skill ~/.agents/skills/block-llm
+git clone https://github.com/Fluttershy174PUNK/llmscheme.git /tmp/llmscheme
+cp -r /tmp/llmscheme/llmscheme-skill ~/.agents/skills/block-llm
 # для Claude Code дополнительно:
 ln -s ~/.agents/skills/block-llm ~/.claude/skills/block-llm
 ```
