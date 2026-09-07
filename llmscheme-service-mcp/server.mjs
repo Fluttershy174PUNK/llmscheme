@@ -143,8 +143,15 @@ function revokeToken(tokenHash) {
 // ---------- schemes storage: per-user dirs, core owns every write ----------
 const userRoot = (u) => path.join(ENV.dataDir, "schemes", String(u.id));
 function schemeRoot(u, name) {
-	if (!name || !/^[A-Za-z0-9._-]+$/.test(name))
-		throw new DataError("bad scheme name");
+	// scheme name = "project/scheme" (one level) or bare "scheme"; both validated
+	if (
+		!name ||
+		!/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)?$/.test(name) ||
+		name.includes("..")
+	)
+		throw new DataError(
+			'bad scheme name (use "project/scheme" or "scheme", a-z 0-9 . _ -)',
+		);
 	const dir = path.resolve(path.join(userRoot(u), name));
 	if (!dir.startsWith(path.resolve(userRoot(u)) + path.sep))
 		throw new DataError("bad scheme name");
@@ -242,10 +249,15 @@ const routes = [];
 function route(method, pattern, handler) {
 	const keys = [];
 	// pattern is a compile-time literal (route registrations below), never user input;
-	// the :param transform only ever produces "([^/]+)" — no ReDoS surface.
+	// the :param transform only ever produces "([^/]+)" (":name!" adds one optional
+	// "/segment" — used by scheme routes so "project/scheme" names match) — no ReDoS surface.
 	const re = new RegExp(
 		"^" +
-			pattern.replace(/:[a-zA-Z]+/g, (m) => (keys.push(m.slice(1)), "([^/]+)")) +
+			pattern.replace(/:[a-zA-Z]+!?/g, (m) =>
+				m.endsWith("!")
+					? (keys.push(m.slice(1, -1)), "([^/]+(?:/[^/]+)?)")
+					: (keys.push(m.slice(1)), "([^/]+)"),
+			) +
 			"$",
 	);
 	routes.push({ method, re, keys, handler });
@@ -258,21 +270,31 @@ route("POST", "/api/login", async (ctx) => {
 	if (!u || !verifyPassword(password || "", u))
 		return fail(ctx.res, 401, "bad credentials");
 	const t = issueToken(u.id);
-	send(ctx.res, 200, {
-		token: t.token,
-		expiresAt: new Date(t.expiresAt).toISOString(),
-		role: u.role,
-	}, {
-		// page navigation (console/editor) authenticates via cookie; XHR sends Bearer
-		"set-cookie": `ls_token=${t.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${ENV.tokenTtlDays * 86400}`,
-	});
+	send(
+		ctx.res,
+		200,
+		{
+			token: t.token,
+			expiresAt: new Date(t.expiresAt).toISOString(),
+			role: u.role,
+		},
+		{
+			// page navigation (console/editor) authenticates via cookie; XHR sends Bearer
+			"set-cookie": `ls_token=${t.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${ENV.tokenTtlDays * 86400}`,
+		},
+	);
 });
 route("POST", "/api/logout", async (ctx) => {
 	const m = (lower(ctx.req)["authorization"] || "").match(/^Bearer (.+)$/);
 	if (m) revokeToken(m[1].length === 64 ? m[1] : sha256(m[1]));
-	send(ctx.res, 200, { ok: true }, {
-		"set-cookie": "ls_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
-	});
+	send(
+		ctx.res,
+		200,
+		{ ok: true },
+		{
+			"set-cookie": "ls_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+		},
+	);
 });
 route("GET", "/api/me", async (ctx) => send(ctx.res, 200, me(ctx.auth)));
 route("GET", "/api/users", async (ctx) => {
@@ -369,24 +391,47 @@ route("GET", "/api/mcp-config", async (ctx) => {
 
 // ---- schemes: CRUD + exports + history ----
 route("GET", "/api/schemes", async (ctx) => {
-	const dir = userRoot(ctx.auth);
-	const list = fs.existsSync(dir)
-		? fs
-				.readdirSync(dir, { withFileTypes: true })
-				.filter((e) => e.isDirectory())
-				.map((e) => {
-					const s = readRaw(path.join(dir, e.name));
-					return {
-						name: e.name,
-						rev: s.rev,
-						nodes: s.nodes.length,
-						edges: s.edges.length,
-						updatedAt: s.meta.updatedAt,
-					};
-				})
-		: [];
+	// admin may list everyone: ?user=all, or one user: ?user=<login>
+	const users =
+		ctx.query.user && ctx.auth.role === "admin"
+			? ctx.query.user === "all"
+				? db.data.users
+				: [userBy((x) => x.login === ctx.query.user)].filter(Boolean)
+			: [ctx.auth];
+	if (!users.length) return fail(ctx.res, 404, "no such user");
+	const list = [];
+	for (const u of users)
+		list.push(...listSchemes(u, ctx.query.user === "all" ? u.login : ""));
 	send(ctx.res, 200, list);
 });
+
+function listSchemes(u, ownerTag) {
+	const dir = userRoot(u);
+	const list = [];
+	if (!fs.existsSync(dir)) return list;
+	for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+		if (!e.isDirectory()) continue;
+		const sub = path.join(dir, e.name);
+		const push = (pdir, project, label) => {
+			if (!fs.existsSync(path.join(pdir, ".block_llm", "scheme.json"))) return;
+			const s = readRaw(pdir);
+			list.push({
+				owner: ownerTag || undefined,
+				project,
+				name: label,
+				rev: s.rev,
+				nodes: s.nodes.length,
+				edges: s.edges.length,
+				updatedAt: s.meta.updatedAt,
+			});
+		};
+		push(sub, "", e.name);
+		// one level of projects: <project>/<scheme>
+		for (const p of fs.readdirSync(sub, { withFileTypes: true }))
+			if (p.isDirectory()) push(path.join(sub, p.name), e.name, p.name);
+	}
+	return list;
+}
 route("POST", "/api/schemes", async (ctx) => {
 	const { name, scheme } = parseJson(ctx.body || "{}");
 	const root = schemeRoot(ctx.auth, name);
@@ -401,12 +446,12 @@ route("POST", "/api/schemes", async (ctx) => {
 		send(ctx.res, 201, { name, rev: r.rev });
 	}
 });
-route("GET", "/api/scheme/:name", async (ctx) => {
+route("GET", "/api/scheme/:name!", async (ctx) => {
 	if (!hasScheme(ctx.auth, ctx.params.name))
 		return fail(ctx.res, 404, "no such scheme");
 	send(ctx.res, 200, readRaw(schemeRoot(ctx.auth, ctx.params.name)));
 });
-route("PUT", "/api/scheme/:name", async (ctx) => {
+route("PUT", "/api/scheme/:name!", async (ctx) => {
 	if (!hasScheme(ctx.auth, ctx.params.name))
 		return fail(ctx.res, 404, "no such scheme");
 	const root = schemeRoot(ctx.auth, ctx.params.name);
@@ -418,7 +463,7 @@ route("PUT", "/api/scheme/:name", async (ctx) => {
 	const r = saveUserScheme(root, next, "put");
 	send(ctx.res, 200, { ok: true, rev: r.rev });
 });
-route("DELETE", "/api/scheme/:name", async (ctx) => {
+route("DELETE", "/api/scheme/:name!", async (ctx) => {
 	if (!hasScheme(ctx.auth, ctx.params.name))
 		return fail(ctx.res, 404, "no such scheme");
 	fs.rmSync(schemeRoot(ctx.auth, ctx.params.name), {
@@ -427,7 +472,7 @@ route("DELETE", "/api/scheme/:name", async (ctx) => {
 	});
 	send(ctx.res, 200, { ok: true });
 });
-route("GET", "/api/scheme/:name/md", async (ctx) => {
+route("GET", "/api/scheme/:name!/md", async (ctx) => {
 	if (!hasScheme(ctx.auth, ctx.params.name))
 		return fail(ctx.res, 404, "no such scheme");
 	const s = readRaw(schemeRoot(ctx.auth, ctx.params.name));
@@ -435,7 +480,7 @@ route("GET", "/api/scheme/:name/md", async (ctx) => {
 		"content-type": "text/markdown; charset=utf-8",
 	});
 });
-route("GET", "/api/scheme/:name/diff", async (ctx) => {
+route("GET", "/api/scheme/:name!/diff", async (ctx) => {
 	if (!hasScheme(ctx.auth, ctx.params.name))
 		return fail(ctx.res, 404, "no such scheme");
 	const root = schemeRoot(ctx.auth, ctx.params.name);
@@ -472,7 +517,7 @@ function mutate(ctx, fn) {
 	const r = saveUserScheme(root, s, out.op);
 	send(ctx.res, 200, { ok: true, rev: r.rev, ...out.body });
 }
-route("POST", "/api/scheme/:name/node", async (ctx) =>
+route("POST", "/api/scheme/:name!/node", async (ctx) =>
 	mutate(ctx, (s, b) => {
 		if (!b.label) throw new DataError("label required");
 		const n = {
@@ -494,7 +539,7 @@ route("POST", "/api/scheme/:name/node", async (ctx) =>
 		return { op: "node.add", body: { id: n.id } };
 	}),
 );
-route("PUT", "/api/scheme/:name/node/:id", async (ctx) =>
+route("PUT", "/api/scheme/:name!/node/:id", async (ctx) =>
 	mutate(ctx, (s, b) => {
 		const n = s.nodes.find((n) => n.id === ctx.params.id);
 		if (!n) throw new DataError(`node ${ctx.params.id} not found`);
@@ -503,7 +548,7 @@ route("PUT", "/api/scheme/:name/node/:id", async (ctx) =>
 		return { op: "node.update", body: { id: n.id } };
 	}),
 );
-route("DELETE", "/api/scheme/:name/node/:id", async (ctx) =>
+route("DELETE", "/api/scheme/:name!/node/:id", async (ctx) =>
 	mutate(ctx, (s) => {
 		const i = s.nodes.findIndex((n) => n.id === ctx.params.id);
 		if (i < 0) throw new DataError(`node ${ctx.params.id} not found`);
@@ -514,7 +559,7 @@ route("DELETE", "/api/scheme/:name/node/:id", async (ctx) =>
 		return { op: "node.remove", body: {} };
 	}),
 );
-route("POST", "/api/scheme/:name/edge", async (ctx) =>
+route("POST", "/api/scheme/:name!/edge", async (ctx) =>
 	mutate(ctx, (s, b) => {
 		if (!b.from || !b.to) throw new DataError("from/to required");
 		const e = {
@@ -530,7 +575,7 @@ route("POST", "/api/scheme/:name/edge", async (ctx) =>
 		return { op: "edge.add", body: { id: e.id } };
 	}),
 );
-route("PUT", "/api/scheme/:name/edge/:id", async (ctx) =>
+route("PUT", "/api/scheme/:name!/edge/:id", async (ctx) =>
 	mutate(ctx, (s, b) => {
 		const e = s.edges.find((e) => e.id === ctx.params.id);
 		if (!e) throw new DataError(`edge ${ctx.params.id} not found`);
@@ -539,7 +584,7 @@ route("PUT", "/api/scheme/:name/edge/:id", async (ctx) =>
 		return { op: "edge.update", body: { id: e.id } };
 	}),
 );
-route("DELETE", "/api/scheme/:name/edge/:id", async (ctx) =>
+route("DELETE", "/api/scheme/:name!/edge/:id", async (ctx) =>
 	mutate(ctx, (s) => {
 		const i = s.edges.findIndex((e) => e.id === ctx.params.id);
 		if (i < 0) throw new DataError(`edge ${ctx.params.id} not found`);
@@ -547,7 +592,7 @@ route("DELETE", "/api/scheme/:name/edge/:id", async (ctx) =>
 		return { op: "edge.remove", body: {} };
 	}),
 );
-route("POST", "/api/scheme/:name/zone", async (ctx) =>
+route("POST", "/api/scheme/:name!/zone", async (ctx) =>
 	mutate(ctx, (s, b) => {
 		const z = {
 			id: b.id || consumeZoneId(s),
@@ -564,7 +609,7 @@ route("POST", "/api/scheme/:name/zone", async (ctx) =>
 		return { op: "zone.add", body: { id: z.id } };
 	}),
 );
-route("DELETE", "/api/scheme/:name/zone/:id", async (ctx) =>
+route("DELETE", "/api/scheme/:name!/zone/:id", async (ctx) =>
 	mutate(ctx, (s) => {
 		const i = (s.zones || []).findIndex((z) => z.id === ctx.params.id);
 		if (i < 0) throw new DataError(`zone ${ctx.params.id} not found`);
@@ -582,15 +627,10 @@ const mcpUser = (req) => {
 
 function mcpToolCall(u, name, a) {
 	switch (name) {
-		case "list_schemes": {
-			const dir = userRoot(u);
-			return fs.existsSync(dir)
-				? fs
-						.readdirSync(dir, { withFileTypes: true })
-						.filter((e) => e.isDirectory())
-						.map((e) => e.name)
-				: [];
-		}
+		case "list_schemes":
+			return listSchemes(u, "").map((s) =>
+				s.project ? s.project + "/" + s.name : s.name,
+			);
 		case "get_scheme":
 			return readRaw(schemeRoot(u, a.name));
 		case "get_scheme_md": {
@@ -955,7 +995,7 @@ const LOGIN_HTML = `<!doctype html><meta charset=utf-8><title>llmscheme login</t
 <input name=l placeholder=login required><input name=p type=password placeholder=password required>
 <button>sign in</button><div id=err style="color:#b00"></div></form>`;
 
-// ---------- /admin console: schemes + users + mcp over the REST api ----------
+// ---------- /admin console: tabs, projects->schemes, users, mcp ----------
 // pixel style: same palette + Press Start 2P (base64, from the editor build) as the canvas
 const esc = (s) =>
 	String(s).replace(
@@ -970,9 +1010,7 @@ try {
 	const faces = [
 		...fs
 			.readFileSync(TEMPLATE, "utf8")
-			.matchAll(
-				/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g,
-			),
+			.matchAll(/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g),
 	];
 	FONT_CSS = faces.map((m) => m[0]).join("");
 } catch {}
@@ -982,28 +1020,36 @@ function adminHtml(u) {
 	return `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>llmscheme</title>
 <style>
 ${FONT_CSS}
-:root{--bg:#1a1c2c;--panel:#29366f;--panel2:#3b5dc9;--ink:#f4f4f4;--accent:#ffcd75;--err:#ff004d;--dim:#94b0c2;--edge:#41a6f6;--dark:#091428}
+:root{--bg:#1a1c2c;--panel:#29366f;--panel2:#3b5dc9;--ink:#f4f4f4;--accent:#ffcd75;--err:#ff004d;--dim:#94b0c2;--edge:#41a6f6;--dark:#091428;--ok:#38b764}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Press Start 2P",monospace;font-size:10px;line-height:1.7}
 header{display:flex;gap:10px;align-items:center;padding:10px;background:var(--panel);box-shadow:inset 0 -2px 0 var(--dark);flex-wrap:wrap}
 header .title{color:var(--accent);font-size:12px}
 header .who{color:var(--dim)}
 header .spacer{flex:1}
-main{max-width:56rem;margin:0 auto;padding:14px}
-h2{font-size:10px;color:var(--accent);margin:22px 0 10px;text-transform:uppercase}
+nav{display:flex;gap:8px;padding:10px;background:var(--panel);box-shadow:inset 0 -2px 0 var(--dark)}
+nav button{flex:1;max-width:16rem}
+main{max-width:60rem;margin:0 auto;padding:14px}
+h2{font-size:10px;color:var(--accent);margin:20px 0 10px;text-transform:uppercase}
 table{border-collapse:collapse;width:100%;background:var(--dark);box-shadow:inset -2px -2px 0 var(--panel2)}
 th{color:var(--dim);font-weight:400;text-align:left}
 td,th{padding:7px 8px;border-bottom:1px solid var(--panel)}
 tr:last-child td{border-bottom:0}
+tr.proj td{color:var(--accent);background:var(--panel)}
+tr.proj td .muted{color:var(--dim)}
 button{font:inherit;font-size:9px;background:var(--panel2);color:var(--ink);border:0;box-shadow:inset -2px -2px 0 var(--dark),inset 2px 2px 0 var(--accent);padding:6px 9px;cursor:pointer}
 button:hover{filter:brightness(1.15)}
 button:active{transform:translateY(1px)}
 button.warn{background:#ab5236}
+button.tab{background:var(--panel)}
+button.tab.on{background:var(--accent);color:var(--dark)}
 button:disabled{opacity:.4;cursor:default}
 input,select{font:inherit;font-size:9px;background:var(--dark);color:var(--ink);border:0;box-shadow:inset 2px 2px 0 var(--dark),inset -2px -2px 0 var(--panel2);padding:7px}
 input:focus,select:focus{outline:2px solid var(--accent)}
 form{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0;align-items:center}
-form input{width:14rem}
+form input{width:13rem}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--dim);cursor:pointer}
+label.chk input{width:auto}
 a{color:var(--edge);text-decoration:none}
 a:hover{color:var(--accent)}
 .muted{color:var(--dim)}
@@ -1019,44 +1065,70 @@ dialog h3{margin:0 0 12px;font-size:11px;color:var(--accent)}
 <span class=title>llmscheme</span><span class=who>· ${esc(u.login)} [${esc(u.role)}]</span><span class=spacer></span>
 <button onclick="logout()">выйти</button>
 </header>
-<main>
-<h2># схемы</h2>
+${admin?`<nav><button class="tab on" id=tab-edit onclick="tab('edit')">редактирование</button><button class="tab" id=tab-admin onclick="tab('admin')">администрирование</button></nav>
+<section id=sec-edit>`:`<main>`}
+<div id=editbox>
+<h2># мои проекты и схемы</h2>
+<label class=chk><input type=checkbox id=allusers onchange="loadSchemes()"> показать схемы всех юзеров</label>
 <table id=schemes></table>
-<form onsubmit="return createScheme(this)"><input name=sname required pattern="[A-Za-z0-9._-]{1,64}" placeholder="имя схемы (a-z 0-9 _ -)"><button>+ создать</button><span class=err id=scherr></span></form>
-<h2 id=husers hidden># пользователи</h2>
-<table id=users hidden></table>
-<form id=fusers hidden onsubmit="return createUser(this)"><input name=login required pattern="[a-z0-9_.-]{1,32}" placeholder=login><input name=password required minlength=4 placeholder=password><select name=role><option value=user>user</option><option value=admin>admin</option></select><button>+ создать</button><span class=err id=usrerr></span></form>
-<h2># mcp</h2>
-<form onsubmit="return mcpUser(this)"><select name=login id=msel></select><button>конфиг</button><span class=muted>готовый JSON для mcp-клиента (ключ создаётся при необходимости)</span></form>
+<h2>+ новая схема</h2>
+<form onsubmit="return createScheme(this)"><input name=proj placeholder="проект" pattern="[A-Za-z0-9._-]{1,32}"><input name=sname required placeholder="имя схемы" pattern="[A-Za-z0-9._-]{1,64}"><button>+ создать</button><span class=muted>проект можно оставить пустым</span><span class=err id=scherr></span></form>
+</div>
+${admin?`</section>
+<section id=sec-admin hidden>
+<div id=adminbox>
+<h2># пользователи</h2>
+<table id=users></table>
+<form onsubmit="return createUser(this)"><input name=login required pattern="[a-z0-9_.-]{1,32}" placeholder=login><input name=password required minlength=4 placeholder=password><select name=role><option value=user>user</option><option value=admin>admin</option></select><button>+ создать</button><span class=err id=usrerr></span></form>
+<h2># mcp-конфиги</h2>
+<form onsubmit="return mcpUser(this)"><select name=login id=msel></select><button>показать конфиг</button><span class=muted>готовый JSON для mcp-клиента (ключ создаётся при необходимости)</span></form>
 <pre id=mcp hidden></pre>
-</main>
+</div>
+</section>`:""}
+</${admin?"div":"main"}>
 <div id=flashbox></div>
 <dialog id=dkey><h3 id=dtitle></h3><pre id=dbody></pre><form method=dialog><button>закрыть</button></form></dialog>
 <script>
-const T=new URLSearchParams(location.search).get('t')||'';
-const ADMIN=${admin ? "true" : "false"};
+const ADMIN=${admin?"true":"false"};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const H=()=>({'content-type':'application/json',...(T?{authorization:'Bearer '+T}:{})});
 const flash=(m,err)=>{const d=document.createElement('div');d.className='flash'+(err?' err':'');d.textContent=m;document.getElementById('flashbox').append(d);setTimeout(()=>d.remove(),4000)};
-async function api(path,opt={}){const r=await fetch(path,{...opt,headers:H()});if(r.status===401)location='/';const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{'content-type':'application/json'}});if(r.status===401)location='/';const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
 function show(id,html){const el=document.getElementById(id);el.hidden=html==null;if(html!=null)el.innerHTML=html}
-async function loadSchemes(){try{const l=await api('/api/schemes');show('schemes',l.length?'<tr><th>имя</th><th>rev</th><th>узлы/связи</th><th>обновлена</th><th></th></tr>'+l.map(s=>'<tr><td>'+esc(s.name)+'</td><td>'+s.rev+'</td><td>'+s.nodes+' / '+s.edges+'</td><td class=muted>'+esc((s.updatedAt||'').slice(0,16).replace('T',' '))+'</td><td><a href="/editor/'+encodeURIComponent(s.name)+'+(T?'?t='+T:'')+'">[редактор]</a> <button class=warn onclick="delScheme(\\''+encodeURIComponent(s.name)+'\\')">x</button></td></tr>').join(''):'<tr><td class=muted>нет схем — создай первую</td></tr>')}catch(e){flash(e.message,1)}}
-async function createScheme(f){event.preventDefault();try{await api('/api/schemes',{method:'POST',body:JSON.stringify({name:f.sname.value})});flash('схема создана: '+f.sname.value);f.sname.value='';show('scherr','');loadSchemes()}catch(e){show('scherr',esc(e.message))}return false}
+function tab(name){
+document.getElementById('tab-edit').classList.toggle('on',name==='edit');
+document.getElementById('tab-admin').classList.toggle('on',name==='admin');
+document.getElementById('sec-edit').hidden=name!=='edit';
+document.getElementById('sec-admin').hidden=name!=='admin';
+if(name==='admin')loadUsers();
+}
+async function loadSchemes(){try{
+const all=document.getElementById('allusers')?.checked;
+const l=await api('/api/schemes'+(all?'?user=all':''));
+const rows=[];let proj=null;
+for(const s of l){
+if(s.project!==proj){proj=s.project;rows.push('<tr class=proj><td colspan=5>'+(proj?'📁 '+esc(proj):'📁 (без проекта)')+'</td></tr>')}
+const full=(s.project?s.project+'/'+s.name:s.name);
+rows.push('<tr><td>'+esc(s.name)+'</td><td>'+s.rev+'</td><td>'+s.nodes+' / '+s.edges+'</td><td class=muted>'+esc((s.updatedAt||'').slice(0,16).replace('T',' '))+'</td><td><a href="/editor/'+encodeURIComponent(full)+'">[редактор]</a> <button class=warn onclick="delScheme(\\''+encodeURIComponent(full)+'\\')">x</button></td></tr>');
+}
+show('schemes',rows.length?rows.join(''):'<tr><td class=muted>нет схем — создай первую</td></tr>')}catch(e){flash(e.message,1)}}
+async function createScheme(f){event.preventDefault();try{
+const name=(f.proj.value?f.proj.value+'/'+f.sname.value:f.sname.value);
+await api('/api/schemes',{method:'POST',body:JSON.stringify({name})});
+flash('схема создана: '+name);f.sname.value='';show('scherr','');loadSchemes()}catch(e){show('scherr',esc(e.message))}return false}
 async function delScheme(n){const d=decodeURIComponent(n);if(!confirm('удалить схему "'+d+'" со всей историей?'))return;try{await api('/api/scheme/'+n,{method:'DELETE'});flash('удалена: '+d);loadSchemes()}catch(e){flash(e.message,1)}}
-${
-	admin
-		? `
-async function loadUsers(){try{const l=await api('/api/users');show('husers','# пользователи');show('users','<tr><th>login</th><th>роль</th><th>ключи</th><th></th></tr>'+l.map(x=>'<tr><td>'+esc(x.login)+'</td><td>'+esc(x.role)+'</td><td>'+x.apiKeys+'</td><td><button onclick="genKey(\\''+encodeURIComponent(x.login)+'\\')">ключ</button> <button class=warn onclick="delUser(\\''+encodeURIComponent(x.login)+'\\','+x.id+')">x</button></td></tr>').join(''));const f=document.getElementById('fusers');f.hidden=false;const sel=document.getElementById('msel');sel.innerHTML='<option value="">— я (${esc(u.login)}) —</option>'+l.map(x=>'<option value="'+encodeURIComponent(x.login)+'">'+esc(x.login)+'</option>').join('')}catch(e){flash(e.message,1)}}
+${admin?`
+async function loadUsers(){try{const l=await api('/api/users');
+show('users','<tr><th>login</th><th>роль</th><th>ключи</th><th></th></tr>'+l.map(x=>'<tr><td>'+esc(x.login)+'</td><td>'+esc(x.role)+'</td><td>'+x.apiKeys+'</td><td><button onclick="genKey(\\''+encodeURIComponent(x.login)+'\\')">ключ</button> <button class=warn onclick="delUser(\\''+encodeURIComponent(x.login)+'\\','+x.id+')">x</button></td></tr>').join(''));
+const sel=document.getElementById('msel');sel.innerHTML='<option value="">— я —</option>'+l.map(x=>'<option value="'+encodeURIComponent(x.login)+'">'+esc(x.login)+'</option>').join('');
+}catch(e){flash(e.message,1)}}
 async function createUser(f){event.preventDefault();try{await api('/api/users',{method:'POST',body:JSON.stringify({login:f.login.value,password:f.password.value,role:f.role.value})});flash('пользователь создан: '+f.login.value);f.password.value='';show('usrerr','');loadUsers()}catch(e){show('usrerr',esc(e.message))}return false}
 async function delUser(n,id){const d=decodeURIComponent(n);if(!confirm('удалить пользователя "'+d+'" и ВСЕ его схемы?'))return;try{await api('/api/user/'+id,{method:'DELETE'});flash('удалён: '+d);loadUsers()}catch(e){flash(e.message,1)}}
 async function genKey(n){try{const j=await api('/api/apikey',{method:'POST',body:JSON.stringify({login:decodeURIComponent(n)})});dlg('api-ключ: '+decodeURIComponent(n)+' — показывается ОДИН раз, сохрани сейчас',j.apiKey)}catch(e){flash(e.message,1)}}
-`
-		: `document.getElementById('msel').innerHTML='<option value="">— я (${esc(u.login)}) —</option>'`
-}
 async function mcpUser(f){event.preventDefault();try{const q=f.login.value?'?login='+f.login.value:'';const j=await api('/api/mcp-config'+q);const p=document.getElementById('mcp');p.hidden=false;p.textContent=JSON.stringify(j,null,2)}catch(e){flash(e.message,1)}return false}
+`:""}
 function dlg(title,body){document.getElementById('dtitle').textContent=title;document.getElementById('dbody').textContent=body;document.getElementById('dkey').showModal()}
 async function logout(){try{await api('/api/logout',{method:'POST',body:'{}'})}catch(e){}location='/'}
-loadSchemes();${admin ? "loadUsers()" : ""}
+loadSchemes();
 </script>`;
 }
 
@@ -1115,7 +1187,7 @@ const server = http.createServer(async (req, res) => {
 			const name =
 				pathname === "/editor"
 					? "default" // template dies without a valid scheme — open/create "default"
-					: decodeURIComponent(pathname.slice("/editor/".length));
+					: pathname.slice("/editor/".length);
 			return serveEditor(res, name, a);
 		}
 
