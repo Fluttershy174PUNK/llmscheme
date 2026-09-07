@@ -4,14 +4,14 @@ FROM node:22-alpine
 WORKDIR /app
 # non-root: the service only writes to /data
 # uid/gid pinned to 100:100 — host bind-mount ./data must be chown 100:100 (see README)
-# -g/-u with || true: base image may already own gid 100 (node in alpine images)
-RUN addgroup -S -g 100 llm || true && adduser -S -u 100 -G llm llm || true
+# gid 100 is taken in node:22-alpine ("users"), so llm joins it; uid 100 is free
+RUN adduser -S -u 100 -G users llm
 COPY llmscheme-service-mcp/server.mjs .
 COPY llmscheme-service-mcp/core.mjs .
 COPY llmscheme-service-mcp/VERSION .
 # editor template comes from the skill — same file, one source of truth
 COPY llmscheme-skill/block_llm_core/editor-template.gen.html .
-RUN mkdir -p /data && chown llm:llm /data
+RUN mkdir -p /data && chown llm:users /data
 USER llm
 ENV NODE_ENV=production
 EXPOSE 8080
