@@ -42,6 +42,9 @@ export function kit(t) {
 			t.push({ ok: !v, msg });
 			return v;
 		},
+		fail(msg) {
+			t.push({ ok: false, msg });
+		},
 		notEq(a, b, msg) {
 			t.push({ ok: a !== b, msg: `${msg} (values must differ)` });
 		},
@@ -96,7 +99,7 @@ export async function run(suites) {
 		const schemes = await api("/api/schemes?user=all", { token: tok });
 		for (const s of schemes.json) {
 			const full = s.project ? `${s.project}/${s.name}` : s.name;
-			if (full.startsWith("e2e") || full.startsWith("tmp/"))
+			if (full.startsWith("e2e") || full.startsWith("tmp/") || full === "myproj/alpha")
 				await api("/api/scheme/" + encodeURIComponent(full), { method: "DELETE", token: tok });
 		}
 		const users = await api("/api/users", { token: tok });

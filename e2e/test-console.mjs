@@ -27,9 +27,12 @@ export default define("console /admin", async ({ t, page, BASE, ADMIN, PASS, ran
 	);
 
 	// create user via form -> appears in table
-	await page.type("#fusers input[name=login]", user);
-	await page.type("#fusers input[name=password]", user + "-pw");
-	await page.evaluate(() => document.querySelector("#fusers button").click());
+	await page.evaluate((u) => {
+		const f = document.getElementById("fusers");
+		f.querySelector("input[name=login]").value = u;
+		f.querySelector("input[name=password]").value = u + "-pw";
+		f.querySelector("button").click();
+	}, user);
 	await page.waitForFunction(
 		(u) => document.getElementById("users")?.textContent.includes(u),
 		{},
@@ -79,13 +82,33 @@ export default define("console /admin", async ({ t, page, BASE, ADMIN, PASS, ran
 
 	// schemes tab: create project/scheme via form -> grouped row
 	await page.evaluate(() => document.querySelector("#tab-edit").click());
-	await page.type("form[onsubmit*='createScheme'] input[name=proj]", "e2e");
-	await page.type("form[onsubmit*='createScheme'] input[name=sname]", "s1");
-	await page.evaluate(() => document.querySelector("form[onsubmit*='createScheme'] button").click());
 	await page.waitForFunction(
-		() => document.getElementById("schemes")?.textContent.includes("s1"),
+		() => document.getElementById("sec-edit")?.hidden === false,
 		{ timeout: 5000 },
 	);
+	// fill via DOM (page.type is flaky against freshly-toggled hidden fields)
+	await page.evaluate(() => {
+		const f = document.querySelector("form[onsubmit*='createScheme']");
+		f.querySelector("input[name=proj]").value = "e2e";
+		f.querySelector("input[name=sname]").value = "s1";
+		f.querySelector("button").click();
+	});
+	try {
+		await page.waitForFunction(
+			() => document.getElementById("schemes")?.textContent.includes("s1"),
+			{ timeout: 5000 },
+		);
+	} catch {
+		const diag = await page.evaluate(() => ({
+			scherr: document.getElementById("scherr")?.textContent,
+			tbl: document.getElementById("schemes")?.textContent.slice(0, 150),
+			proj: document.querySelector("form[onsubmit*='createScheme'] input[name=proj]")?.value,
+			sname: document.querySelector("form[onsubmit*='createScheme'] input[name=sname]")?.value,
+			url: location.href,
+		}));
+		t.fail(`createScheme did not land: ${JSON.stringify(diag)}`);
+		return;
+	}
 	const tbl = await page.$eval("#schemes", (el) => el.textContent);
 	t.truthy(tbl.includes("e2e") && tbl.includes("s1"), "project/scheme row grouped");
 	t.truthy(tbl.includes("[редактор]"), "editor link present");

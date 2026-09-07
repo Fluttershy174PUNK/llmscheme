@@ -54,8 +54,9 @@ export default define("mcp", async ({ t, BASE, ADMIN, PASS, api, login, cleanupS
 	const put1text = put1.json.result?.content?.[0]?.text ?? "";
 	t.truthy(put1text.includes('"ok"'), `put with fresh rev ok (${put1text.slice(0, 60)})`);
 	const put2 = await call("put_scheme", { name: full, scheme });
-	const put2text = put2.json.result?.content?.[0]?.text ?? "";
-	t.truthy(put2text.includes("changed on disk"), "stale rev CAS error");
+	// stale rev comes back as a JSON-RPC *error* (not a tool result)
+	const put2msg = put2.json.error?.message ?? put2.json.result?.content?.[0]?.text ?? "";
+	t.truthy(put2msg.includes("changed on disk"), "stale rev CAS error");
 
 	// get_scheme_md + diff
 	const md = await call("get_scheme_md", { name: full });

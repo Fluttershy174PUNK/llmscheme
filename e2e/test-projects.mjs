@@ -8,7 +8,8 @@ export default define("projects & isolation", async ({ t, page, browser, BASE, A
 	const userTok = await login(user, user + "-pw");
 
 	// user creates project/scheme via API
-	const r = await api("/api/schemes", { method: "POST", token: userTok, body: { name: "myproj/alpha" } });
+	const full = "e2e-proj/alpha";
+	const r = await api("/api/schemes", { method: "POST", token: userTok, body: { name: full } });
 	t.eq(r.status, 201, "project/scheme created (201)");
 
 	// bad names rejected
@@ -25,10 +26,13 @@ export default define("projects & isolation", async ({ t, page, browser, BASE, A
 
 	// isolation: admin's list does not include user's scheme; ?user=all does
 	const own = await api("/api/schemes", { token: adminTok });
-	t.falsy(JSON.stringify(own.json).includes("myproj"), "admin list hides other user's scheme");
+	t.falsy(
+		JSON.stringify(own.json).includes("alpha"),
+		"admin list hides other user's scheme",
+	);
 	const all = await api("/api/schemes?user=all", { token: adminTok });
 	t.truthy(
-		JSON.stringify(all.json).includes("myproj") && JSON.stringify(all.json).includes(user),
+		JSON.stringify(all.json).includes("alpha") && JSON.stringify(all.json).includes(user),
 		"?user=all shows other user's scheme with owner",
 	);
 	// non-admin ?user=all is accepted but scoped to their own schemes (param ignored)
@@ -40,14 +44,15 @@ export default define("projects & isolation", async ({ t, page, browser, BASE, A
 	);
 
 	// editor for user's scheme: user ok, admin 404
-	const edUser = await fetch(`${BASE}/editor/${encodeURIComponent("myproj/alpha")}`, { headers: { accept: "text/html", authorization: `Bearer ${userTok}` } });
+	const edUser = await fetch(`${BASE}/editor/${encodeURIComponent(full)}`, { headers: { accept: "text/html", authorization: `Bearer ${userTok}` } });
 	t.eq(edUser.status, 200, "owner opens /editor/project/scheme");
-	const edAdmin = await fetch(`${BASE}/editor/${encodeURIComponent("myproj/alpha")}`, { headers: { accept: "text/html", authorization: `Bearer ${adminTok}` } });
+	const adminOwn = "e2e-proj/alpha"; // same name, DIFFERENT owner -> admin gets his own copy
+	const edAdmin = await fetch(`${BASE}/editor/${encodeURIComponent(adminOwn)}`, { headers: { accept: "text/html", authorization: `Bearer ${adminTok}` } });
 	t.eq(edAdmin.status, 200, "admin /editor auto-creates own copy (no leak)");
-	t.falsy(
-		(await edAdmin.text()).includes('"myproj/alpha"') && false,
-		"scheme content isolated",
-	);
+	const adminEd = await edAdmin.text();
+	// admin's copy must contain HIS scheme-data marker (fresh empty scheme rev 1),
+	// not the user's scheme — /editor always resolves inside the caller's dir
+	t.falsy(/"rev":\s*[2-9]/.test(adminEd), "admin /editor does not serve user scheme data");
 
 	// UI: user has no all-users slider; admin has
 	const pageA = await page;
@@ -60,7 +65,7 @@ export default define("projects & isolation", async ({ t, page, browser, BASE, A
 	await pageA.evaluate(() => document.getElementById("allusers")?.click());
 	await sleep(700);
 	const tbl = await pageA.$eval("#schemes", (el) => el.textContent);
-	t.truthy(tbl.includes("myproj"), "slider on: myproj visible in admin table");
+	t.truthy(tbl.includes("alpha"), "slider on: user scheme visible in admin table");
 
 	// non-admin page: no slider, no tabs
 	const ctx = await browser.createBrowserContext();
@@ -75,7 +80,9 @@ export default define("projects & isolation", async ({ t, page, browser, BASE, A
 	await ctx.close();
 
 	// cleanup
-	await api("/api/scheme/myproj%2Falpha", { method: "DELETE", token: userTok });
-	const uid = (await api("/api/users", { token: adminTok })).json.find((u) => u.login === user).id;
+	await api("/api/scheme/e2e-proj%2Falpha", { method: "DELETE", token: userTok });
+	await api("/api/scheme/e2e-proj%2Falpha", { method: "DELETE", token: adminTok });
+	const usersRes = await api("/api/users", { token: adminTok });
+	const uid = usersRes.json.find((u) => u.login === user).id;
 	await api("/api/user/" + uid, { method: "DELETE", token: adminTok });
 });
