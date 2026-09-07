@@ -54,3 +54,5 @@ dist/
 
 # local test env docs
 .test_on_local_proxmox/
+e2e/node_modules
+e2e/package-lock.json

@@ -971,7 +971,11 @@ async function handleMcp(req, res, body) {
 		);
 	}
 	if (method === "tools/list") {
-		mcpUser(req); // auth gate
+		try {
+			mcpUser(req); // auth gate (throws {status:401} — must not escape the handler)
+		} catch (e) {
+			return fail(res, e.status || 401, e.message);
+		}
 		return send(res, 200, mcpOk(id, { tools: MCP_TOOLS }));
 	}
 	if (method === "tools/call") {
@@ -1375,3 +1379,11 @@ for (const sig of ["SIGTERM", "SIGINT"])
 		server.close(() => process.exit(0));
 		setTimeout(() => process.exit(0), 2000).unref();
 	});
+
+// last-resort: log and stay up (a 500 is better than a dead service)
+process.on("unhandledRejection", (e) =>
+	log("ERROR", `unhandled rejection: ${e?.stack || e}`),
+);
+process.on("uncaughtException", (e) =>
+	log("ERROR", `uncaught exception: ${e?.stack || e}`),
+);

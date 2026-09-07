@@ -104,8 +104,20 @@ async function main() {
 				{ cwd: viteRoot, stdio: "inherit" },
 			);
 			html = fs.readFileSync(path.join(viteRoot, "dist/index.html"), "utf8");
-			// inject the pi-lens inline-ignore into the minified module script
-			html = html.replace(/(<script type="module"[^>]*>)/, `$1${LENS_IGNORE}`);
+			// inject the pi-lens inline-ignore into the minified module script;
+			// the bundle spans a few long lines, so the marker goes onto EVERY code
+			// line (comment-only lines are valid JS, +~15×230B) — suppressions then
+			// survive any reflow of the minifier
+			html = html.replace(
+				/(<script type="module"[^>]*>)([\s\S]*?)(<\/script>)/,
+				(_, open, code, close) =>
+					open +
+					code
+						.split("\n")
+						.map((line) => (line.trim() ? `${LENS_IGNORE.trimEnd()}\n${line}` : line))
+						.join("\n") +
+					close,
+			);
 			fs.mkdirSync(path.dirname(templateOut), { recursive: true });
 			fs.writeFileSync(templateOut, html);
 		} else {

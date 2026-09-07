@@ -801,7 +801,7 @@ import { SHAPES } from "../../core/src/types.ts";
 	<span class="rev">rev {scheme?.rev ?? "-"}</span>
 	<span class="path" title={schemeDir}>{schemeDir}</span>
 	<span class="spacer"></span>
-	{#if serverMode}<button onclick={() => location.href = "/admin"} title="{lang === "ru" ? "к проектам" : "to projects"}">📁</button>{/if}
+	{#if serverMode}<button onclick={() => location.assign("/admin")} title={lang === "ru" ? "к проектам" : "to projects"}>📁</button>{/if}
 	<button onclick={() => { lang = lang === "en" ? "ru" : "en"; localStorage.setItem("blm-lang", lang); }}>{lang === "en" ? "RU" : "EN"}</button>
 	<button onclick={addNode}>{t.add}</button>
 	<button onclick={addZone}>{t.zone}</button>

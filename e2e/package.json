@@ -1,0 +1,12 @@
+{
+	"name": "llmscheme-e2e",
+	"private": true,
+	"type": "module",
+	"description": "browser e2e tests for llmscheme-service (login, console, editor, projects, mcp, security)",
+	"scripts": {
+		"test": "node run.mjs"
+	},
+	"dependencies": {
+		"puppeteer": "^25.10.0"
+	}
+}
