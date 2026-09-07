@@ -341,10 +341,15 @@ import { SHAPES } from "../../core/src/types.ts";
 	function onNodeDown(ev: PointerEvent, n: SchemeNode) {
 		ev.stopPropagation();
 		if (connectMode) return; // nodes not clickable while wiring; use ports
-		// ctrl/meta+click: toggle node in the multi-selection, no drag
+		// ctrl/meta+click: toggle node in the multi-selection, no drag;
+		// first ctrl+click carries the current selection along (n1 + n2)
 		if (ev.ctrlKey || ev.metaKey) {
-			if (multiSel.includes(n.id)) multiSel = multiSel.filter((i) => i !== n.id);
-			else multiSel = [...multiSel, n.id];
+			let base = multiSel;
+			if (!base.length && selectedId && selectedKind === "node" && selectedId !== n.id)
+				base = [selectedId];
+			multiSel = base.includes(n.id)
+				? base.filter((i) => i !== n.id)
+				: [...base, n.id];
 			selectedId = n.id;
 			selectedKind = "node";
 			return;
@@ -850,7 +855,7 @@ import { SHAPES } from "../../core/src/types.ts";
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<g
 						class="node"
-						class:selected={selectedId === n.id}
+						class:selected={selectedId === n.id || multiSel.includes(n.id)}
 						class:orphan={orphanIds.has(n.id)}
 						class:member={scheme?.zones?.some((z) => zoneMembers(z).includes(n))}
 						onpointerdown={(ev) => onNodeDown(ev, n)}
