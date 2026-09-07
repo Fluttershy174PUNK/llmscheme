@@ -5,6 +5,7 @@
 > ноль runtime-зависимостей. Данные — lightdb (один JSON) + папки схем на volume.
 
 > 🗺 Структура репозитория, golden rules и e2e-тесты: [PROJECT.md](../PROJECT.md)
+> 🔐 Страница логина: [LOGIN.md](../LOGIN.md)
 
 ## 🚀 Запуск (docker)
 

@@ -80,6 +80,7 @@ llmscheme-skill/               — 🎒 артефакт №1: скилл для
   block_llm_core/references/   — SCHEME_FORMAT.md, EDITOR.md (deep refs для агента)
 
 llmscheme-service-mcp/         — 🐳 артефакт №2: docker-сервис (один файл server.mjs)
+                                 логин-страница: см. LOGIN.md
   server.mjs                   — ~1400 строк, ноль runtime-зависимостей (node:22-alpine):
                                    - HTTP-роутер + auth (scrypt пароли, bearer-токены,
                                      api-ключи llm_…, cookie-сессии ls_token HttpOnly)
@@ -217,7 +218,7 @@ delete_scheme, node_add, node_update, node_remove, edge_add, edge_remove, diff`
 copy/paste, undo, word-wrap, log, open local, SAVE tier S, CAS),
 изоляция юзеров, MCP (12 инструментов), security-стены.
 
-Дальше по схеме `📁 UI / page` (в сервисе): экран login — GIF-кот вместо
-SVG-заглушки и readme, тянущийся с живого README (n1/n2); UI-смена
-пароля admin (n5); «patch to project» (n35) — выгрузка схемы в локальный
+Дальше по схеме `📁 UI / page` (в сервисе): живой readme на login (n1 —
+тянуть реальный README вместо заглушки, см. LOGIN.md); UI-смена пароля
+admin (n5); «patch to project» (n35) — выгрузка схемы в локальный
 проект скиллом.

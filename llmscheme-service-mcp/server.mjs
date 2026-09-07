@@ -1033,8 +1033,20 @@ const CAT_SVG = `<svg width="96" height="64" viewBox="0 0 12 8" shape-rendering=
 <g fill="#ff004d"><rect x="6" y="6" width="1" height="1"/></g>
 </svg>`;
 
+// Press Start 2P (latin+cyrillic woff2), extracted once from the editor template
+let FONT_CSS = "";
+try {
+	// editor-template stores the two @font-face blocks (latin+cyrillic) with
+	// inlined base64 woff2; formatting may be pretty or minified, so match
+	// loosely: from "@font-face" to the first "}" that follows a unicode-range
+	const css = fs.readFileSync(TEMPLATE, "utf8");
+	for (const m of css.matchAll(/@font-face[^@]*?unicode-range[^}]*\}/g))
+		FONT_CSS += m[0];
+} catch {}
+
 const LOGIN_HTML = `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>llmscheme login</title>
 <style>
+${FONT_CSS}
 :root{--bg:#1a1c2c;--panel:#29366f;--panel2:#3b5dc9;--ink:#f4f4f4;--accent:#ffcd75;--err:#ff004d;--dim:#94b0c2;--dark:#091428;--edge:#41a6f6}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Press Start 2P",monospace;font-size:10px;line-height:1.8;display:grid;place-items:center;padding:16px}
@@ -1059,7 +1071,7 @@ button:active{transform:translateY(1px)}
 .lang button{font-size:8px;padding:4px 8px}
 </style>
 <div class=card>
-<div class=lang><button onclick="l=setL('ru');r=setL('en')">ru/en</button></div>
+<div class=lang><button id=langbtn onclick="setL(lang==='ru'?'en':'ru')">ru/en</button></div>
 <div class=cat>${CAT_SVG}<div style="color:var(--dim);font-size:8px">·^·</div></div>
 <form onsubmit="event.preventDefault();fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({login:this.l.value,password:this.p.value})}).then(r=>r.json()).then(j=>{if(j.token)location='/admin';else err.textContent=j.error||'login failed'}).catch(e=>err.textContent=e)">
 <h1>llmscheme</h1>
@@ -1080,7 +1092,7 @@ const T={
  ru:{signin:'войти',reset:'сброс?',hint:'пароль admin задаётся один раз в .env (ADMIN_PASSWORD) при первом старте с пустой папкой data; чтобы поменять: останови сервис, правь .env, удали data/lightdb.json (схемы в data/schemes сохранятся), запусти снова.',readme:'<b>llmscheme</b> — живые логические схемы для людей и LLM. рисуй узлы и стрелки, делись схемами через REST и MCP, правь в браузере.',lang:'en/ru'}
 };
 let lang='ru';
-function setL(l){lang=l;document.querySelector('form button').textContent=T[l].signin;
+function setL(l){lang=l;document.getElementById('langbtn').textContent=T[l].lang;document.querySelector('form button').textContent=T[l].signin;
 document.querySelector('.reset').textContent=T[l].reset;
 document.getElementById('reset-hint').textContent=T[l].hint;
 document.getElementById('readme').innerHTML=T[l].readme+' <a href="https://github.com/Fluttershy174PUNK/llmscheme#readme" target=_blank rel=noopener>README ↗</a>';return l}
@@ -1096,18 +1108,6 @@ const esc = (s) =>
 			({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
 	);
 
-// Press Start 2P (latin+cyrillic woff2), extracted once from the editor template
-let FONT_CSS = "";
-try {
-	const faces = [
-		...fs
-			.readFileSync(TEMPLATE, "utf8")
-			.matchAll(
-				/@font-face\{[^}]*unicode-range:U\+0301[^}]*\}|@font-face\{[^}]*unicode-range:\s*U\+0000[^}]*\}/g,
-			),
-	];
-	FONT_CSS = faces.map((m) => m[0]).join("");
-} catch {}
 
 function adminHtml(u) {
 	const admin = u.role === "admin";
