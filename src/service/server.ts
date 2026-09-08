@@ -19,7 +19,15 @@ import path from "node:path";
 import { authenticate } from "./lib/auth.ts";
 import { loadConfig } from "./lib/config.ts";
 import { CasError, DataError, ValidationError, renderHtml } from "../core/index.ts";
-import { decodePathname, fail, HttpError, log, logRequest, readBody, type Context } from "./lib/http.ts";
+import {
+	decodePathname,
+	fail,
+	HttpError,
+	log,
+	logRequest,
+	readBody,
+	type Context,
+} from "./lib/http.ts";
 import { resolveArtifactPaths, serveConsole, serveEditor, serveNotFound } from "./lib/pages.ts";
 import { buildRoutes } from "./lib/routes.ts";
 import { Schemes } from "./lib/schemes.ts";
@@ -80,7 +88,13 @@ interface AuthScope {
 	auth: User | null;
 }
 
-const makeCtx = (req: http.IncomingMessage, res: http.ServerResponse, body: string, scope: AuthScope, url: URL): Context => ({
+const makeCtx = (
+	req: http.IncomingMessage,
+	res: http.ServerResponse,
+	body: string,
+	scope: AuthScope,
+	url: URL,
+): Context => ({
 	req,
 	res,
 	body,
@@ -128,13 +142,20 @@ const server = http.createServer(async (req, res) => {
 
 		// 3. pages — own auth gate (login form vs. app)
 		if (pathname === "/" || pathname === "/admin") {
-			serveConsole({ schemes, consolePath: artifacts.consolePath, editorTemplatePath: editorTpl }, ctx);
+			serveConsole(
+				{ schemes, consolePath: artifacts.consolePath, editorTemplatePath: editorTpl },
+				ctx,
+			);
 			logRequest(req, res, pathname, started);
 			return;
 		}
 		if (pathname === "/editor" || pathname.startsWith("/editor/")) {
 			const name = pathname === "/editor" ? "" : pathname.slice("/editor/".length);
-			serveEditor({ schemes, consolePath: artifacts.consolePath, editorTemplatePath: editorTpl }, ctx, name);
+			serveEditor(
+				{ schemes, consolePath: artifacts.consolePath, editorTemplatePath: editorTpl },
+				ctx,
+				name,
+			);
 			logRequest(req, res, pathname, started);
 			return;
 		}

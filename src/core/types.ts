@@ -1,12 +1,12 @@
 export const FORMAT = "block-llm";
 export const SUPPORTED_VERSION = 1;
 
-export type Shape = "circle" | "diamond" | "square" | "rect" | "table";
+export type Shape = "circle" | "ellipse" | "diamond" | "square" | "rect" | "table";
 export type EdgeStyle = "solid" | "dashed";
 export type Generator = "agent" | "human-editor" | "human-json";
 export type Side = "top" | "bottom" | "left" | "right";
 
-export const SHAPES: readonly Shape[] = ["circle", "diamond", "square", "rect", "table"];
+export const SHAPES: readonly Shape[] = ["circle", "ellipse", "diamond", "square", "rect", "table"];
 export const EDGE_STYLES: readonly EdgeStyle[] = ["solid", "dashed"];
 export const SIDES: readonly Side[] = ["top", "bottom", "left", "right"];
 

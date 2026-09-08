@@ -34,7 +34,7 @@
 
 ## Правила
 
-- `shape`: `circle | diamond | square | rect | table`; edge `style`: `solid | dashed`.
+- `shape`: `circle | ellipse | diamond | square | rect | table`; edge `style`: `solid | dashed`.
 - `label` может содержать `\n` — элемент визуально растягивается вниз
   (в mermaid-экспорте переводы строк становятся `<br/>`).
 - `table` (только для shape `table`): `cols` — заголовки колонок (макс 10),

@@ -108,7 +108,10 @@ const tableSchema = {
 		},
 	},
 };
-const SHAPES = { type: "string", enum: ["rect", "square", "circle", "diamond", "table"] };
+const SHAPES = {
+	type: "string",
+	enum: ["rect", "square", "circle", "ellipse", "diamond", "table"],
+};
 const SIDES = { type: "string", enum: ["top", "bottom", "left", "right"] };
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true };
@@ -177,7 +180,7 @@ const TOOLS: Tool[] = [
 		name: "node_add",
 		title: "Add node",
 		description:
-			"Add a node (shape rect|square|circle|diamond|table). Without x/y the deterministic layout places it. Returns the new node id.",
+			"Add a node (shape rect|square|circle|ellipse|diamond|table). Without x/y the deterministic layout places it. Returns the new node id.",
 		inputSchema: {
 			type: "object",
 			properties: {

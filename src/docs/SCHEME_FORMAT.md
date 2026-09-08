@@ -61,7 +61,7 @@ That's what `block init` creates. Now let's add things.
 | Field | What it is | Required? |
 |---|---|---|
 | `id` | A unique string. Convention: `n1`, `n2`, `n3`... | yes |
-| `shape` | One of: `rect`, `square`, `circle`, `diamond`, `table` | yes |
+| `shape` | One of: `rect`, `square`, `circle`, `ellipse`, `diamond`, `table` | yes |
 | `label` | The text shown on the box. Use `\n` for line breaks. | yes |
 | `description` | A longer note (for humans and for the AI) | no |
 | `x`, `y` | Where the box sits on the canvas (pixels) | yes, but `autoLayout` can fill them in |

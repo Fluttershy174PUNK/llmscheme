@@ -16,7 +16,7 @@ function nodeDecl(n: SchemeNode): string {
 		case "diamond":
 			return `${n.id}{"${l}"}`;
 		default:
-			return `${n.id}["${l}"]`; // square | rect | table
+			return `${n.id}["${l}"]`; // square | rect | table | ellipse (mermaid has no oval)
 	}
 }
 

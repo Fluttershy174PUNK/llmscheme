@@ -112,7 +112,6 @@ llmscheme/
 │
 ├── package.json                ← Node ≥ 22.18, devDeps: esbuild + svelte
 ├── tsconfig.json               ← strict, erasableSyntaxOnly
-├── biome.json                  ← Formatter config (excludes generated artifacts)
 ├── svelte.config.js            ← svelte-check config (4 known a11y suppressions)
 │
 └── README.md  PROJECT.md  INTRO.md  LICENSE  PLAN.md  TODO.md  .llm

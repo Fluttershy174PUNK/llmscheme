@@ -289,17 +289,25 @@
 	function startConnect(id: string, side: Side) {
 		connectFrom = { id, side };
 	}
-	function completeConnect(id: string) {
+	// toSide: which side of the TARGET to dock at. A port click passes it; a
+	// body click leaves it undefined and we fall back to the nearest side.
+	function completeConnect(id: string, toSide?: Side) {
 		if (!connectFrom || connectFrom.id === id) {
 			connectFrom = null;
 			return;
 		}
 		pushUndo();
+		const a = scheme.nodes.find((n) => n.id === connectFrom!.id);
+		const b = scheme.nodes.find((n) => n.id === id);
 		const edge: SchemeEdge = {
 			id: consumeEdgeId(scheme),
 			from: connectFrom.id,
 			to: id,
 			style: "solid",
+			// the clicked port decides the side on both ends; only fall back to
+			// nearestSide when the target was picked by its body, not a port
+			fromSide: connectFrom.side,
+			toSide: toSide ?? (a && b ? nearestSide(b, a) : undefined),
 		};
 		scheme.edges.push(edge);
 		connectFrom = null;
@@ -372,17 +380,34 @@
 				dirty = true;
 			}
 		} else if (drag.type === "resize") {
+			// corner encoding: bit 0 (1) = right edge, bit 1 (2) = bottom edge.
+			// 0=top-left 1=top-right 2=bottom-left 3=bottom-right. Dragging a
+			// handle moves ITS edge and keeps the opposite edge pinned, so every
+			// corner resizes in its own direction.
+			const MIN = 40;
+			const right = (drag.corner & 1) === 1;
+			const bottom = (drag.corner & 2) === 2;
+			const L = right ? drag.ox : Math.min(drag.ox + dx, drag.ox + drag.ow - MIN);
+			const R = right ? Math.max(drag.ox + drag.ow + dx, drag.ox + MIN) : drag.ox + drag.ow;
+			const T = bottom ? drag.oy : Math.min(drag.oy + dy, drag.oy + drag.oh - MIN);
+			const B = bottom ? Math.max(drag.oy + drag.oh + dy, drag.oy + MIN) : drag.oy + drag.oh;
+			const nw = R - L;
+			const nh = B - T;
 			if (drag.kind === "zone") {
 				const z = (scheme.zones ?? []).find((x) => x.id === drag!.id);
 				if (!z) return;
-				if (drag.corner & 1) z.w = Math.max(40, drag.ow + dx);
-				if (drag.corner & 2) z.h = Math.max(40, drag.oh + dy);
+				z.x = L;
+				z.y = T;
+				z.w = nw;
+				z.h = nh;
 				dirty = true;
 			} else {
 				const n = scheme.nodes.find((x) => x.id === drag!.id);
 				if (!n) return;
-				if (drag.corner & 1) n.w = Math.max(40, drag.ow + dx);
-				if (drag.corner & 2) n.h = Math.max(40, drag.oh + dy);
+				n.x = L;
+				n.y = T;
+				n.w = nw;
+				n.h = nh;
 				dirty = true;
 			}
 		}
@@ -439,6 +464,14 @@
 
 	// ---------- ports ----------
 	const PORTS: Side[] = ["top", "right", "bottom", "left"];
+	// 4 resize handles, corner-encoded: bit0=right edge, bit1=bottom edge.
+	// 0=top-left 1=top-right 2=bottom-left 3=bottom-right.
+	const cornerHandles = (x: number, y: number, w: number, h: number): [number, number, 0 | 1 | 2 | 3][] => [
+		[x, y, 0],
+		[x + w, y, 1],
+		[x, y + h, 2],
+		[x + w, y + h, 3],
+	];
 	function portPos(n: SchemeNode, side: Side) {
 		const w = coreNodeW(n);
 		const h = coreNodeH(n);
@@ -455,7 +488,7 @@
 	}
 	function onPortDown(e: PointerEvent, id: string, side: Side) {
 		e.stopPropagation();
-		if (connectFrom && connectFrom.id !== id) completeConnect(id);
+		if (connectFrom && connectFrom.id !== id) completeConnect(id, side);
 		else startConnect(id, side);
 	}
 
@@ -752,9 +785,9 @@
 						<rect x={z.x} y={z.y} width={z.w} height={z.h} />
 						<text class="zone-label" x={z.x + 6} y={z.y - 6}>{z.label}</text>
 						{#if selectedId === z.id && selectedKind === "zone"}
-							{#each [[z.x + z.w - 6, z.y + z.h - 6, 0], [z.x - 6, z.y - 6, 1], [z.x + z.w - 6, z.y - 6, 2], [z.x - 6, z.y + z.h - 6, 3]] as [hx, hy, corner]}
+							{#each cornerHandles(z.x, z.y, z.w, z.h) as [hx, hy, corner]}
 								<!-- svelte-ignore a11y_interactive_supports_focus -->
-								<rect class="resize-handle" x={(hx as number) - 4} y={(hy as number) - 4} width="8" height="8" role="button" aria-label="resize zone" onpointerdown={(e) => startResize(e, "zone", z.id, corner as 0 | 1 | 2 | 3)} />
+								<rect class="resize-handle" x={hx - 4} y={hy - 4} width="8" height="8" role="button" aria-label="resize zone" onpointerdown={(e) => startResize(e, "zone", z.id, corner)} />
 							{/each}
 						{/if}
 					</g>
@@ -793,6 +826,8 @@
 						onpointerdown={(e) => startDragNode(e, n.id)}
 					>
 						{#if n.shape === "circle"}
+							<ellipse class="node-shape" cx={n.x + w / 2} cy={n.y + h / 2} rx={w / 2} ry={w / 2} />
+						{:else if n.shape === "ellipse"}
 							<ellipse class="node-shape" cx={n.x + w / 2} cy={n.y + h / 2} rx={w / 2} ry={h / 2} />
 						{:else if n.shape === "diamond"}
 							<polygon class="node-shape" points={`${n.x + w / 2},${n.y} ${n.x + w},${n.y + h / 2} ${n.x + w / 2},${n.y + h} ${n.x},${n.y + h / 2}`} />
@@ -814,16 +849,12 @@
 							{#each wrapLines(n.label) as line, i}
 								<text x={n.x + 6} y={n.y + 14 + i * 14}>{line}</text>
 							{/each}
-						{:else if n.shape === "diamond"}
-							{#each wrapLines(n.label) as line, i}
-								<text x={n.x + w / 2} y={n.y + h / 2 + 4 + i * 14} text-anchor="middle">{line}</text>
-							{/each}
-						{:else if n.shape === "circle"}
+						{:else if n.shape === "diamond" || n.shape === "circle" || n.shape === "ellipse"}
 							{#each wrapLines(n.label) as line, i}
 								<text x={n.x + w / 2} y={n.y + h / 2 + 4 + i * 14} text-anchor="middle">{line}</text>
 							{/each}
 						{/if}
-						{#if selectedId === n.id}
+						{#if selectedId === n.id || connectFrom}
 							{#each PORTS as side}
 								{@const p = portPos(n, side)}
 								<!-- svelte-ignore a11y_no_static_element_interactions a11y_interactive_supports_focus --><g
@@ -837,7 +868,10 @@
 									<text x="6" y="10" text-anchor="middle">+</text>
 								</g>
 							{/each}
-							<!-- svelte-ignore a11y_no_static_element_interactions a11y_interactive_supports_focus --><rect class="resize-handle" x={n.x + w - 6} y={n.y + h - 6} width="8" height="8" role="button" aria-label="resize node" onpointerdown={(e) => startResize(e, "node", n.id, 1)} />
+							{#each cornerHandles(n.x, n.y, w, h) as [hx, hy, corner]}
+								<!-- svelte-ignore a11y_no_static_element_interactions a11y_interactive_supports_focus -->
+								<rect class="resize-handle" x={hx - 4} y={hy - 4} width="8" height="8" role="button" aria-label="resize node" onpointerdown={(e) => startResize(e, "node", n.id, corner)} />
+							{/each}
 						{/if}
 					</g>
 				{/each}
@@ -852,6 +886,7 @@
 					{#if s === "rect"}<rect x="3" y="6" width="18" height="12" />{/if}
 					{#if s === "square"}<rect x="5" y="5" width="14" height="14" />{/if}
 					{#if s === "circle"}<circle cx="12" cy="12" r="8" />{/if}
+					{#if s === "ellipse"}<ellipse cx="12" cy="12" rx="9" ry="6" />{/if}
 					{#if s === "diamond"}<polygon points="12,3 21,12 12,21 3,12" />{/if}
 					{#if s === "table"}<rect x="3" y="4" width="18" height="16" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="9" y1="10" x2="9" y2="20" /><line x1="15" y1="10" x2="15" y2="20" />{/if}
 				</svg>

@@ -126,7 +126,6 @@ llmscheme/
 ├── .gitignore                     [source]
 ├── .gitattributes                  [source] linguist-generated markers
 ├── .astgrep.yml                    [linter] ast-grep config
-├── biome.json                     [formatter] excludes generated artifacts
 ├── svelte.config.js               [linter] svelte-check config
 │
 ├── package.json                   [source] devDeps: esbuild, svelte, typescript

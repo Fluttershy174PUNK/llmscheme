@@ -48,6 +48,10 @@ export function nodeW(n: SchemeNode): number {
 		const [first = ""] = wrapLines(n.label);
 		return Math.max(80, 24 + first.length * CHAR_W);
 	}
+	if (n.shape === "ellipse") {
+		const widest = Math.max(...wrapLines(n.label).map((l) => l.length));
+		return Math.max(90, 30 + widest * CHAR_W);
+	}
 	const widest = Math.max(...wrapLines(n.label).map((l) => l.length));
 	return Math.max(MIN_W, 20 + widest * CHAR_W);
 }
@@ -59,5 +63,7 @@ export function nodeH(n: SchemeNode): number {
 		return TABLE_HEAD_H + rows * TABLE_ROW_H;
 	}
 	if (n.shape === "circle") return nodeW(n);
+	if (n.shape === "ellipse")
+		return Math.max(50, wrapLines(n.label).length * LINE_H + 20);
 	return Math.max(MIN_H, wrapLines(n.label).length * LINE_H + 12);
 }
