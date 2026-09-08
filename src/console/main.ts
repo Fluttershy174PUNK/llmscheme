@@ -3,7 +3,9 @@
 // assumes the user might be unauthenticated and redirects on 401.
 import { mount } from "svelte";
 import App from "./App.svelte";
-import "../ui/pixel.css";
+// CSS is bundled into the HTML by build.ts, not via JS imports — keep
+// this file the only side-effect-free module in the entry graph.
+// import "../ui/pixel.css";
 
 const target = document.querySelector("#app");
 if (!target) throw new Error("missing #app");

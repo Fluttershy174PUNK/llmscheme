@@ -4,7 +4,7 @@
 	// the URL fragment survives reloads and deep-links.
 	import { onMount } from "svelte";
 	import { api, getToken, setToken, confirmDialog, promptDialog } from "./api.ts";
-	import { DICT, loadLang, saveLang, type Lang } from "../editor/core/i18n.ts";
+	import { loadLang, saveLang, type Lang } from "../editor/core/i18n.ts";
 
 	type Screen = "login" | "projects" | "users" | "settings";
 	let route: Screen = $state(parseHash());

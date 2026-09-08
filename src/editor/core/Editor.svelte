@@ -714,10 +714,14 @@
 
 <div class="main">
 	<div class="canvas-wrap">
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<svg
 			bind:this={svgEl}
 			class:placing={!!pendingShape}
 			class:dragging={!!drag || panning}
+			role="application"
+			aria-label="scheme editor canvas"
+			tabindex="0"
 			onpointerdown={onCanvasPointerDown}
 			onpointermove={onCanvasPointerMove}
 			onpointerup={onCanvasPointerUp}
@@ -734,25 +738,32 @@
 			<g transform={`translate(${-pan.x * zoom + pan.x}, ${-pan.y * zoom + pan.y}) scale(${zoom})`}>
 				<!-- zones (drawn first, behind nodes) -->
 				{#each scheme.zones ?? [] as z (z.id)}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<g
 						class="zone"
 						class:selected={selectedId === z.id && selectedKind === "zone"}
+						role="group"
+						aria-label="zone {z.label}"
 						onpointerdown={(e) => startDragZone(e, z.id)}
 					>
 						<rect x={z.x} y={z.y} width={z.w} height={z.h} />
 						<text class="zone-label" x={z.x + 6} y={z.y - 6}>{z.label}</text>
 						{#if selectedId === z.id && selectedKind === "zone"}
 							{#each [[z.x + z.w - 6, z.y + z.h - 6, 0], [z.x - 6, z.y - 6, 1], [z.x + z.w - 6, z.y - 6, 2], [z.x - 6, z.y + z.h - 6, 3]] as [hx, hy, corner]}
-								<rect class="resize-handle" x={(hx as number) - 4} y={(hy as number) - 4} width="8" height="8" onpointerdown={(e) => startResize(e, "zone", z.id, corner as 0 | 1 | 2 | 3)} />
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<rect class="resize-handle" x={(hx as number) - 4} y={(hy as number) - 4} width="8" height="8" role="button" aria-label="resize zone" onpointerdown={(e) => startResize(e, "zone", z.id, corner as 0 | 1 | 2 | 3)} />
 							{/each}
 						{/if}
 					</g>
 				{/each}
 				<!-- edges -->
 				{#each scheme.edges as e (e.id)}
+					<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 					<path
 						class="edge-hit"
 						d={edgePath(e)}
+						role="button"
+						aria-label="edge {e.from} to {e.to}"
 						onclick={() => selectEdge(e.id)}
 					/>
 					<path
@@ -771,8 +782,11 @@
 				{#each scheme.nodes as n (n.id)}
 					{@const w = nW(n)}
 					{@const h = nH(n)}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<g
 						class={"node" + (selectedId === n.id ? " selected" : "") + (multiSel.includes(n.id) ? " multi" : "") + (isOrphan(n.id) ? " orphan" : "")}
+						role="group"
+						aria-label="node {n.label}"
 						onpointerdown={(e) => startDragNode(e, n.id)}
 					>
 						{#if n.shape === "circle"}
@@ -809,16 +823,20 @@
 						{#if selectedId === n.id}
 							{#each PORTS as side}
 								{@const p = portPos(n, side)}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
 								<g
 									class={"port" + (connectFrom && connectFrom.id === n.id ? " armed" : "")}
 									transform={`translate(${p.x - 6}, ${p.y - 6})`}
+									role="button"
+									aria-label="connect port {side}"
 									onpointerdown={(e) => onPortDown(e, n.id, side)}
 								>
 									<rect class="port-bg" width="12" height="12" />
 									<text x="6" y="10" text-anchor="middle">+</text>
 								</g>
 							{/each}
-							<rect class="resize-handle" x={n.x + w - 6} y={n.y + h - 6} width="8" height="8" onpointerdown={(e) => startResize(e, "node", n.id, 1)} />
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<rect class="resize-handle" x={n.x + w - 6} y={n.y + h - 6} width="8" height="8" role="button" aria-label="resize node" onpointerdown={(e) => startResize(e, "node", n.id, 1)} />
 						{/if}
 					</g>
 				{/each}
