@@ -36,7 +36,10 @@ const tierB: SkillSave = {
 		// a TS assertion at runtime cannot be more precise than unknown.
 		const picker = window as unknown as {
 			showSaveFilePicker: (o?: { suggestedName?: string }) => Promise<{
-				createWritable: () => Promise<{ write: (s: string) => Promise<void>; close: () => Promise<void> }>;
+				createWritable: () => Promise<{
+					write: (s: string) => Promise<void>;
+					close: () => Promise<void>;
+				}>;
 			}>;
 		};
 		const handle = await picker.showSaveFilePicker({ suggestedName: `${scheme.name}.json` });
@@ -73,7 +76,9 @@ mount(Editor, {
 			if (!name) return null;
 			const url = window.prompt(
 				"Service URL?",
-				location.origin === "null" || location.protocol === "file:" ? "http://localhost:8080" : location.origin,
+				location.origin === "null" || location.protocol === "file:"
+					? "http://localhost:8080"
+					: location.origin,
 			);
 			if (!url) return null;
 			const key = window.prompt("API key (llm_…)?");

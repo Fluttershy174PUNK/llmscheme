@@ -48,14 +48,17 @@ const save: ServiceSave = {
 	async save(scheme, baseRev) {
 		// CAS: pass the rev the editor saw when it loaded, so a concurrent
 		// editor on another tab gives a 409 instead of silently overwriting.
-		const r = await fetch(`/api/scheme/${schemeName.split("/").map(encodeURIComponent).join("/")}`, {
-			method: "PUT",
-			headers: {
-				"content-type": "application/json",
-				Authorization: `Bearer ${token}`,
+		const r = await fetch(
+			`/api/scheme/${schemeName.split("/").map(encodeURIComponent).join("/")}`,
+			{
+				method: "PUT",
+				headers: {
+					"content-type": "application/json",
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify(scheme),
 			},
-			body: JSON.stringify(scheme),
-		});
+		);
 		if (r.status === 401) {
 			localStorage.removeItem("llmscheme-token");
 			// SAFETY: same as above; the next path is always same-origin.

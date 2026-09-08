@@ -69,7 +69,8 @@ after(() => {
 
 const freshDir = () => {
 	// wipe data dir for isolation per-test; restart would be slower
-	for (const f of fs.readdirSync(dataDir)) fs.rmSync(path.join(dataDir, f), { recursive: true, force: true });
+	for (const f of fs.readdirSync(dataDir))
+		fs.rmSync(path.join(dataDir, f), { recursive: true, force: true });
 };
 
 beforeEach(() => {
@@ -90,7 +91,10 @@ async function login(login = "admin", password = "admin"): Promise<Authed> {
 	});
 	if (!r.ok) throw new Error(`login failed: ${r.status} ${await r.text()}`);
 	const j = (await r.json()) as { token: string };
-	return { token: j.token, headers: { Authorization: `Bearer ${j.token}`, "content-type": "application/json" } };
+	return {
+		token: j.token,
+		headers: { Authorization: `Bearer ${j.token}`, "content-type": "application/json" },
+	};
 }
 
 test("B5: /editorial returns 404 and does NOT create a stray scheme folder", async () => {
@@ -256,7 +260,9 @@ test("B16: MCP modern — server/discover lists all supported versions, tools/li
 		headers: { "content-type": "application/json", "X-Api-Key": apiKey },
 		body: '{"jsonrpc":"2.0","id":2,"method":"tools/list"}',
 	});
-	const j2 = (await r2.json()) as { result: { tools: { name: string; annotations: Record<string, unknown> }[] } };
+	const j2 = (await r2.json()) as {
+		result: { tools: { name: string; annotations: Record<string, unknown> }[] };
+	};
 	assert.equal(j2.result.tools.length, 12, "12 tools");
 	for (const t of j2.result.tools) {
 		assert.ok(t.annotations, `${t.name} has no annotations`);
@@ -307,7 +313,12 @@ test("B16: Mcp-Method header/body mismatch returns 400 with -32020", async () =>
 			"X-Api-Key": apiKey,
 			"Mcp-Method": "tools/list",
 		},
-		body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "list_schemes" } }),
+		body: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1,
+			method: "tools/call",
+			params: { name: "list_schemes" },
+		}),
 	});
 	assert.equal(r.status, 400);
 	const j = (await r.json()) as { error: { code: number } };

@@ -55,7 +55,10 @@ const ENTRIES: Entry[] = [
 
 // Svelte component CSS is emitted next to the component and imported back, so
 // esbuild can order it after the global sheets.
-function sveltePlugin(cssDir: string): { name: string; setup: (b: import("esbuild").PluginBuild) => void } {
+function sveltePlugin(cssDir: string): {
+	name: string;
+	setup: (b: import("esbuild").PluginBuild) => void;
+} {
 	return {
 		name: "svelte",
 		setup(b) {

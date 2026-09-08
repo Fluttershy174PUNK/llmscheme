@@ -1,0 +1,119 @@
+{
+  "format": "block-llm",
+  "version": 1,
+  "rev": 3,
+  "name": "cats",
+  "project": {
+    "root": ".",
+    "codePaths": [
+      "src/"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "shape": "rect",
+      "label": "cats.txt",
+      "description": "word list, one cat per line (nouns and adjectives)",
+      "x": 80,
+      "y": 60,
+      "refs": [
+        "cats.txt"
+      ]
+    },
+    {
+      "id": "n2",
+      "shape": "rect",
+      "label": "pickAdj()",
+      "description": "selects a random adjective",
+      "x": 320,
+      "y": 60,
+      "refs": [
+        "src/pick.ts"
+      ]
+    },
+    {
+      "id": "n3",
+      "shape": "rect",
+      "label": "pickNoun()",
+      "description": "selects a random noun",
+      "x": 320,
+      "y": 140,
+      "refs": [
+        "src/pick.ts"
+      ]
+    },
+    {
+      "id": "n4",
+      "shape": "rect",
+      "label": "compose()",
+      "description": "adjective + noun = cat name",
+      "x": 560,
+      "y": 100,
+      "refs": [
+        "src/compose.ts"
+      ]
+    },
+    {
+      "id": "n5",
+      "shape": "rect",
+      "label": "print()",
+      "description": "stdout",
+      "x": 800,
+      "y": 100,
+      "refs": [
+        "src/print.ts"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n2",
+      "style": "solid"
+    },
+    {
+      "id": "e2",
+      "from": "n1",
+      "to": "n3",
+      "style": "solid"
+    },
+    {
+      "id": "e3",
+      "from": "n2",
+      "to": "n4",
+      "style": "solid"
+    },
+    {
+      "id": "e4",
+      "from": "n3",
+      "to": "n4",
+      "style": "solid"
+    },
+    {
+      "id": "e5",
+      "from": "n4",
+      "to": "n5",
+      "style": "solid"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "label": "cat generator",
+      "x": 40,
+      "y": 20,
+      "w": 880,
+      "h": 180
+    }
+  ],
+  "meta": {
+    "updatedAt": "2026-09-08T17:30:00.000Z",
+    "generator": "agent",
+    "nextId": {
+      "n": 6,
+      "e": 6
+    }
+  }
+}
