@@ -41,7 +41,9 @@ const FRAME = [
 export function renderCat(name: string): string {
 	const lines: string[] = [];
 	lines.push(`${C.dim}╭${"─".repeat(40)}╮${C.reset}`);
-	lines.push(`${C.dim}│${C.reset} ${C.yellow}♥${C.reset}  ${C.orange}cat-generator${C.reset} ${C.dim}(TUI v1.0)${C.reset}`);
+	lines.push(
+		`${C.dim}│${C.reset} ${C.yellow}♥${C.reset}  ${C.orange}cat-generator${C.reset} ${C.dim}(TUI v1.0)${C.reset}`,
+	);
 	lines.push(`${C.dim}│${C.reset}`);
 	for (const row of FRAME) {
 		lines.push(`${C.dim}│${C.reset}  ${row}`);

@@ -43,7 +43,7 @@ function lzwCompress(indices: number[], minCodeSize: number): Uint8Array {
 			emit(dict.get(buf) ?? 0);
 			if (nextCode < 4096) {
 				dict.set(k, nextCode++);
-				if (nextCode > (1 << codeSize) && codeSize < 12) codeSize++;
+				if (nextCode > 1 << codeSize && codeSize < 12) codeSize++;
 			} else {
 				emit(CLEAR);
 				dict = new Map();
@@ -94,10 +94,22 @@ function writeGif(
 	};
 	// first 16: ANSI colours
 	const ansi = [
-		[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
-		[0, 0, 128], [128, 0, 128], [0, 128, 128], [192, 192, 192],
-		[128, 128, 128], [255, 0, 0], [0, 255, 0], [255, 255, 0],
-		[0, 0, 255], [255, 0, 255], [0, 255, 255], [255, 255, 255],
+		[0, 0, 0],
+		[128, 0, 0],
+		[0, 128, 0],
+		[128, 128, 0],
+		[0, 0, 128],
+		[128, 0, 128],
+		[0, 128, 128],
+		[192, 192, 192],
+		[128, 128, 128],
+		[255, 0, 0],
+		[0, 255, 0],
+		[255, 255, 0],
+		[0, 0, 255],
+		[255, 0, 255],
+		[0, 255, 255],
+		[255, 255, 255],
 	];
 	ansi.forEach((c, i) => {
 		set(i, c[0]!, c[1]!, c[2]!);
@@ -113,7 +125,7 @@ function writeGif(
 	}
 	// 24-step greyscale ramp (232-255)
 	for (let i = 0; i < 24; i++) {
-		const v = Math.round((i + 1) * 255 / 25);
+		const v = Math.round(((i + 1) * 255) / 25);
 		set(232 + i, v, v, v);
 	}
 	out.write(gct);
@@ -121,10 +133,24 @@ function writeGif(
 	// application extension: NETSCAPE2.0 for looping
 	{
 		const ext = new Uint8Array([
-			0x21, 0xff, 0x0b,
-			0x4e, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32, 0x2e, 0x30,
-			0x03, 0x01,
-			loop ? 0xff : 0x00, 0x00, // loop forever
+			0x21,
+			0xff,
+			0x0b,
+			0x4e,
+			0x45,
+			0x54,
+			0x53,
+			0x43,
+			0x41,
+			0x50,
+			0x45,
+			0x32,
+			0x2e,
+			0x30,
+			0x03,
+			0x01,
+			loop ? 0xff : 0x00,
+			0x00, // loop forever
 			0x00,
 		]);
 		out.write(ext);
@@ -147,8 +173,10 @@ function writeGif(
 		// image descriptor
 		const id = new Uint8Array(10);
 		id[0] = 0x2c; // image separator
-		id[1] = 0; id[2] = 0; // left
-		id[3] = 0; id[4] = 0; // top
+		id[1] = 0;
+		id[2] = 0; // left
+		id[3] = 0;
+		id[4] = 0; // top
 		id[5] = frame.width & 0xff;
 		id[6] = (frame.width >> 8) & 0xff;
 		id[7] = frame.height & 0xff;
@@ -273,12 +301,7 @@ export function makeGif(outPath: string, name?: string): void {
 	const word = name ?? `${pickWord()} ${pickWord()}`;
 	const frames: { width: number; height: number; pixels: Uint8Array; delayCs: number }[] = [];
 	// 4 frames: tail sweeps left → neutral → right → neutral
-	const texts = [
-		`=^.^=  ${word}  `,
-		`= ^_^=  ${word} `,
-		`=^.^=  ${word}  `,
-		`= ^_^=  ${word} `,
-	];
+	const texts = [`=^.^=  ${word}  `, `= ^_^=  ${word} `, `=^.^=  ${word}  `, `= ^_^=  ${word} `];
 	for (const t of texts) {
 		frames.push({
 			width: W,

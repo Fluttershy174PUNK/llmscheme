@@ -22,7 +22,10 @@ BASE="${BASE:-http://10.0.20.250:8080}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:?ADMIN_PASSWORD env var is required}"
 
 pass() { echo "  ✓ $1"; }
-fail() { echo "  ✗ $1"; exit 1; }
+fail() {
+  echo "  ✗ $1"
+  exit 1
+}
 
 echo "→ health"
 HEALTH=$(curl -fsS "$BASE/health")

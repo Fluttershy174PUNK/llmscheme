@@ -55,7 +55,10 @@ const ENTRIES: Entry[] = [
 
 // Svelte component CSS is emitted next to the component and imported back, so
 // esbuild can order it after the global sheets.
-function sveltePlugin(cssDir: string): { name: string; setup: (b: import("esbuild").PluginBuild) => void } {
+function sveltePlugin(cssDir: string): {
+	name: string;
+	setup: (b: import("esbuild").PluginBuild) => void;
+} {
 	return {
 		name: "svelte",
 		setup(b) {
@@ -146,8 +149,25 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 
 	// component-scoped CSS from Svelte rides inside the JS bundle's imports, so
 	// it lands in the JS output, not here — nothing extra to inline.
+	//
+	// The scheme-data marker MUST contain a VALID empty scheme, not `{}`:
+	// the editor's extractSchemeJson() rejects any payload without
+	// format:"block-llm", so `{}` would throw before the welcome-seed logic
+	// runs and the page would stay blank. This is a deterministic constant
+	// (no new Date()) so the artifact is byte-stable for check.ts.
+	const EMPTY_SCHEME = `{
+			"format": "block-llm",
+			"version": 1,
+			"rev": 0,
+			"name": "untitled",
+			"project": { "root": ".", "codePaths": ["src/"] },
+			"nodes": [],
+			"edges": [],
+			"zones": [],
+			"meta": { "updatedAt": "2026-01-01T00:00:00.000Z", "generator": "agent", "nextId": { "n": 1, "e": 1 } }
+		}`;
 	const marker = e.schemeMarker
-		? `\t\t<script type="application/json" id="scheme-data">\n\t\t\t{}\n\t\t</script>\n`
+		? `\t\t<script type="application/json" id="scheme-data">\n${EMPTY_SCHEME}\n\t\t</script>\n`
 		: "";
 	const html = `<!doctype html>
 <html lang="en">

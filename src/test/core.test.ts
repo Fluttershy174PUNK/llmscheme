@@ -46,6 +46,12 @@ const badNode = (patch: Loose): core.Scheme => {
 	return s;
 };
 
+// SAFETY: fixtures deliberately build malformed objects (missing x/y,
+// nodes:null, unknown shapes) to exercise validate()/saveSchema() rejection
+// paths. A single cast from `unknown` is the only way TypeScript accepts them
+// without a chained assertion; these are never real schemes.
+const malformed = <T>(x: unknown): T => x as T;
+
 test("validate: orphan = warn, broken edge = error, dup id = error", () => {
 	const s = fixture(1);
 	const v = core.validate(s);
@@ -65,10 +71,12 @@ test("validate: unknown shape/style and future version are errors", () => {
 	assert.ok(core.validate(bad({ version: 99 })).errors.some((e) => e.code === "version"));
 	assert.ok(
 		core
-			.validate({
-				...fixture(1),
-				edges: [{ id: "e1", from: "n1", to: "n1", style: "dotted" }],
-			} as Loose as core.Scheme)
+			.validate(
+				malformed<core.Scheme>({
+					...fixture(1),
+					edges: [{ id: "e1", from: "n1", to: "n1", style: "dotted" }],
+				}),
+			)
 			.errors.some((e) => e.code === "style"),
 	);
 });
@@ -162,7 +170,7 @@ test("layout: deterministic, no cell overlaps, honors explicit coords", () => {
 	const mk = () => {
 		const s = core.emptyScheme("L");
 		for (const id of ["a", "b", "c", "d"])
-			s.nodes.push({ id, shape: "rect", label: id } as Loose as core.SchemeNode);
+			s.nodes.push(malformed<core.SchemeNode>({ id, shape: "rect", label: id }));
 		const links: [string, string][] = [
 			["a", "b"],
 			["a", "c"],
@@ -206,7 +214,7 @@ test("layout: deterministic, no cell overlaps, honors explicit coords", () => {
 test("layout: cyclic graph still places every node; empty scheme is a no-op", () => {
 	const s = core.emptyScheme("C");
 	for (const id of ["a", "b", "c", "d"])
-		s.nodes.push({ id, shape: "rect", label: id } as Loose as core.SchemeNode);
+		s.nodes.push(malformed<core.SchemeNode>({ id, shape: "rect", label: id }));
 	const cycle: [string, string][] = [
 		["a", "b"],
 		["b", "c"],
@@ -220,7 +228,7 @@ test("layout: cyclic graph still places every node; empty scheme is a no-op", ()
 
 test("layout: dangling edges do not crash and do not place ghosts", () => {
 	const s = core.emptyScheme("D");
-	s.nodes.push({ id: "a", shape: "rect", label: "a" } as Loose as core.SchemeNode);
+	s.nodes.push(malformed<core.SchemeNode>({ id: "a", shape: "rect", label: "a" }));
 	s.edges.push({ id: "e1", from: "a", to: "ghost", style: "solid" });
 	const { placed } = core.autoLayout(s);
 	assert.deepEqual(placed, ["a"]);
@@ -254,7 +262,7 @@ test("saveSchema: errors forbid the write (validation gate)", () => {
 	const dir = tmp();
 	core.saveSchema(dir, fixture(1));
 	const bad2 = structuredClone(core.readRaw(dir));
-	bad2.nodes[0] = { ...at(bad2.nodes), shape: "hexagon" } as unknown as core.SchemeNode;
+	bad2.nodes[0] = malformed<core.SchemeNode>({ ...at(bad2.nodes), shape: "hexagon" });
 	assert.throws(() => core.saveSchema(dir, bad2), core.ValidationError);
 	assert.equal(at(core.readRaw(dir).nodes).shape, "rect", "nothing landed");
 });
@@ -262,7 +270,7 @@ test("saveSchema: errors forbid the write (validation gate)", () => {
 test("B8 saveSchema: nodes:null is refused, scheme on disk stays healthy", () => {
 	const dir = tmp();
 	core.saveSchema(dir, fixture(1));
-	const broken = { ...structuredClone(core.readRaw(dir)), nodes: null } as Loose as core.Scheme;
+	const broken = malformed<core.Scheme>({ ...structuredClone(core.readRaw(dir)), nodes: null });
 	assert.throws(() => core.saveSchema(dir, broken), core.ValidationError);
 	const after = core.readRaw(dir);
 	assert.equal(after.nodes.length, 1, "still readable");
@@ -683,7 +691,7 @@ test("exports are written atomically and match the final rev", () => {
 
 // The real v1 data must still load: the format on disk does not change in v2.
 test("reads the v1 UI/page scheme unchanged (live data compatibility)", () => {
-	const file = new URL("../../schemes/UI-page.json", import.meta.url);
+	const file = new URL("../schemes/UI-page.json", import.meta.url);
 	const s = JSON.parse(fs.readFileSync(file, "utf8")) as core.Scheme;
 	assert.equal(s.format, "block-llm");
 	assert.equal(s.rev, 2);

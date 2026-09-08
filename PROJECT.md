@@ -98,13 +98,13 @@ llmscheme/
 │   ├── test_dev.md             ← hermes skill reference for the sandbox
 │   └── README.md
 │
-├── docs/                       ← User-facing guides:
+├── docs/                       ← User-facing guides (under src/docs/)
 │   ├── SCHEME_FORMAT.md        ← JSON format, every field, validation rules
 │   ├── EDITOR.md               ← Editor tiers + browser quirks
 │   ├── LOGIN.md                ← Console + admin guide
 │   └── MIGRATION.md            ← v1 → v2 changes
 │
-├── schemes/                    ← UI requirements (35 nodes, 8 zones)
+├── schemes/                    ← UI requirements (under src/schemes/)
 │   └── UI-page.json
 │
 ├── .github/workflows/
@@ -156,7 +156,7 @@ PORT=8080 DATA_DIR=./data \
 | If you want to change... | Edit this file |
 |---|---|
 | ...the data model (a new field on a node) | `src/core/types.ts` + `src/core/validate.ts` |
-| ...the JSON format spec | `docs/SCHEME_FORMAT.md` |
+| ...the JSON format spec | `src/docs/SCHEME_FORMAT.md` |
 | ...the Markdown export (the mermaid diagram) | `src/core/exportMd.ts` |
 | ...the auto-layout algorithm | `src/core/layout.ts` |
 | ...how a save is written to disk | `src/core/saveSchema.ts` |

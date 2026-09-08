@@ -23,7 +23,7 @@ llmscheme/
 ├── .llm                      ← current structure + plan (for LLMs)
 ├── .test_on_local_proxmox/   ← real deploy + test scripts
 ├── README.md  PROJECT.md  INTRO.md  LICENSE
-├── docs/                     ← in-depth guides
+│   ├── docs/                 ← in-depth guides (moved under src/)
 ├── schemes/                  ← UI requirements
 └── PLAN.md  TODO.md          ← historical planning
 ```
@@ -421,14 +421,14 @@ sessions** but leaves your schemes on disk intact.
   [SKILL/llmscheme/SKILL.md](SKILL/llmscheme/SKILL.md)
 - **If you're using the browser editor:**
   [SKILL/llmscheme/references/EDITOR.md](SKILL/llmscheme/references/EDITOR.md)
-  or [docs/EDITOR.md](docs/EDITOR.md)
+  or [src/docs/EDITOR.md](src/docs/EDITOR.md)
 - **If you're running the HTTP service:**
   [SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md)
-  or [docs/LOGIN.md](docs/LOGIN.md)
+  or [src/docs/LOGIN.md](src/docs/LOGIN.md)
 - **If you want to know the JSON format inside-out:**
-  [docs/SCHEME_FORMAT.md](docs/SCHEME_FORMAT.md)
+  [src/docs/SCHEME_FORMAT.md](src/docs/SCHEME_FORMAT.md)
 - **If you're upgrading from v1:**
-  [docs/MIGRATION.md](docs/MIGRATION.md)
+  [src/docs/MIGRATION.md](src/docs/MIGRATION.md)
 - **If you're contributing code:**
   [PROJECT.md](PROJECT.md)
 - **If you want a live snapshot of the project:**

@@ -55,7 +55,7 @@ click "settings" in the top bar → change password
 ├── PROJECT.md  README.md         ← this repo
 ├── LICENSE                       ← MIT
 ├── INTRO.md                      ← you are here
-└── docs/                         ← in-depth guides
+└── src/docs/                     ← in-depth guides
 ```
 
 ---
@@ -118,7 +118,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/schemes
 
 - **README.md** — what llmscheme is, 5-minute quick start, glossary
 - **PROJECT.md** — repo map for contributors, day-to-day commands
-- **docs/** — in-depth guides (format, editor, console, migration)
+- **src/docs/** — in-depth guides (format, editor, console, migration)
 - **PLAN.md** — historical: the v2 plan from the v1 audit
 - **TODO.md** — historical: what was left to do (all done now)
 

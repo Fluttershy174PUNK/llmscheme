@@ -59,9 +59,11 @@ for (const [rel, dest] of PAIRS) {
 	);
 
 	for (const f of srcFiles)
-		if (!skillFiles.includes(f)) note(`SKILL/llmscheme/${dest}/${f} is missing (run npm run sync-skill)`);
+		if (!skillFiles.includes(f))
+			note(`SKILL/llmscheme/${dest}/${f} is missing (run npm run sync-skill)`);
 	for (const f of skillFiles)
-		if (!srcFiles.includes(f)) note(`SKILL/llmscheme/${dest}/${f} is stale: no longer in src/${rel}/`);
+		if (!srcFiles.includes(f))
+			note(`SKILL/llmscheme/${dest}/${f} is stale: no longer in src/${rel}/`);
 	for (const f of srcFiles.filter((x) => skillFiles.includes(x))) {
 		const a = path.join(srcRoot, f);
 		const b = path.join(skillRoot, f);
@@ -131,12 +133,14 @@ if (!fs.existsSync(editor)) {
 const serviceEditor = path.join(mcp, "editor.html");
 if (fs.existsSync(serviceEditor)) {
 	const size = fs.statSync(serviceEditor).size;
-	if (size > BUDGET_EDITOR) note(`SERVICE-MCP/llmscheme/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
+	if (size > BUDGET_EDITOR)
+		note(`SERVICE-MCP/llmscheme/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
 }
 const serviceConsole = path.join(mcp, "console.html");
 if (fs.existsSync(serviceConsole)) {
 	const size = fs.statSync(serviceConsole).size;
-	if (size > BUDGET_CONSOLE) note(`SERVICE-MCP/llmscheme/console.html ${size}B > budget ${BUDGET_CONSOLE}B`);
+	if (size > BUDGET_CONSOLE)
+		note(`SERVICE-MCP/llmscheme/console.html ${size}B > budget ${BUDGET_CONSOLE}B`);
 	const html = fs.readFileSync(serviceConsole, "utf8");
 	// served over http: the font is a cacheable file, not 26K of base64 per page
 	if (/data:font\/woff2;base64/.test(html))
