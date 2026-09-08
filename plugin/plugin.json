@@ -1,7 +1,7 @@
 {
-  "name": "llmscheme",
-  "version": "2.0.0",
-  "description": "block-llm schemes for Hermes: read/update the project's living logic scheme (.block_llm/scheme.json) via the shared core (validate, node/edge ops, CAS by rev, SCHEME.md exports). Placeholder manifest — fill in per the Hermes plugin spec when it is available.",
-  "entry": "./plugin.mjs",
-  "permissions": ["fs:project"]
+	"name": "llmscheme",
+	"version": "2.0.0",
+	"description": "block-llm schemes for Hermes: read/update the project's living logic scheme (.block_llm/scheme.json) via the shared core (validate, node/edge ops, CAS by rev, SCHEME.md exports). Placeholder manifest — fill in per the Hermes plugin spec when it is available.",
+	"entry": "./plugin.mjs",
+	"permissions": ["fs:project"]
 }
