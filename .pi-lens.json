@@ -1,10 +1,10 @@
 {
-  "ignore": [
-    "node_modules/",
-    "dist/",
-    "SKILL/llmscheme/",
-    "SERVICE-MCP/llmscheme/editor.html",
-    "SERVICE-MCP/llmscheme/console.html",
-    "SERVICE-MCP/llmscheme/assets/"
-  ]
+	"ignore": [
+		"node_modules/",
+		"dist/",
+		"SKILL/llmscheme/",
+		"SERVICE-MCP/llmscheme/editor.html",
+		"SERVICE-MCP/llmscheme/console.html",
+		"SERVICE-MCP/llmscheme/assets/"
+	]
 }

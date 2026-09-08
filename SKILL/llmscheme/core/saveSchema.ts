@@ -5,7 +5,13 @@ import { validate } from "./validate.ts";
 import { exportMd } from "./exportMd.ts";
 import { CasError, DataError, ValidationError } from "./errors.ts";
 
-export const DIR = ".block_llm";
+// v2 layout: a scheme is a flat directory (e.g. `.llmscheme/logic_scheme/`).
+// scheme.json, SCHEME.md, scheme.html, VERSION and cache/ all live directly
+// inside that directory — no nested `.block_llm/` anymore. DIR is empty so
+// `path.join(root, DIR, x)` collapses to `path.join(root, x)`; it is kept as
+// the one place callers and tests reach for "the scheme dir" without knowing
+// the layout details.
+export const DIR = "";
 export const AUTOSAVE_KEEP = 50;
 export const BACKUP_KEEP = 20;
 export const JOURNAL_MAX = 5000;

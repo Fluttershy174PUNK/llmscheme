@@ -1,26 +1,23 @@
-# llmscheme-service — single image, no build step. The container runs src/ on
-# the host's Node 22.18+, so the build pipeline (esbuild + svelte/compiler)
-# only needs to run when we want a fresh console.html or editor.html — that
-# is done OUTSIDE this image by `npm run build`, and the artifacts are
-# mounted in via /assets.
+# llmscheme-service — single image, no build step in the container.
+# The image ships the sources (src/) AND the pre-built single-file HTML
+# artifacts (SERVICE-MCP/llmscheme/*.html + assets/). `npm run build` runs on
+# the developer's machine (Node 22.18+), never inside this image, so the
+# sandbox does not need Node on the host.
 FROM node:22.22-bookworm-slim
 
 WORKDIR /app
-# only what the service needs at runtime; the test/build deps are not here
+# the service has zero runtime dependencies, but npm ci keeps the lockfile honest
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY src/ ./src/
-COPY schemes/ ./schemes/
-# editor.html + console.html + assets/ are produced by `npm run build` and
-# mounted as a volume in docker-compose; COPY them in if you bake the image
-# without a volume.
-# COPY mcp-service/editor.html mcp-service/console.html mcp-service/assets/ ./mcp-service/
+COPY README.md ./
+COPY SERVICE-MCP/llmscheme/ ./SERVICE-MCP/llmscheme/
 
 ENV NODE_ENV=production
 ENV PORT=8080
 ENV DATA_DIR=/data
-ENV ASSETS_DIR=/app/mcp-service
+ENV ASSETS_DIR=/app/SERVICE-MCP/llmscheme
 
 EXPOSE 8080
 

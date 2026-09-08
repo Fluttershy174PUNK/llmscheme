@@ -556,29 +556,30 @@ test("path-jail: ../ and absolute escapes refused, inside paths allowed", () => 
 	assert.equal(core.jail(dir, "."), dir);
 });
 
-test("findProjectDir: finds .block_llm upward, stops at git root, dedupes", () => {
+test("findSchemeDirs: finds .llmscheme/<type>_scheme upward, stops at git root, dedupes", () => {
 	const root = tmp();
 	fs.mkdirSync(path.join(root, ".git"));
 	const proj = path.join(root, "proj");
-	const mkScheme = (dir: string) => {
-		fs.mkdirSync(path.join(dir, core.DIR), { recursive: true });
-		fs.writeFileSync(path.join(dir, core.DIR, "scheme.json"), "{}");
+	const mkScheme = (dir: string, type: core.SchemeType = "logic") => {
+		const sd = core.schemeDir(dir, type);
+		fs.mkdirSync(sd, { recursive: true });
+		fs.writeFileSync(path.join(sd, "scheme.json"), "{}");
 	};
 	mkScheme(proj);
 	const deep = path.join(proj, "src", "a");
 	fs.mkdirSync(deep, { recursive: true });
-	assert.deepEqual(core.findProjectDir(deep), [proj]);
+	assert.deepEqual(core.findSchemeDirs(deep), [core.schemeDir(proj, "logic")]);
 
 	// a sibling outside the project sees nothing (git root boundary)
 	const sibling = path.join(root, "other");
 	fs.mkdirSync(sibling);
-	assert.deepEqual(core.findProjectDir(sibling), []);
+	assert.deepEqual(core.findSchemeDirs(sibling), []);
 
-	// two candidates -> both returned, the caller must ask instead of guessing
-	mkScheme(path.join(proj, "sub"));
-	assert.deepEqual(core.findProjectDir(path.join(proj, "sub", "x")), [
-		path.join(proj, "sub"),
-		proj,
+	// a second scheme type in the same project is a second candidate
+	mkScheme(proj, "code");
+	assert.deepEqual(core.findSchemeDirs(path.join(proj, "src", "x")), [
+		core.schemeDir(proj, "logic"),
+		core.schemeDir(proj, "code"),
 	]);
 });
 
@@ -641,7 +642,12 @@ test("B14 public surface is lean: dead exports gone, live ones present", () => {
 		"readSnapshot",
 		"saveSchema",
 		"jail",
-		"findProjectDir",
+		"findSchemeDirs",
+		"schemeDir",
+		"schemeDirName",
+		"projectRootOf",
+		"SCHEMES_DIR",
+		"SCHEME_TYPES",
 		"ensureGitignoreLine",
 		"ensureAgentsSection",
 		"renderHtml",

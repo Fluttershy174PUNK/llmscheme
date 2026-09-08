@@ -5,7 +5,7 @@
 // Exit codes: 0 ok / 1 data error or CAS conflict / 2 usage error.
 //
 // Every command except `pull` is offline and writes only inside the project
-// (.block_llm/, SCHEME.md, .gitignore, AGENTS.md). `pull` is the one networked
+// (.llmscheme/<type>_scheme/, .gitignore, AGENTS.md). `pull` is the one networked
 // command and needs --url and --key explicitly — nothing is hardcoded.
 import fs from "node:fs";
 import path from "node:path";
@@ -18,7 +18,12 @@ import {
 	ensureAgentsSection,
 	ensureGitignoreLine,
 	exportMd,
-	findProjectDir,
+	findSchemeDirs,
+	schemeDir,
+	projectRootOf,
+	SCHEMES_DIR,
+	SCHEME_TYPES,
+	type SchemeType,
 	readRaw,
 	readSnapshot,
 	renderHtml,
@@ -52,25 +57,27 @@ const SKILL_DIR = path.dirname(HERE); // …/skill or …/src
 const USAGE = `usage: block <command> [project] [options]
 
 commands:
-  init [project] [--name N]        set up .block_llm/ + SCHEME.md + .gitignore line
-  get [project] [--json]           print scheme summary
-  validate [project] [--json]      errors / warnings / stale refs
+  init [project] [--type logic|code|ui] [--name N]
+                                   set up .llmscheme/<type>_scheme/ + SCHEME.md
+  get [project] [--type T] [--json]   print scheme summary
+  validate [project] [--type T] [--json]   errors / warnings / stale refs
   node add|update|remove [...]     --id --shape --label --desc --x --y --w --h --ref
                                    --table-cols "a,b,c" --table-rows "r1c1|r1c2;r2c1|r2c2"
   edge add|update|remove [...]     --id --from --to --style --label --desc --from-side --to-side
   zone add|update|remove [...]     --id --label --desc --x --y --w --h --label-side
-  put <file|-> [project]           write whole scheme (stdin ok)
-  pull --url U --key K --name N    download a scheme from a service into this project
-  sync [project] [--from FILE]     re-read json -> rebuild SCHEME.md + scheme.html
-  render [project] [--md|--html]   regenerate exports without changing the scheme
-  diff [project] [--rev N]         what changed since revision N
-  history [project] [--limit N]    journal + autosave list
-  restore [project] --rev N        roll back to rev N (as a new write)
-  doctor [project]                 self-check structure/consistency/budget
-  upgrade [project]                migrate scheme format (currently a check)
+  put <file|-> [project] [--type T]  write whole scheme (stdin ok)
+  pull --url U --key K --name N [--type T]  download a scheme from a service
+  sync [project] [--type T] [--from FILE]  re-read json -> rebuild exports
+  render [project] [--type T] [--md|--html]  regenerate exports
+  diff [project] [--type T] [--rev N]   what changed since revision N
+  history [project] [--type T] [--limit N]  journal + autosave list
+  restore [project] [--type T] --rev N  roll back to rev N (as a new write)
+  doctor [project] [--type T]      self-check structure/consistency/budget
+  upgrade [project] [--type T]     migrate scheme format (currently a check)
   version                          print skill + format version
 
 global options:
+  --type T     scheme type: logic | code | ui (default logic)
   --rev N      expected revision for CAS (write commands)
   --json       machine-readable output
   --actor NAME agent|human-json (default agent)
@@ -91,6 +98,7 @@ const FLAG_KINDS: Record<string, Kind> = {
 	json: "bool",
 	md: "bool",
 	html: "bool",
+	type: "str",
 	name: "str",
 	id: "str",
 	shape: "str",
@@ -120,6 +128,7 @@ interface Flags {
 	json?: boolean;
 	md?: boolean;
 	html?: boolean;
+	type?: SchemeType;
 	name?: string;
 	id?: string;
 	shape?: string;
@@ -198,20 +207,47 @@ function parseArgs(argv: string[]): { flags: Flags; rest: string[] } {
 const { flags, rest } = parseArgs(process.argv.slice(2));
 const [cmd, ...positional] = rest;
 
-// ---------- project resolution ----------
-// (a) explicit path wins; (b) search only UPWARD from cwd; (c) stop at git root;
-// (d) multiple candidates -> ask, never silently pick.
-function resolveProject(explicit?: string): string {
-	if (explicit) return path.resolve(explicit);
-	const hits = findProjectDir(process.cwd());
+// ---------- scheme resolution ----------
+// The CLI may operate on one of several schemes per project (.llmscheme/
+// logic_scheme|code_scheme|ui_scheme). Resolution order:
+//   (a) explicit scheme dir / project path wins;
+//   (b) --type picks the matching scheme dir;
+//   (c) exactly one scheme dir found -> use it;
+//   (d) multiple and no --type -> ask, never silently pick.
+function schemeType(): SchemeType {
+	if (flags.type === undefined) return "logic";
+	if (SCHEME_TYPES.includes(flags.type)) return flags.type;
+	usage(2, `--type must be one of ${SCHEME_TYPES.join("|")}, got "${flags.type}"`);
+}
+
+// an explicit path may be a scheme dir itself or a project root; resolve to a
+// scheme dir. For `init` the scheme does not exist yet, so this only applies to
+// commands that read.
+function resolveScheme(explicit?: string): string {
+	if (explicit) {
+		const p = path.resolve(explicit);
+		// a scheme dir has scheme.json directly inside (DIR is "" in v2)
+		if (fs.existsSync(path.join(p, DIR, "scheme.json"))) return p;
+		// otherwise treat it as a project root and append the typed scheme dir
+		const typed = schemeDir(p, schemeType());
+		if (fs.existsSync(path.join(typed, DIR, "scheme.json"))) return typed;
+		process.stderr.write(`no scheme at ${typed} (run init first)\n`);
+		process.exit(2);
+	}
+	const hits = findSchemeDirs(process.cwd());
 	if (hits.length === 1) return hits[0] as string;
 	if (hits.length > 1) {
+		const want = flags.type;
+		if (want) {
+			const typed = schemeDir(projectRootOf(hits[0] as string), schemeType());
+			if (hits.includes(typed)) return typed;
+		}
 		process.stderr.write(
-			`multiple .block_llm/ projects found, specify one:\n${hits.map((h) => `  ${h}`).join("\n")}\n`,
+			`multiple schemes found, specify --type or a path:\n${hits.map((h) => `  ${h}`).join("\n")}\n`,
 		);
 		process.exit(2);
 	}
-	process.stderr.write(`no .block_llm/ found from ${process.cwd()} upward\n`);
+	process.stderr.write(`no .llmscheme/<type>_scheme found from ${process.cwd()} upward (run init first)\n`);
 	process.exit(2);
 }
 
@@ -267,11 +303,14 @@ function writeScheme(root: string, scheme: Scheme, op: string, summary: string, 
 	});
 }
 
-// refs are relative to the project root (jail: they never escape it)
-function staleRefs(root: string, scheme: Scheme) {
+// refs are relative to the PROJECT root (jail: they never escape it). The
+// CLI now operates on a scheme dir (.llmscheme/<type>_scheme/), so recover the
+// project root before resolving a ref path.
+function staleRefs(schemeDirAbs: string, scheme: Scheme) {
+	const projectRoot = projectRootOf(schemeDirAbs);
 	return checkRefs(scheme, (rel) => {
 		try {
-			fs.statSync(path.resolve(root, rel));
+			fs.statSync(path.resolve(projectRoot, rel));
 			return true;
 		} catch {
 			return false;
@@ -361,24 +400,28 @@ async function main(): Promise<number> {
 		}
 
 		case "init": {
-			const root = path.resolve(positional[0] ?? process.cwd());
+			const projectRoot = path.resolve(positional[0] ?? process.cwd());
+			const root = schemeDir(projectRoot, schemeType());
 			fs.mkdirSync(path.join(root, DIR, "cache"), { recursive: true });
 			if (!fs.existsSync(path.join(root, DIR, "scheme.json")))
 				writeScheme(root, emptyScheme(flags.name ?? path.basename(root)), "init", "init");
-			ensureGitignoreLine(root, `${DIR}/cache/`);
+			// .gitignore and AGENTS.md live at the PROJECT root, not the scheme dir.
+			// Only the per-scheme cache/ is ignored; scheme.json, SCHEME.md and
+			// scheme.html are committed.
+			ensureGitignoreLine(projectRoot, `${SCHEMES_DIR}/*/cache/`);
 			const verFile = path.join(root, DIR, "VERSION");
 			if (!fs.existsSync(verFile)) {
 				const src = versionFile();
 				if (src) fs.copyFileSync(src, verFile);
 			}
-			ensureAgentsSection(root);
+			ensureAgentsSection(projectRoot);
 			const rev = readRaw(root).rev;
 			out({ ok: true, root, rev }, `initialized ${path.join(root, DIR)} (rev ${rev})\n`);
 			return 0;
 		}
 
 		case "get": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			const s = readRaw(root);
 			const v = validate(s);
 			const warnings = [...v.warnings, ...staleRefs(root, s)];
@@ -399,7 +442,7 @@ async function main(): Promise<number> {
 		}
 
 		case "validate": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			const s = readRaw(root);
 			const v = validate(s);
 			const warnings = [...v.warnings, ...staleRefs(root, s)];
@@ -417,7 +460,7 @@ async function main(): Promise<number> {
 
 		case "node": {
 			const [action] = positional;
-			const root = resolveProject(positional[1]);
+			const root = resolveScheme(positional[1]);
 			const s = readRaw(root);
 			if (action === "add") {
 				if (!flags.label) usage(2, "node add requires --label");
@@ -440,7 +483,7 @@ async function main(): Promise<number> {
 
 		case "edge": {
 			const [action] = positional;
-			const root = resolveProject(positional[1]);
+			const root = resolveScheme(positional[1]);
 			const s = readRaw(root);
 			if (action === "add") {
 				if (!flags.from || !flags.to) usage(2, "edge add requires --from and --to");
@@ -468,7 +511,7 @@ async function main(): Promise<number> {
 
 		case "zone": {
 			const [action] = positional;
-			const root = resolveProject(positional[1]);
+			const root = resolveScheme(positional[1]);
 			const s = readRaw(root);
 			s.zones ??= [];
 			if (action === "add") {
@@ -501,7 +544,7 @@ async function main(): Promise<number> {
 		case "put": {
 			const fileArg = positional[0];
 			if (!fileArg) usage(2, "put requires <file|->");
-			const root = resolveProject(positional[1]);
+			const root = resolveScheme(positional[1]);
 			const s = parseJson(readInputFile(fileArg), fileArg);
 			// CAS: with --rev it must match disk; without, the disk rev wins
 			// (the payload's own rev is stale by definition).
@@ -519,7 +562,8 @@ async function main(): Promise<number> {
 		case "pull": {
 			if (!flags.url || !flags.key || !flags.name)
 				usage(2, "pull requires --url, --key and --name");
-			const root = path.resolve(positional[0] ?? process.cwd());
+			const projectRoot = path.resolve(positional[0] ?? process.cwd());
+			const root = schemeDir(projectRoot, schemeType());
 			const url = new URL(
 				`/api/scheme/${flags.name.split("/").map(encodeURIComponent).join("/")}`,
 				flags.url,
@@ -534,8 +578,8 @@ async function main(): Promise<number> {
 				throw new DataError(`pull got a non-block-llm payload from ${url.href}`);
 
 			fs.mkdirSync(path.join(root, DIR, "cache"), { recursive: true });
-			ensureGitignoreLine(root, `${DIR}/cache/`);
-			ensureAgentsSection(root);
+			ensureGitignoreLine(projectRoot, `${SCHEMES_DIR}/*/cache/`);
+			ensureAgentsSection(projectRoot);
 			let localRev = 0;
 			try {
 				localRev = readRaw(root).rev;
@@ -557,7 +601,7 @@ async function main(): Promise<number> {
 		}
 
 		case "sync": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			// --from FILE rebuilds exports around a hand-edited/agent payload;
 			// without it, the on-disk scheme is re-exported as is
 			const s = flags.from ? parseJson(readInputFile(flags.from), flags.from) : readRaw(root);
@@ -567,7 +611,7 @@ async function main(): Promise<number> {
 		}
 
 		case "render": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			const s = readRaw(root);
 			const wantMd = flags.md || !flags.html;
 			const wantHtml = flags.html || !flags.md;
@@ -584,7 +628,7 @@ async function main(): Promise<number> {
 		}
 
 		case "diff": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			const cur = readRaw(root);
 			const base = flags.rev ?? cur.rev - 1;
 			if (base >= cur.rev) {
@@ -612,7 +656,7 @@ async function main(): Promise<number> {
 		}
 
 		case "history": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			const limit = flags.limit ?? 20;
 			const journalFile = path.join(root, DIR, "cache", "journal.jsonl");
 			// flatMap drops the bad lines: a truncated tail must not kill the tape
@@ -653,7 +697,7 @@ async function main(): Promise<number> {
 		}
 
 		case "restore": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			if (flags.rev === undefined) usage(2, "restore requires --rev N");
 			const cur = readRaw(root);
 			const snapshot = readSnapshot(root, flags.rev);
@@ -666,7 +710,7 @@ async function main(): Promise<number> {
 		}
 
 		case "doctor": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			const problems: string[] = [];
 			const blockDir = path.join(root, DIR);
 			for (const f of ["scheme.json", "VERSION"])
@@ -711,7 +755,7 @@ async function main(): Promise<number> {
 		}
 
 		case "upgrade": {
-			const root = resolveProject(positional[0]);
+			const root = resolveScheme(positional[0]);
 			const s = readRaw(root);
 			const supported = Number(readVersion().format ?? 1);
 			if (s.version > supported) {

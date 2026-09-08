@@ -170,6 +170,7 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 		? `\t\t<script type="application/json" id="scheme-data">\n${EMPTY_SCHEME}\n\t\t</script>\n`
 		: "";
 	const html = `<!doctype html>
+<!-- pi-lens-ignore-file: the inline script is the minified Svelte runtime bundled by esbuild -->
 <html lang="en">
 \t<head>
 \t\t<meta charset="UTF-8" />

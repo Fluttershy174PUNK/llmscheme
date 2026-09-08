@@ -40,7 +40,8 @@ const fresh = () => {
 	const dir = tmp();
 	const r = run(["init", dir, "--name", "T"], dir);
 	assert.equal(r.status, 0, `init failed: ${r.stderr}`);
-	return dir;
+	// the CLI operates on the scheme dir (.llmscheme/logic_scheme by default)
+	return core.schemeDir(dir, "logic");
 };
 
 test("CLI runs straight from .ts: init -> node x3 -> edge x2 -> validate -> get", () => {
@@ -67,15 +68,16 @@ test("CLI runs straight from .ts: init -> node x3 -> edge x2 -> validate -> get"
 });
 
 test("init is idempotent: no dup gitignore line, single AGENTS.md section", () => {
-	const dir = fresh();
-	run(["init", dir, "--name", "T"], dir);
-	run(["init", dir, "--name", "T"], dir);
-	const gi = fs.readFileSync(path.join(dir, ".gitignore"), "utf8");
-	assert.equal(gi.split(".block_llm/cache/").length - 1, 1, "one gitignore line");
-	const ag = fs.readFileSync(path.join(dir, "AGENTS.md"), "utf8");
+	const proj = tmp();
+	run(["init", proj, "--name", "T"], proj);
+	run(["init", proj, "--name", "T"], proj);
+	// .gitignore and AGENTS.md live at the project root
+	const gi = fs.readFileSync(path.join(proj, ".gitignore"), "utf8");
+	assert.equal(gi.split(`${core.SCHEMES_DIR}/`).length - 1, 1, "one gitignore line");
+	const ag = fs.readFileSync(path.join(proj, "AGENTS.md"), "utf8");
 	assert.equal(ag.split(core.AGENTS_START).length - 1, 1, "one AGENTS section");
-	// VERSION lands once and is copied into the project
-	assert.match(fs.readFileSync(path.join(dir, core.DIR, "VERSION"), "utf8"), /^skill: /);
+	// VERSION lands once, inside the scheme dir
+	assert.match(fs.readFileSync(path.join(core.schemeDir(proj, "logic"), "VERSION"), "utf8"), /^skill: /);
 });
 
 test("node update/remove: w/h override, table cols/rows, edges cleaned with the node", () => {
@@ -346,8 +348,8 @@ test("doctor: clean project passes, stale export and missing files are reported"
 	run(["render", "."], dir);
 	assert.equal(run(["doctor", "."], dir).status, 0);
 
-	// missing scheme.json in an empty dir: a data error (1), matching v1
-	assert.equal(run(["doctor", tmp()], tmp()).status, 1);
+	// missing scheme in an empty dir: no scheme found -> usage error (2)
+	assert.equal(run(["doctor", tmp()], tmp()).status, 2);
 });
 
 test("usage errors exit 2 with the usage text, never a stacktrace", () => {
@@ -371,28 +373,27 @@ test("usage errors exit 2 with the usage text, never a stacktrace", () => {
 	}
 });
 
-test("no project found upward exits 2; multiple candidates asks instead of guessing", () => {
+test("no scheme found upward exits 2; multiple types asks instead of guessing", () => {
 	const dir = tmp();
 	// no path argument -> searches upward from cwd and finds nothing (2).
 	// An explicit path is a data error instead (readRaw: "no scheme at ...").
 	const r = run(["get"], dir);
 	assert.equal(r.status, 2);
-	assert.match(r.stderr, /no \.block_llm\/ found/);
-	assert.equal(run(["get", "."], dir).status, 1);
+	assert.match(r.stderr, /no \.llmscheme\//);
+	assert.equal(run(["get", "."], dir).status, 2);
 
-	// two projects: cwd nested under both
-	const root = tmp();
-	fs.mkdirSync(path.join(root, ".git"));
-	const outer = path.join(root, "outer");
-	const inner = path.join(outer, "inner");
-	fs.mkdirSync(inner, { recursive: true });
-	run(["init", outer, "--name", "O"], outer);
-	run(["init", inner, "--name", "I"], inner);
-	const multi = run(["get"], inner);
+	// two scheme types in one project: cwd nested under both
+	const proj = tmp();
+	fs.mkdirSync(path.join(proj, ".git"));
+	run(["init", proj, "--name", "L", "--type", "logic"], proj);
+	run(["init", proj, "--name", "C", "--type", "code"], proj);
+	const multi = run(["get"], proj);
 	assert.equal(multi.status, 2);
-	assert.match(multi.stderr, /multiple \.block_llm\/ projects found/);
-	// an explicit path always wins
-	assert.equal(run(["get", outer], inner).status, 0);
+	assert.match(multi.stderr, /multiple schemes found/);
+	// --type disambiguates
+	assert.equal(run(["get", "--type", "logic"], proj).status, 0);
+	// an explicit scheme dir always wins
+	assert.equal(run(["get", core.schemeDir(proj, "logic")], proj).status, 0);
 });
 
 test("pull requires --url, --key and --name (never a hardcoded endpoint)", () => {

@@ -50,6 +50,16 @@ export {
 	saveSchema,
 	type SaveOptions,
 } from "./saveSchema.ts";
-export { PathJailError, jail, findProjectDir } from "./pathjail.ts";
+export {
+	PathJailError,
+	jail,
+	findSchemeDirs,
+	schemeDir,
+	schemeDirName,
+	projectRootOf,
+	SCHEMES_DIR,
+	SCHEME_TYPES,
+	type SchemeType,
+} from "./pathjail.ts";
 export { ensureGitignoreLine, ensureAgentsSection, AGENTS_START, AGENTS_END } from "./gitmd.ts";
 export { renderHtml, extractSchemeJson, DATA_MARKER, HtmlError } from "./renderHtml.ts";

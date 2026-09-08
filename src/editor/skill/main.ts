@@ -102,22 +102,11 @@ mount(Editor, {
 	props: {
 		initial,
 		save,
-		canPatchProject: () => {
-			const name = initial.name;
-			if (!name) return null;
-			const url = window.prompt(
-				"Service URL?",
-				location.origin === "null" || location.protocol === "file:"
-					? "http://localhost:8080"
-					: location.origin,
-			);
-			if (!url) return null;
-			const key = window.prompt("API key (llm_…)?");
-			if (!key) return null;
-			const cmd = `node <skill-dir>/cli/block.ts pull --url ${url} --key ${key} --name ${name}`;
-			navigator.clipboard?.writeText(cmd);
-			return { cmd };
-		},
+		// The skill is a LOCAL tool — no service URL, no API key. "patch to
+		// project" is the same as tier A save: it puts the `put` command on the
+		// clipboard so the user can hand it to their agent. Nothing here ever
+		// asks for a URL or an llm_ key.
+		canPatchProject: () => null,
 		canOpenLocal: () => true,
 	},
 });

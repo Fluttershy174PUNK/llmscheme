@@ -23,10 +23,11 @@ export const AGENTS_END = "<!-- block-llm:end -->";
 function agentsSection(): string {
 	return [
 		AGENTS_START,
-		"## Project scheme",
+		"## Project schemes",
 		"",
-		"This project keeps a living logic scheme in `.block_llm/`.",
-		"Before architectural changes read `SCHEME.md`.",
+		"This project keeps living logic schemes in `.llmscheme/`",
+		"(`logic_scheme/`, `code_scheme/`, `ui_scheme/`).",
+		"Before architectural changes read the matching `SCHEME.md`.",
 		"After them update the scheme with the block-llm skill.",
 		AGENTS_END,
 		"",

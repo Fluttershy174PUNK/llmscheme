@@ -70,7 +70,7 @@ export class Schemes {
 		const tpl = this.template();
 		return saveSchema(root, scheme, {
 			extraFiles: tpl
-				? (final) => ({ ".block_llm/scheme.html": renderHtml(tpl, final) })
+				? (final) => ({ "scheme.html": renderHtml(tpl, final) })
 				: undefined,
 			journal: { actor: scheme.meta.generator, op, summary: `${op} via service` },
 		});
@@ -78,7 +78,7 @@ export class Schemes {
 
 	private mustRead(u: User, name: string): { root: string; scheme: Scheme } {
 		const root = this.root(u, name);
-		if (!fs.existsSync(path.join(root, ".block_llm", "scheme.json")))
+		if (!fs.existsSync(path.join(root, "scheme.json")))
 			throw new HttpError(404, "no such scheme");
 		return { root, scheme: readRaw(root) };
 	}
@@ -89,7 +89,7 @@ export class Schemes {
 		const out: SchemeSummary[] = [];
 		if (!fs.existsSync(dir)) return out;
 		const push = (pdir: string, project: string, name: string) => {
-			if (!fs.existsSync(path.join(pdir, ".block_llm", "scheme.json"))) return;
+			if (!fs.existsSync(path.join(pdir, "scheme.json"))) return;
 			let s: Scheme;
 			try {
 				s = readRaw(pdir);
@@ -129,7 +129,7 @@ export class Schemes {
 
 	create(u: User, name: string, scheme?: Scheme): { rev: number } {
 		const root = this.root(u, name);
-		if (fs.existsSync(path.join(root, ".block_llm", "scheme.json")))
+		if (fs.existsSync(path.join(root, "scheme.json")))
 			throw new HttpError(409, "scheme exists");
 		if (scheme) {
 			if (scheme.rev !== 0) throw new DataError("imported scheme must have rev 0");
@@ -168,7 +168,7 @@ export class Schemes {
 
 	log(u: User, name: string, limit = 50): JournalLine[] {
 		const { root } = this.mustRead(u, name);
-		const file = path.join(root, ".block_llm", "cache", "journal.jsonl");
+		const file = path.join(root, "cache", "journal.jsonl");
 		if (!fs.existsSync(file)) return [];
 		const n = Math.min(200, Math.max(1, limit));
 		return (
