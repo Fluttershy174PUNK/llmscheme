@@ -1,0 +1,17 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+	"files": {
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!skill/editor.html",
+			"!mcp-service/editor.html",
+			"!mcp-service/console.html",
+			"!skill/core",
+			"!**/.block_llm",
+			"!data"
+		]
+	},
+	"formatter": { "indentStyle": "tab", "lineWidth": 100 }
+}

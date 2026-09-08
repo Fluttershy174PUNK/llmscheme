@@ -1,4 +1,0 @@
-https://cataas.com/cat/1|Mursik
-https://cataas.com/cat/2|Barsik
-https://cataas.com/cat/3|Murka
-images/local-cat.png|Pirog

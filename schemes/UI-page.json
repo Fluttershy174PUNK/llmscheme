@@ -1,0 +1,388 @@
+{
+  "format": "block-llm",
+  "version": 1,
+  "rev": 2,
+  "name": "UI/page",
+  "project": {
+    "root": ".",
+    "codePaths": [
+      "src/"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "shape": "rect",
+      "label": "actual gitlab readme\nand link",
+      "description": "reference actual gitlab file url and render it\nreadme_start",
+      "x": 480,
+      "y": 180,
+      "refs": [
+        "from actual gitlab link"
+      ]
+    },
+    {
+      "id": "n2",
+      "shape": "rect",
+      "label": "pixel black cat \ncute gif",
+      "x": 500,
+      "y": 60
+    },
+    {
+      "id": "n3",
+      "shape": "rect",
+      "label": "login",
+      "x": 240,
+      "y": 60
+    },
+    {
+      "id": "n4",
+      "shape": "rect",
+      "label": "password",
+      "x": 240,
+      "y": 120
+    },
+    {
+      "id": "n5",
+      "shape": "rect",
+      "label": "reset",
+      "description": "когда нажимаешь появляется подсказка как помнять пароль админа",
+      "x": 240,
+      "y": 180
+    },
+    {
+      "id": "n8",
+      "shape": "rect",
+      "label": "users",
+      "x": 140,
+      "y": 500
+    },
+    {
+      "id": "n10",
+      "shape": "table",
+      "label": "new",
+      "table": {
+        "cols": [
+          "user",
+          "pass",
+          "mcp",
+          "key"
+        ],
+        "rows": [
+          [
+            "user2",
+            "change pass",
+            "show mcp",
+            "regenerate"
+          ],
+          [
+            "user3",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "",
+            ""
+          ]
+        ]
+      },
+      "x": 360,
+      "y": 400
+    },
+    {
+      "id": "n11",
+      "shape": "rect",
+      "label": "editor",
+      "x": 140,
+      "y": 340
+    },
+    {
+      "id": "n12",
+      "shape": "rect",
+      "label": "плюс\nнужно добавить изменение размера элемента\nперетягиванием\n+ текст должен вписываться во внутрь\n+ хотелось бы чтобы ctrl+c ctrl+v d ctrl+z работали\n+ выделение и перестакивание / операции через ctrl + мышь\n+ у зоны можно сделать надпись слева справа или по центру\n",
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "n13",
+      "shape": "rect",
+      "label": "logout",
+      "x": 140,
+      "y": 540
+    },
+    {
+      "id": "n14",
+      "shape": "rect",
+      "label": "lang",
+      "x": 140,
+      "y": 0
+    },
+    {
+      "id": "n15",
+      "shape": "rect",
+      "label": "projects",
+      "x": 140,
+      "y": 380
+    },
+    {
+      "id": "n16",
+      "shape": "rect",
+      "label": "users",
+      "x": 740,
+      "y": 220
+    },
+    {
+      "id": "n17",
+      "shape": "rect",
+      "label": "logout",
+      "x": 740,
+      "y": 260
+    },
+    {
+      "id": "n18",
+      "shape": "rect",
+      "label": "projects",
+      "x": 740,
+      "y": -80
+    },
+    {
+      "id": "n19",
+      "shape": "rect",
+      "label": "editor",
+      "x": 740,
+      "y": -120
+    },
+    {
+      "id": "n20",
+      "shape": "rect",
+      "label": "logout",
+      "x": 740,
+      "y": 720
+    },
+    {
+      "id": "n21",
+      "shape": "rect",
+      "label": "projects",
+      "x": 740,
+      "y": 380
+    },
+    {
+      "id": "n22",
+      "shape": "rect",
+      "label": "editor",
+      "x": 740,
+      "y": 340
+    },
+    {
+      "id": "n23",
+      "shape": "rect",
+      "label": "users",
+      "x": 740,
+      "y": 680
+    },
+    {
+      "id": "n24",
+      "shape": "circle",
+      "label": "show all users\nprojects",
+      "description": "if admin (slider)",
+      "x": 740,
+      "y": 500
+    },
+    {
+      "id": "n26",
+      "shape": "table",
+      "label": "new",
+      "table": {
+        "cols": [
+          "project",
+          "scheme",
+          "edit",
+          "user",
+          "last_edit_date",
+          "del"
+        ],
+        "rows": []
+      },
+      "x": 880,
+      "y": 420
+    },
+    {
+      "id": "n27",
+      "shape": "rect",
+      "label": "project 1",
+      "x": 880,
+      "y": 360
+    },
+    {
+      "id": "n28",
+      "shape": "rect",
+      "label": "new project",
+      "x": 740,
+      "y": 420
+    },
+    {
+      "id": "n29",
+      "shape": "rect",
+      "label": "del project",
+      "x": 1160,
+      "y": 360
+    },
+    {
+      "id": "n31",
+      "shape": "rect",
+      "label": "log",
+      "x": 740,
+      "y": 0
+    },
+    {
+      "id": "n32",
+      "shape": "rect",
+      "label": "save",
+      "x": 740,
+      "y": 180
+    },
+    {
+      "id": "n33",
+      "shape": "rect",
+      "label": "lang",
+      "x": 140,
+      "y": 460
+    },
+    {
+      "id": "n34",
+      "shape": "rect",
+      "label": "lang",
+      "x": 740,
+      "y": 640
+    },
+    {
+      "id": "n35",
+      "shape": "rect",
+      "label": "patch to project",
+      "x": 740,
+      "y": 140
+    },
+    {
+      "id": "n36",
+      "shape": "rect",
+      "label": "open local file",
+      "x": 740,
+      "y": 60
+    },
+    {
+      "id": "n37",
+      "shape": "rect",
+      "label": "pallete",
+      "x": 1320,
+      "y": -120
+    },
+    {
+      "id": "n38",
+      "shape": "rect",
+      "label": "object settings",
+      "x": 1320,
+      "y": -80
+    },
+    {
+      "id": "n39",
+      "shape": "rect",
+      "label": "snaps sliders",
+      "x": 1320,
+      "y": 260
+    },
+    {
+      "id": "n40",
+      "shape": "rect",
+      "label": "export (to local)",
+      "x": 740,
+      "y": 100
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n2",
+      "to": "n1",
+      "style": "dashed"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "label": "login page",
+      "x": 140,
+      "y": 0,
+      "w": 565,
+      "h": 313
+    },
+    {
+      "id": "z3",
+      "label": "admin",
+      "x": 140,
+      "y": 340,
+      "w": 565,
+      "h": 239
+    },
+    {
+      "id": "z4",
+      "label": "projects",
+      "x": 740,
+      "y": 340,
+      "w": 667,
+      "h": 412
+    },
+    {
+      "id": "z5",
+      "label": "editor",
+      "x": 740,
+      "y": -120,
+      "w": 669,
+      "h": 427
+    },
+    {
+      "id": "z6",
+      "label": "bar",
+      "x": 140,
+      "y": 340,
+      "w": 138,
+      "h": 249
+    },
+    {
+      "id": "z7",
+      "label": "bar",
+      "x": 740,
+      "y": -120,
+      "w": 121,
+      "h": 428
+    },
+    {
+      "id": "z8",
+      "label": "bar",
+      "x": 740,
+      "y": 340,
+      "w": 125,
+      "h": 414
+    },
+    {
+      "id": "z9",
+      "label": "instrument bar",
+      "x": 1320,
+      "y": -120,
+      "w": 87,
+      "h": 426
+    }
+  ],
+  "meta": {
+    "updatedAt": "2026-09-08T08:04:34.044Z",
+    "generator": "agent",
+    "nextId": {
+      "n": 41,
+      "e": 2
+    }
+  }
+}

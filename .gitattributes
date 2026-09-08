@@ -1,0 +1,6 @@
+# Built artifacts: never hand-edit, never diff, never format.
+# Regenerate: npm run build   Verify: npm run check
+skill/editor.html linguist-generated -diff
+mcp-service/editor.html linguist-generated -diff
+mcp-service/console.html linguist-generated -diff
+skill/core/** linguist-vendored
