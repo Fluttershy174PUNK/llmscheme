@@ -1,99 +1,214 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>cat generator — demo</title>
-<style>
-	:root {
-		--bg: #1a1c2c;
-		--panel: #29366f;
-		--panel2: #3b5dc9;
-		--ink: #f4f4f4;
-		--accent: #ffcd75;
-		--orange: #ff9c41;
-		--gray: #94b0c2;
-		--yellow: #ffd75f;
-		--dark: #091428;
-	}
-	* { box-sizing: border-box; }
-	body {
-		margin: 0;
-		min-height: 100vh;
-		display: grid;
-		place-items: center;
-		background: var(--bg);
-		color: var(--ink);
-		font-family: "Courier New", monospace;
-	}
-	.card {
-		background: var(--panel);
-		box-shadow: inset -3px -3px 0 var(--dark), inset 3px 3px 0 var(--accent);
-		padding: 24px 28px;
-		text-align: center;
-	}
-	h1 { margin: 0 0 4px; color: var(--accent); font-size: 16px; }
-	.sub { margin: 0 0 16px; color: var(--gray); font-size: 12px; }
-	.cat {
-		font-size: 15px;
-		line-height: 1.15;
-		white-space: pre;
-		color: var(--orange);
-		min-height: 7em;
-		margin-bottom: 12px;
-	}
-	.name { color: var(--yellow); font-size: 15px; margin-bottom: 16px; min-height: 1.2em; }
-	button {
-		font: inherit;
-		background: var(--panel2);
-		color: var(--ink);
-		border: 0;
-		box-shadow: inset -2px -2px 0 var(--dark), inset 2px 2px 0 var(--accent);
-		padding: 8px 16px;
-		cursor: pointer;
-		font-size: 14px;
-	}
-	button:hover { filter: brightness(1.15); }
-	button:active { transform: translateY(1px); }
-</style>
-</head>
-<body>
-	<div class="card">
-		<h1>♥ cat generator</h1>
-		<p class="sub">browser UI demo — the scheme for this lives in <code>.llmscheme/logic_scheme/</code></p>
-		<div class="cat" id="cat"></div>
-		<div class="name" id="name"></div>
-		<button id="gen">generate</button>
-	</div>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>cat generator — демо</title>
+		<style>
+			:root {
+				--bg: #1a1c2c;
+				--panel: #29366f;
+				--panel2: #3b5dc9;
+				--ink: #f4f4f4;
+				--accent: #ffcd75;
+				--orange: #ff9c41;
+				--gray: #94b0c2;
+				--yellow: #ffd75f;
+				--dark: #091428;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				min-height: 100vh;
+				display: grid;
+				place-items: center;
+				background: var(--bg);
+				color: var(--ink);
+				font-family: "Courier New", monospace;
+			}
+			.card {
+				background: var(--panel);
+				box-shadow:
+					inset -3px -3px 0 var(--dark),
+					inset 3px 3px 0 var(--accent);
+				padding: 24px 28px;
+				text-align: center;
+				min-width: 42em;
+			}
+			h1 {
+				margin: 0 0 4px;
+				color: var(--accent);
+				font-size: 16px;
+			}
+			.sub {
+				margin: 0 0 16px;
+				color: var(--gray);
+				font-size: 12px;
+			}
+			.cat {
+				font-size: 16px;
+				line-height: 1.15;
+				white-space: pre;
+				color: var(--orange);
+				min-height: 8em;
+				margin-bottom: 10px;
+			}
+			.name {
+				color: var(--yellow);
+				font-size: 15px;
+				margin-bottom: 16px;
+				min-height: 1.2em;
+			}
+			button {
+				font: inherit;
+				background: var(--panel2);
+				color: var(--ink);
+				border: 0;
+				box-shadow:
+					inset -2px -2px 0 var(--dark),
+					inset 2px 2px 0 var(--accent);
+				padding: 8px 16px;
+				cursor: pointer;
+				font-size: 14px;
+			}
+			button:hover {
+				filter: brightness(1.15);
+			}
+			button:active {
+				transform: translateY(1px);
+			}
+			.controls {
+				margin-top: 10px;
+				display: flex;
+				gap: 10px;
+				justify-content: center;
+				align-items: center;
+			}
+			.controls label {
+				color: var(--gray);
+				font-size: 11px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="card">
+			<h1>♥ генератор котиков</h1>
+			<p class="sub">
+				браузерная демка — схема этого проекта лежит в
+				<code>.llmscheme/logic_scheme/</code>
+			</p>
+			<div class="cat" id="cat"></div>
+			<div class="name" id="name"></div>
+			<div class="controls">
+				<button id="gen">новый котик</button>
+				<label><input type="checkbox" id="anim" checked /> анимация</label>
+			</div>
+		</div>
 
-<script>
-	// a handful of words stand in for cats.txt so the page is self-contained;
-	// the CLI (src/run.ts) reads the real cats.txt. Same pick logic, same idea.
-	const ADJ = ["cosmic", "fluffy", "sneaky", "majestic", "grumpy", "chaotic", "sleepy", "derpy", "turbo", "void"];
-	const NOUN = ["cat", "void", "noodle", "agent", "kefir", "biscuit", "loaf", "tofu", "chonk", "sock"];
+		<script>
+			// Self-contained stand-in for cats.txt (the CLI reads the real file).
+			const ADJ = [
+				"космический",
+				"пушистый",
+				"хитрый",
+				"величественный",
+				"сердитый",
+				"хаотичный",
+				"сонный",
+				"дурашливый",
+				"турбо",
+				"пустотный",
+			];
+			const NOUN = [
+				"кот",
+				"войд",
+				"лапша",
+				"агент",
+				"кефир",
+				"печенька",
+				"батон",
+				"тофу",
+				"пончик",
+				"носок",
+			];
+			const COLORS = ["#ff9c41", "#ff7eb3", "#7ee0ff", "#b0ff6d", "#ffd75f"];
 
-	const pick = (a) => a[Math.floor(Math.random() * a.length)];
+			const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
-	// pixel-ish ASCII cat; six rows, two cats back to back
-	const FRAME = (adj, noun) => [
-		`    /\\_____/     /*\\_____/*\\`,
-		`   /  o   o  \\    /  o   o  \\`,
-		`  ( =  ^  = )   ( =  ^  = )`,
-		`   \\__^__//       \\__^__//`,
-		`    /   \\         /   \\`,
-		`   /     \\___     /     \\___`,
-		`   ${adj.padEnd(12)} ${noun}`,
-	];
+			// Each cat is a 6-row ASCII frame; we animate a short loop of
+			// three frames: tail left, tail right, eyes closed (blink).
+			function frames(adj, noun) {
+				const w = Math.max(6, adj.length + 1);
+				const pad = adj.padEnd(w);
+				return [
+					[
+						`    /\\_____/   `,
+						`   /  o   o  \\  `,
+						`  ( =  ^  = )   `,
+						`   \\__^__//     `,
+						`    /   \\___    `,
+						`   /       ${noun}`,
+					],
+					[
+						`    /\\_____/     `,
+						`   /  o   o  \\    `,
+						`  ( =  ^  = )     `,
+						`   \\__^__\\\\      `,
+						`      /   \\___   `,
+						`     /     ${noun}`,
+					],
+					[
+						`    /\\_____/   `,
+						`   /  -   -  \\  `,
+						`  ( =  ^  = )   `,
+						`   \\__^__//     `,
+						`    /   \\___    `,
+						`   /     ${noun}   ${pad}`,
+					],
+				];
+			}
 
-	function render() {
-		const adj = pick(ADJ);
-		const noun = pick(NOUN);
-		document.getElementById("cat").textContent = FRAME(adj, noun).slice(0, 6).join("\n");
-		document.getElementById("name").textContent = `name: ${adj} ${noun}`;
-	}
+			let cur = { adj: pick(ADJ), noun: pick(NOUN), color: pick(COLORS), frames: null };
+			let tick = 0;
+			let timer = null;
 
-	document.getElementById("gen").addEventListener("click", render);
-	render();
-</script>
-</body>
+			function draw() {
+				const el = document.getElementById("cat");
+				const nm = document.getElementById("name");
+				if (!cur.frames) {
+					cur.frames = frames(cur.adj, cur.noun);
+				}
+				el.style.color = cur.color;
+				el.textContent = cur.frames[tick % cur.frames.length].join("\n");
+				nm.textContent = `имя: ${cur.adj} ${cur.noun}`;
+			}
+
+			function regenerate() {
+				cur = {
+					adj: pick(ADJ),
+					noun: pick(NOUN),
+					color: pick(COLORS),
+					frames: null,
+				};
+				tick = 0;
+				draw();
+			}
+
+			function loop() {
+				const on = document.getElementById("anim").checked;
+				if (timer) {
+					clearInterval(timer);
+					timer = null;
+				}
+				if (on) timer = setInterval(() => (tick++, draw()), 400);
+			}
+
+			document.getElementById("gen").addEventListener("click", regenerate);
+			document.getElementById("anim").addEventListener("change", loop);
+			draw();
+			loop();
+		</script>
+	</body>
 </html>

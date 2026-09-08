@@ -1,233 +1,219 @@
-# MIGRATION.md — upgrading from v1 to v2
+# MIGRATION.md — обновление с v1 на v2
 
-> **Who this is for:** anyone running a v1 llmscheme service who
-> wants to upgrade to v2. If you started with v2, skip this file.
-
----
-
-## The good news first
-
-**The on-disk format is unchanged.** Your existing `lightdb.json`
-and `data/schemes/<user-id>/<name>/` directories work with v2
-without any conversion. A live v1 service upgrades in place by
-replacing the container — no migration step, no data import, no
-"export from v1, import to v2" dance.
-
-You can verify this yourself: stop v1, start v2 with the same
-`DATA_DIR`, log in with the same credentials, open any scheme,
-edit it, save it. It just works.
+> **Для кого:** тех, кто гоняет v1-сервис llmscheme и хочет обновиться на v2.
+> Начал с v2 — пропусти.
 
 ---
 
-## What changed on the wire (REST + MCP)
+## Сначала хорошие новости
 
-A handful of v1 endpoints changed their behavior. Most are
-**safer** in v2 (fewer accidental side effects), a few are
-**new**, and zero are removed.
+**Формат на диске не изменился.** Твои `lightdb.json` и
+`data/schemes/<user-id>/<name>/` работают с v2 без всякой конвертации. Живой
+v1-сервис обновляется на месте заменой контейнера — ни миграции, ни импорта
+данных, ни «экспорт из v1, импорт в v2».
 
-### Removed (use the replacement instead)
+Проверь сам: останови v1, запусти v2 с тем же `DATA_DIR`, войди теми же
+учётными данными, открой любую схему, поправь, сохрани. Просто работает.
 
-| v1 endpoint | What it did | v2 replacement |
+---
+
+## Что изменилось «на проводе» (REST + MCP)
+
+Пара эндпоинтов v1 сменила поведение. Большинство стали **безопаснее** (меньше
+случайных побочек), несколько **новых**, ни один не удалён.
+
+### Удалено (пользуйся заменой)
+
+| v1 эндпоинт | Что делал | Замена в v2 |
 |---|---|---|
-| `GET /api/mcp-config` | Revoked every API key and issued a new one (a destructive side effect of a read!) | `POST /api/keys/rotate` — explicit, confirmed |
-| `?t=<token>` in URLs | Used by the v1 editor to pass a session token to itself | Use the `ls_token` cookie. No token in URLs. |
+| `GET /api/mcp-config` | Отзывал все ключи и выдавал новый (разрушительная побочка чтения!) | `POST /api/keys/rotate` — явно, с подтверждением |
+| `?t=<token>` в URL | Редактор v1 передавал себе токен сессии | Cookie `ls_token`. Токенов в URL нет. |
 
-### New
+### Новое
 
-| Endpoint | What it does |
+| Эндпоинт | Что делает |
 |---|---|
-| `POST /api/session/revoke-all` | Sign out of every device |
-| `POST /api/keys/:hash/revoke` | Revoke one API key |
-| `POST /api/password` | Change your own password (or another user's, as admin) |
-| `GET /api/readme` | The README rendered on the login page |
-| `GET /api/admin/keys` | Every active key across all users (admin only) |
-| Modern MCP era | `server/discover` (2026-07-28), `_meta` on every request, `Mcp-Method` / `Mcp-Name` headers, `annotations` on all tools |
+| `POST /api/session/revoke-all` | Выйти со всех устройств |
+| `POST /api/keys/:hash/revoke` | Отозвать один ключ |
+| `POST /api/password` | Сменить свой пароль (или чужой, будучи админом) |
+| `GET /api/readme` | README на экране логина |
+| `GET /api/admin/keys` | Все активные ключи всех юзеров (только админ) |
+| Современная MCP-эра | `server/discover` (2026-07-28), `_meta` в каждом запросе, заголовки `Mcp-Method` / `Mcp-Name`, `annotations` у всех инструментов |
 
-### Changed behavior
+### Изменённое поведение
 
-| Endpoint | v1 | v2 |
+| Эндпоинт | v1 | v2 |
 |---|---|---|
-| `PUT /api/scheme/:name` with malformed body | Returned 500 | Returns **400** (validate-then-CAS) |
-| `/editorial`, `/editorFOO` | Created scheme folders with garbage names | Return **404**, no side effects |
-| `POST /api/logout` (cookie session) | Did not revoke the cookie token | Revokes the cookie token too |
-| `POST /api/password` | Just changed the password | Changes the password **and drops every session** for that user |
+| `PUT /api/scheme/:name` с битым телом | Отдавал 500 | Отдаёт **400** (сначала validate, потом CAS) |
+| `/editorial`, `/editorFOO` | Создавали мусорные папки схем | **404**, без побочек |
+| `POST /api/logout` (cookie-сессия) | Не отзывал cookie-токен | Отзывает и cookie-токен |
+| `POST /api/password` | Просто менял пароль | Меняет пароль **и сбрасывает все сессии** юзера |
 
 ---
 
-## What changed for an LLM agent (CLI)
+## Что изменилось для LLM-агента (CLI)
 
-The CLI is almost the same. The subcommands are unchanged:
-`init`, `get`, `node add|update|remove`, `edge add|update|remove`,
-`zone add|update|remove`, `put`, `sync`, `render`, `diff`,
-`history`, `restore`, `doctor`, `validate`, `upgrade`, `version`.
+CLI почти тот же. Подкоманды без изменений: `init`, `get`,
+`node add|update|remove`, `edge add|update|remove`, `zone add|update|remove`,
+`put`, `sync`, `render`, `diff`, `history`, `restore`, `doctor`, `validate`,
+`upgrade`, `version`.
 
-**New subcommand:**
+**Новая подкоманда:**
 
 ```bash
-# pull a scheme FROM a service INTO the local project
+# вытянуть схему ИЗ сервиса В локальный проект
 block pull --url http://host:8080 \
           --key llm_xxxxxxxxxxxxxxxxxxxxxxxx \
           --name web/auth
 ```
 
-This is the one networked command in the CLI. All others are
-purely local. `pull` is useful when a team uses the service for
-collaboration and the agent needs to bring a scheme into its
-local `.block_llm/` to work on it offline.
+Единственная сетевая команда CLI. Остальные чисто локальные. `pull` полезен,
+когда команда делит схемы через сервис, а агенту нужно принести схему в
+локальную `.llmscheme/` для офлайн-работы.
 
-**The ritual is the same:**
+**Ритуал тот же:**
 
-1. `validate --json` — fix any errors first
-2. `get --json` — read the current state, remember the `rev`
-3. Make your changes
-4. `node add` / `edge add` / etc. with `--rev N` (the rev you read)
-5. `doctor` — confirm JSON, MD, and HTML all agree
+1. `validate --json` — сначала исправь ошибки;
+2. `get --json` — прочитай состояние, запомни `rev`;
+3. внеси изменения;
+4. `node add` / `edge add` и т.д. с `--rev N` (тот rev, что прочитал);
+5. `doctor` — подтверди согласованность JSON, MD и HTML.
 
 ---
 
-## What changed in the browser editor
+## Что изменилось в браузерном редакторе
 
 | v1 | v2 |
 |---|---|
-| One editor for both file:// and service | Two entries: `editor/skill/main.ts` (file://) and `editor/service/main.ts` (http). Both share one `Editor.svelte` component. |
-| `serverMode = !location.pathname.endsWith(".html")` (a runtime check) | Physical separation: the skill entry doesn't have any `/api/` code, the service entry doesn't have `PRISTINE_HTML` |
-| SAVE = either FSA (Chromium) or download (Firefox) | SAVE = Tier A (clipboard command) always, plus Tier B/C/S depending on browser and entry point |
-| Inspector mixed node and edge fields (bug B3) | Inspector has three separate forms, one per `sel.kind` |
-| No redo | Undo + redo (Ctrl+Z / Ctrl+Shift+Z) |
-| No dirty indicator, no `beforeunload` | Dirty flag in the status bar, `beforeunload` warning when closing with unsaved changes |
-| Hardcoded Russian | EN/RU toggle, shared with the console |
-| Lang via `window.__lang` (a script-scope `let` invisible to inline onclick) | Lang as reactive state, `localStorage`-persisted |
+| Один редактор на file:// и сервис | Два входа: `editor/skill/main.ts` (file://) и `editor/service/main.ts` (http). Оба делят один `Editor.svelte`. |
+| `serverMode = !location.pathname.endsWith(".html")` (рантайм-проверка) | Физическое разделение: в скилл-входе нет кода `/api/`, в сервисном — `PRISTINE_HTML` |
+| SAVE = либо FSA (Chromium), либо скачивание (Firefox) | SAVE = Tier A (команда в буфер) всегда, плюс Tier B/C/S по браузеру и входу |
+| Инспектор смешивал поля узла и ребра (баг B3) | Три отдельные формы, по одной на `sel.kind` |
+| Нет redo | Undo + redo (Ctrl+Z / Ctrl+Shift+Z) |
+| Нет dirty-индикатора, нет `beforeunload` | Dirty-флаг в статусбаре, `beforeunload` при закрытии с несохранённым |
+| Захардкожен русский | EN/RU тумблер, общий с консолью |
+| Язык через `window.__lang` (скриптовый `let` невидим для inline onclick) | Язык как реактивное состояние, хранится в `localStorage` |
 
 ---
 
-## What changed in the console
+## Что изменилось в консоли
 
 | v1 | v2 |
 |---|---|
-| Hardcoded Russian | EN/RU toggle |
-| No password change UI | Settings page: change own password |
-| No user column in the projects table | 6-column table including user (admin only) |
-| "Del project" was a single click | Double confirmation: type the project name |
-| "Regenerate" was a single click | Confirmation dialog + the new secret shown once |
-| `/api/mcp-config` (GET) revoked keys | Read-only `mcp-config`; explicit `POST /api/keys/rotate` to rotate |
+| Захардкожен русский | EN/RU тумблер |
+| Нет UI смены пароля | Настройки: смена своего пароля |
+| Нет колонки user в таблице проектов | 6 колонок, включая user (только админ) |
+| «Del project» — один клик | Двойное подтверждение: набери имя проекта |
+| «Regenerate» — один клик | Диалог подтверждения + секрет показывается один раз |
+| `GET /api/mcp-config` отзывал ключи | Только чтение; ротация — явный `POST /api/keys/rotate` |
 
 ---
 
-## What changed on disk (almost nothing)
+## Что изменилось на диске (почти ничего)
 
-| Path | v1 → v2 |
+| Путь | v1 → v2 |
 |---|---|
-| `lightdb.json` | Same shape; same data |
-| `data/schemes/<uid>/<name>/scheme.json` | Same shape; same data |
-| `data/schemes/<uid>/<name>/.block_llm/cache/` | Same journal + autosaves; tighter rotation cap (`AUTOSAVE_KEEP` defaults to 10 in v2, was unlimited) |
-| `data/schemes/<uid>/<name>/.block_llm/scheme.html` | New format (rebuilt by v2 on next write) — but v1's format was 99% identical, so v2 reads it fine |
-| `SCHEME.md` | Same format; now idempotent (reads `meta.updatedAt`) |
+| `lightdb.json` | Та же форма; те же данные |
+| `data/schemes/<uid>/<name>/scheme.json` | Та же форма; те же данные |
+| `data/schemes/<uid>/<name>/.block_llm/cache/` | Тот же журнал + автосейвы; жёстче ротация (`AUTOSAVE_KEEP` в v2 = 10, было без ограничения) |
+| `data/schemes/<uid>/<name>/.block_llm/scheme.html` | Новый формат (v2 пересоберёт при записи) — но формат v1 на 99% тот же, v2 читает |
+| `SCHEME.md` | Тот же формат; теперь идемпотентен (читает `meta.updatedAt`) |
 
-If you have backups of old `cache/` directories from v1, you can
-keep them. v2 will read them on first start; the rotation cap
-will trim the extras on the next write.
+Бэкапы старых `cache/` из v1 можно оставить. v2 прочитает при первом старте;
+ротация подрежет лишнее на следующей записи.
 
 ---
 
-## Upgrade steps (the actual procedure)
+## Шаги обновления (собственно процедура)
 
-### If you run the Docker image
+### Если гоняешь Docker-образ
 
 ```bash
-# 1. stop the old container
+# 1. останови старый контейнер
 docker compose down
 
-# 2. pull the new image (or rebuild from source)
+# 2. подтяни новый образ (или пересобери из исходников)
 docker pull your-registry/llmscheme-service:2.0.0
-# OR, if you build locally:
+# ИЛИ, при локальной сборке:
 git pull && npm install && npm run build
 
-# 3. start the new container with the same DATA_DIR
+# 3. запусти новый контейнер с тем же DATA_DIR
 docker compose up -d
 ```
 
-That's it. Your schemes and users are exactly where you left
-them. The new code reads the old format.
+Всё. Схемы и юзеры там, где оставил. Новый код читает старый формат.
 
-### If you run the binary directly
+### Если гоняешь бинарь напрямую
 
 ```bash
-# 1. stop the old service
+# 1. останови старый сервис
 pkill -f "node.*server.ts"
 
-# 2. replace the source tree
+# 2. замени исходники
 git pull
 npm install
 npm run build
 npm run sync-skill
 
-# 3. start the new service with the same env
+# 3. запусти новый сервис с тем же окружением
 PORT=8080 DATA_DIR=./data ADMIN_PASSWORD=... \
     node src/service/server.ts
 ```
 
-### After upgrading
+### После обновления
 
-1. Open `http://your-host:8080/`. Log in as before.
-2. Go to **Settings** → change your password (it's been a while,
-   right?).
-3. Open one of your schemes. The editor will rebuild the HTML
-   view on first save. Until then, the old `scheme.html` still
-   works.
-4. If you were using a v1 MCP client, you may need to update
-   your config: the modern era (`2026-07-28`) is preferred, but
-   legacy (`2025-11-25`, `2025-06-18`) still works.
-5. Done. The v1 skill (`skill/`) was replaced by the v2 one. If
-   you have agents mounting it, no changes needed — the command
-   surface is identical.
+1. Открой `http://your-host:8080/`. Войди как раньше.
+2. **Settings** → смени пароль (давно пора, правда?).
+3. Открой одну из схем. Редактор пересоберёт HTML при первом сохранении. До
+   этого старый `scheme.html` ещё работает.
+4. Если был v1 MCP-клиент — возможно, обнови конфиг: современная эра
+   (`2026-07-28`) предпочтительна, но legacy (`2025-11-25`, `2025-06-18`) тоже
+   работает.
+5. Готово. Скилл v1 (`skill/`) заменён на v2. Агенты, которые его монтируют, —
+   без изменений, поверхность команд та же.
 
 ---
 
-## What to do if something breaks
+## Что делать, если что-то сломалось
 
-### "I get 401 on every request"
+### «401 на каждый запрос»
 
-Your session token may have been issued by v1 and v2 doesn't
-recognize its hash format. Log out, log back in. This re-issues
-the token with v2's format.
+Токен сессии мог быть выдан v1, а v2 не узнаёт его формат хэша. Выйди, зайди
+заново — токен перевыдастся в формате v2.
 
-### "My `?t=<token>` URL stopped working"
+### «Мой URL с `?t=<token>` перестал работать»
 
-v2 doesn't accept tokens in URLs. Use the cookie (browsers
-already have it) or pass `Authorization: Bearer <token>` (scripts
-and MCP clients).
+v2 не принимает токены в URL. Используй cookie (браузеры уже имеют) или
+`Authorization: Bearer <token>` (скрипты и MCP-клиенты).
 
-### "A scheme I had in v1 won't open"
+### «Схема из v1 не открывается»
 
-Open it in the editor and run **SAVE**. v2 will rewrite the
-`scheme.html` and `SCHEME.md` in its format. The underlying
-`scheme.json` is unchanged.
+Открой её в редакторе и жми **SAVE**. v2 перепишет `scheme.html` и `SCHEME.md`
+в своём формате. Сам `scheme.json` не изменится.
 
-### "The MCP client lost its key"
+### «MCP-клиент потерял ключ»
 
-v1's `GET /api/mcp-config` issued a new key as a side effect.
-v2's GET is read-only. Use `POST /api/keys/rotate` (or the
-"rotate" button in the console) to issue a new one, then paste
-it into your MCP client config.
+`GET /api/mcp-config` в v1 выдавал новый ключ побочкой. В v2 GET только читает.
+Используй `POST /api/keys/rotate` (или кнопку «rotate» в консоли), чтобы выдать
+новый, и вставь его в конфиг MCP-клиента.
 
 ---
 
-## Rolling back
+## Откат
 
-If v2 doesn't work for you, the old v1 image still runs. v1
-and v2 read the same on-disk format, so a rollback is:
+Если v2 не подошёл — старый v1-образ всё ещё запускается. v1 и v2 читают один
+формат, так что откат такой:
 
 ```bash
-# stop v2
+# останови v2
 docker compose down
 
-# start v1 with the same DATA_DIR
+# запусти v1 с тем же DATA_DIR
 docker run -d --name llmscheme -p 8080:8080 \
     -v /var/lib/llmscheme:/data \
     -e ADMIN_PASSWORD=... \
     your-registry/llmscheme-service:1.0.0
 ```
 
-Your data is untouched. The only thing you lose is the v2
-features (redo, dirty indicator, modern MCP era, EN/RU toggle,
-etc.).
+Данные не тронуты. Потеряешь только фичи v2 (redo, dirty-индикатор, современную
+MCP-эру, тумблер EN/RU и т.д.).

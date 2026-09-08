@@ -1,124 +1,121 @@
-# INTRO.md — start page for the HTTP service
+# INTRO.md — стартовая страница HTTP-сервиса
 
-> This page is shown to **operators** when they first hit the service.
-> It is the service's "hello, this is what you just installed" — not
-> the user-facing login screen (that's in `SERVICE-MCP/llmscheme/
-> console.html`). The console itself has its own welcome flow.
-
----
-
-## Welcome to llmscheme
-
-You're running a single binary that gives you:
-
-1. A **web console** for admins (login, projects, users, settings)
-2. A **visual editor** for editing schemes by clicking and dragging
-3. A **REST API** for scripts
-4. An **MCP endpoint** for AI assistants
-
-One container, no build step at deploy time.
+> Эту страницу видит **оператор**, когда впервые заходит на сервис. Это
+> «привет, вот что ты только что установил» — не экран логина для
+> пользователя (он в `SERVICE-MCP/llmscheme/console.html`). У самой консоли
+> свой приветственный поток.
 
 ---
 
-## First things first
+## Добро пожаловать в llmscheme
+
+Ты запускаешь один бинарь, который даёт:
+
+1. **веб-консоль** для админов (логин, проекты, юзеры, настройки);
+2. **визуальный редактор** для правки схем кликом и перетаскиванием;
+3. **REST API** для скриптов;
+4. **MCP-эндпоинт** для AI-ассистентов.
+
+Один контейнер, без шага сборки при деплое.
+
+---
+
+## Сначала главное
 
 ```bash
-# 1. open the console
+# 1. открой консоль
 http://localhost:8080/
 
-# 2. log in with the bootstrap admin
+# 2. войди под бутстрап-админом
 login:    admin
-password: changeme   (or whatever ADMIN_PASSWORD you set)
+password: changeme   (или тот ADMIN_PASSWORD, что задал)
 
-# 3. CHANGE THE PASSWORD
-click "settings" in the top bar → change password
+# 3. СМЕНИ ПАРОЛЬ
+вверху «settings» → change password
 
-# 4. create your first user (if you are not the admin)
-#    or your first project (if you are)
-#    the console walks you through it
+# 4. создай первого юзера (если ты не админ)
+#    или первый проект (если админ)
+#    консоль проведёт по шагам
 ```
 
 ---
 
-## What's in this repo
+## Что в этом репозитории
 
 ```
 .
-├── SKILL/llmscheme/              ← the agent skill (drop into Claude Code)
-├── SERVICE-MCP/llmscheme/        ← the deployable service (Docker)
-├── HERMES-PLUGIN/llmscheme/      ← hermes plugin (placeholder)
-├── DEMO-PROJECT/                 ← demo: test the skill in a real project
-├── src/                          ← all source code (edit here)
-├── .llm                          ← current structure + plan (for LLMs)
-├── .test_on_local_proxmox/       ← deploy + test on proxmox LXC
-├── PLAN.md  TODO.md              ← historical planning docs
-├── PROJECT.md  README.md         ← this repo
+├── SKILL/llmscheme/              ← скилл агента (в Claude Code)
+├── SERVICE-MCP/llmscheme/        ← развёртываемый сервис (Docker)
+├── HERMES-PLUGIN/llmscheme/      ← hermes-плагин (заглушка)
+├── DEMO-PROJECT/                 ← демо: проверь скилл на реальном проекте
+├── src/                          ← весь исходный код (править здесь)
+├── .llm                          ← актуальная структура + план (для LLM)
+├── .test_on_local_proxmox/       ← деплой + тест на proxmox LXC
+├── PROJECT.md  README.md         ← этот репозиторий
 ├── LICENSE                       ← MIT
-├── INTRO.md                      ← you are here
-└── src/docs/                     ← in-depth guides
+├── INTRO.md                      ← ты здесь
+└── src/docs/                     ← подробные гайды
 ```
 
 ---
 
-## Quick reference
+## Краткая справка
 
-| Task | Command |
+| Задача | Команда |
 |---|---|
-| Start the service | `node src/service/server.ts` |
-| Start via Docker | `cd SERVICE-MCP/llmscheme && docker compose up` |
-| Run tests | `npm test` |
+| Запустить сервис | `node src/service/server.ts` |
+| Запустить через Docker | `cd SERVICE-MCP/llmscheme && docker compose up` |
+| Запустить тесты | `npm test` |
 | Typecheck | `npm run typecheck` |
-| Build HTML artifacts | `npm run build` |
-| Verify everything | `npm run verify` |
-| Sync skill to artifacts | `npm run sync-skill` |
-| Check artifacts match src | `npm run check` |
+| Собрать HTML-артефакты | `npm run build` |
+| Проверить всё | `npm run verify` |
+| Синхронизировать скилл | `npm run sync-skill` |
+| Проверить совпадение артефактов | `npm run check` |
 
 ---
 
-## Three ways to use llmscheme
+## Три способа использовать llmscheme
 
-### 1. The skill (for AI agents)
+### 1. Скилл (для AI-агентов)
 
 ```bash
-# drop SKILL/llmscheme/ into your agent's skills directory
-# (for Claude Code: ${CLAUDE_SKILL_DIR})
+# положи SKILL/llmscheme/ в папку скиллов агента
+# (для Claude Code: ${CLAUDE_SKILL_DIR})
 
-# the agent then has these commands:
+# у агента появятся команды:
 node <skill-dir>/cli/block.ts init my-project --type logic
 node <skill-dir>/cli/block.ts node add --type logic --label "Login" --ref src/login.ts
 node <skill-dir>/cli/block.ts validate --type logic
 ```
 
-### 2. The browser editor (for humans, offline)
+### 2. Браузерный редактор (для человека, офлайн)
 
 ```bash
-# in any project with a scheme:
+# в любом проекте со схемой:
 xdg-open .llmscheme/logic_scheme/scheme.html     # Linux
 open .llmscheme/logic_scheme/scheme.html         # macOS
 ```
 
-The page is self-contained. It opens straight from `file://` — no
-web server needed. Click and drag to edit. SAVE gives you a
-copy-pasteable command for your agent.
+Страница самодостаточна. Открывается прямо с `file://` — без веб-сервера.
+Кликай и перетаскивай. SAVE отдаёт команду для агента.
 
-### 3. The service (for teams, shared editing)
+### 3. Сервис (для команд, общее редактирование)
 
 ```bash
-# open the console
+# открой консоль
 http://localhost:8080/
 
-# log in, create projects, edit schemes in the browser
-# or via the REST API:
+# войди, создавай проекты, правь схемы в браузере
+# или через REST API:
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/schemes
 ```
 
 ---
 
-## Need help?
+## Нужна помощь?
 
-- **README.md** — what llmscheme is, 5-minute quick start, glossary
-- **PROJECT.md** — repo map for contributors, day-to-day commands
-- **src/docs/** — in-depth guides (format, editor, console, migration)
+- **README.md** — что такое llmscheme, быстрый старт за 5 минут, глоссарий
+- **PROJECT.md** — карта репозитория для контрибьюторов, ежедневные команды
+- **src/docs/** — подробные гайды (формат, редактор, консоль, миграция)
 
-For the operator's guide, see
-[SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md).
+Справка оператора: [SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md).

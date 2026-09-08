@@ -1,184 +1,178 @@
-# PROJECT.md — repo hub for contributors
+# PROJECT.md — хаб репозитория для контрибьюторов
 
-> **Who this is for:** people who want to **change the code** of
-> llmscheme itself. If you just want to **use** it, read
-> [README.md](README.md) instead.
+> **Для кого:** тех, кто хочет **менять код** самого llmscheme. Если просто
+> **используешь** — читай [README.md](README.md).
 
-This file is the "where things live" guide for the codebase. The
-top-level [README.md](README.md) explains what the project does and
-how to use it; this one explains how the project is organised and
-how to add a feature.
+Это «карта мест» кодовой базы. [README.md](README.md) объясняет, что проект
+делает и как им пользоваться; этот файл — как проект устроен и как добавить
+фичу.
 
 ---
 
-## The one-sentence version
+## Версия в одном предложении
 
-**Edit files in `src/`. Run `npm run verify`. Commit. The artifacts
-in `SKILL/llmscheme/`, `SERVICE-MCP/llmscheme/`, and `dist/` regenerate
-from `src/` and `npm run check` proves they match.**
+**Правь файлы в `src/`. Запусти `npm run verify`. Закоммить. Артефакты в
+`SKILL/llmscheme/`, `SERVICE-MCP/llmscheme/` и `dist/` пересобираются из `src/`,
+а `npm run check` доказывает, что они совпадают.**
 
 ---
 
-## Map of the repo (v2 layout)
+## Карта репозитория (раскладка v2)
 
 ```
 llmscheme/
 │
-├── src/                        ← THE source of truth. Edit here.
+├── src/                        ← ИСТОЧНИК истины. Править здесь.
 │   │
-│   ├── core/                   ← The data model. Pure TypeScript, zero deps.
-│   │                             Used by every other piece.
-│   │                             • types.ts        — Scheme, SchemeNode, etc.
-│   │                             • validate.ts     — error/warn rules
-│   │                             • layout.ts       — auto-place nodes
-│   │                             • diff.ts         — what changed
-│   │                             • exportMd.ts     — Markdown output
-│   │                             • saveSchema.ts   — atomic disk write
-│   │                             • renderHtml.ts   — bake data into HTML
-│   │                             • browser.ts      — same as index.ts, no node:fs
-│   │                             • (10 files total, ~1300 lines)
+│   ├── core/                   ← Модель данных. Чистый TypeScript, ноль зависимостей.
+│   │                             Используется всеми остальными частями.
+│   │                             • types.ts        — Scheme, SchemeNode и т.д.
+│   │                             • validate.ts     — правила error/warn
+│   │                             • layout.ts       — авторазмещение узлов
+│   │                             • diff.ts         — что изменилось
+│   │                             • exportMd.ts     — вывод Markdown
+│   │                             • saveSchema.ts   — атомарная запись на диск
+│   │                             • renderHtml.ts   — встройка данных в HTML
+│   │                             • browser.ts      — то же, что index.ts, без node:fs
+│   │                             • geometry.ts     — nodeW/nodeH (единственная истина)
 │   │
-│   ├── cli/                    ← The `block` command-line tool.
-│   │                             One file, 16 subcommands, no bundler.
+│   ├── cli/                    ← CLI-инструмент `block`.
+│   │                             Один файл, 16 подкоманд, без бандлера.
 │   │
-│   ├── service/                ← The HTTP service (REST + MCP).
-│   │   ├── server.ts           ← Entry point
-│   │   └── lib/                ← Routing, auth, store, schemes, pages, config
+│   ├── service/                ← HTTP-сервис (REST + MCP).
+│   │   ├── server.ts           ← точка входа
+│   │   └── lib/                ← routing, auth, store, schemes, pages, config
 │   │
-│   ├── editor/                 ← The browser-based visual editor.
-│   │   ├── core/               ← Shared Svelte 5 component (canvas + inspector)
-│   │   ├── skill/              ← file:// entry (tier A/B/C saves)
-│   │   └── service/            ← http entry (tier S — PUT /api/scheme)
+│   ├── editor/                 ← Браузерный визуальный редактор.
+│   │   ├── core/               ← общий Svelte 5 компонент (холст + инспектор)
+│   │   ├── skill/              ← вход file:// (tier A/B/C)
+│   │   └── service/            ← вход http (tier S — PUT /api/scheme)
 │   │
-│   ├── console/                ← The web admin console (login, projects, users).
-│   │                             Single Svelte 5 component, hash-routed.
+│   ├── console/                ← Веб-консоль админа (логин, проекты, юзеры).
+│   │                             Один Svelte 5 компонент, hash-роутер.
 │   │
-│   ├── ui/                     ← Shared CSS — the pixel font and colour palette.
-│   │                             One file. Imported by the editor and the console.
+│   ├── ui/                     ← Общий CSS — пиксельный шрифт и палитра.
+│   │                             Один файл. Импортируется редактором и консолью.
 │   │
-│   ├── build/                  ← Build scripts.
+│   ├── build/                  ← Скрипты сборки.
 │   │   ├── build.ts            ← esbuild + svelte/compiler → 3 single-file HTML
-│   │   ├── sync-skill.ts       ← SKILL/llmscheme/ sync (sha256-pinned)
-│   │   └── check.ts            ← Verify the artifacts match the source
+│   │   ├── sync-skill.ts       ← синк SKILL/llmscheme/ (закреплён sha256)
+│   │   └── check.ts            ← проверка, что артефакты совпадают с исходниками
 │   │
-│   └── test/                   ← Tests (node:test, no frameworks).
-│                                 73 tests: 33 core, 21 CLI, 19 service.
+│   └── test/                   ← Тесты (node:test, без фреймворков).
+│                                 73 теста: 33 core, 21 CLI, 19 service.
 │
-├── SKILL/llmscheme/            ← GENERATED. A verbatim copy of src/{core,cli}.
-│                                 Drop this directory into your AI agent's skills
-│                                 folder and the agent gains the `block` command.
+├── SKILL/llmscheme/            ← ГЕНЕРИРУЕТСЯ. Дословная копия src/{core,cli}.
+│                                 Положи в папку скиллов агента — появится
+│                                 команда `block`.
 │
-├── SERVICE-MCP/llmscheme/      ← GENERATED + deploy config. The deploy image's
-│   ├── editor.html             ← Self-contained editor (one file, ~110 KB)
-│   ├── console.html            ← Self-contained console (one file, ~77 KB)
-│   ├── assets/                 ← woff2 font files
-│   ├── Dockerfile              ← Builds on node:22, no compile step
+├── SERVICE-MCP/llmscheme/      ← ГЕНЕРИРУЕТСЯ + конфиг деплоя.
+│   ├── editor.html             ← самодостаточный редактор (~110 КБ)
+│   ├── console.html            ← самодостаточная консоль (~77 КБ)
+│   ├── assets/                 ← woff2-шрифты + app.js
+│   ├── Dockerfile              ← собирается на node:22, без шага компиляции
 │   ├── docker-compose.yml
 │   ├── .env.example
-│   └── README.md               ← Operator's guide
+│   └── README.md               ← справка оператора
 │
-├── HERMES-PLUGIN/llmscheme/    ← Hermes plugin (placeholder). v1 had only the
-│                                 manifest; v2 ships a working plugin.mjs that
-│                                 uses the same core.
+├── HERMES-PLUGIN/llmscheme/    ← Hermes-плагин (заглушка). В v1 был только
+│                                 манифест; в v2 — рабочий plugin.mjs на том же ядре.
 │
-├── DEMO-PROJECT/               ← A real demo project: cat generator (TUI + GIF + browser UI)
-│   ├── src/cat.ts              ← TUI rendering (ANSI colours, no deps)
-│   ├── src/gif.ts              ← GIF output (LZW + global colour table, no deps)
-│   ├── src/run.ts              ← entry point
-│   ├── cats.html               ← browser UI (generate button + pixel cat, no server)
-│   ├── cats.txt                ← word list
-│   ├── .llmscheme/logic_scheme/scheme.json  ← a real scheme (7 nodes, 6 edges, 1 zone)
-│   ├── AGENTS.md               ← agent section
+├── DEMO-PROJECT/               ← Демо: генератор котиков (TUI + GIF + браузер)
+│   ├── src/cat.ts              ← TUI-рендер (ANSI-цвета, без зависимостей)
+│   ├── src/gif.ts              ← GIF (LZW + глобальная палитра, без зависимостей)
+│   ├── src/run.ts              ← точка входа
+│   ├── cats.html               ← браузерный UI (анимированный кот, без сервера)
+│   ├── cats.txt                ← список слов
+│   ├── .llmscheme/logic_scheme/scheme.json  ← реальная схема (7 узлов, 7 рёбер, 1 зона)
+│   ├── AGENTS.md               ← секция агента
 │   ├── README.md
 │   └── .gitignore
 │
-├── .test_on_local_proxmox/     ← Real deploy + test for the dev sandbox.
-│   ├── deploy.sh               ← build + rsync + docker compose up
-│   ├── test.sh                 ← smoke test the deployed service
-│   ├── test_dev.md             ← hermes skill reference for the sandbox
+├── .test_on_local_proxmox/     ← Реальный деплой + тест на dev-песочницу.
+│   ├── deploy.sh               ← сборка + rsync + docker compose up
+│   ├── test.sh                 ← smoke-тест задеплоенного сервиса
+│   ├── test_dev.md             ← hermes-скилл-справка по песочнице
 │   └── README.md
 │
-├── docs/                       ← User-facing guides (under src/docs/)
-│   ├── SCHEME_FORMAT.md        ← JSON format, every field, validation rules
-│   ├── EDITOR.md               ← Editor tiers + browser quirks
-│   ├── LOGIN.md                ← Console + admin guide
-│   └── MIGRATION.md            ← v1 → v2 changes
-│
-├── schemes/                    ← UI requirements (under src/schemes/)
-│   └── UI-page.json
+├── src/docs/                   ← Пользовательские гайды
+│   ├── SCHEME_FORMAT.md        ← JSON-формат, каждое поле, правила валидации
+│   ├── EDITOR.md               ← tier'ы редактора + браузерные факты
+│   ├── LOGIN.md                ← консоль + админ
+│   └── MIGRATION.md            ← изменения v1 → v2
 │
 ├── .github/workflows/
-│   └── ci.yml                  ← Runs typecheck → test → build → check on push
+│   └── ci.yml                  ← typecheck → test → build → check на push
 │
 ├── package.json                ← Node ≥ 22.18, devDeps: esbuild + svelte
 ├── tsconfig.json               ← strict, erasableSyntaxOnly
-├── svelte.config.js            ← svelte-check config (4 known a11y suppressions)
+├── svelte.config.js            ← конфиг svelte-check (4 известных a11y-подавления)
 │
-└── README.md  PROJECT.md  INTRO.md  LICENSE  PLAN.md  TODO.md  .llm
+└── README.md  PROJECT.md  INTRO.md  LICENSE  .llm
 ```
 
 ---
 
-## Day-to-day commands
+## Ежедневные команды
 
 ```bash
-# install dev deps (one time)
+# установить dev-зависимости (один раз)
 npm install
 
 # typecheck
 npm run typecheck
 
-# run all tests (73 of them)
+# запустить все тесты (73 штуки)
 npm test
 
-# build the three HTML artifacts + regenerate SKILL/
+# собрать три HTML-артефакта + перегенерировать SKILL/
 npm run build
 npm run sync-skill
 
-# verify everything is consistent (typecheck + test + build + check)
+# проверить согласованность всего (typecheck + test + build + check)
 npm run verify
 
-# run the service locally
+# запустить сервис локально
 PORT=8080 DATA_DIR=./data \
     ADMIN_PASSWORD=changeme \
     node src/service/server.ts
 
-# deploy to the dev sandbox
+# задеплоить на dev-песочницу
 ./.test_on_local_proxmox/deploy.sh
 ./.test_on_local_proxmox/test.sh
 ```
 
 ---
 
-## "Where do I edit X?"
+## «Где править X?»
 
-| If you want to change... | Edit this file |
+| Хочу поменять… | Править файл |
 |---|---|
-| ...the data model (a new field on a node) | `src/core/types.ts` + `src/core/validate.ts` |
-| ...the JSON format spec | `src/docs/SCHEME_FORMAT.md` |
-| ...the Markdown export (the mermaid diagram) | `src/core/exportMd.ts` |
-| ...the auto-layout algorithm | `src/core/layout.ts` |
-| ...how a save is written to disk | `src/core/saveSchema.ts` |
-| ...a CLI command (add a new flag, change behaviour) | `src/cli/block.ts` |
-| ...a REST endpoint | `src/service/lib/routes.ts` |
-| ...an MCP tool (add a tool, change its schema) | `src/service/lib/mcp.ts` (the `TOOLS` array + `callTool`) |
-| ...how auth works (cookie, Bearer, API key) | `src/service/lib/auth.ts` + `src/service/lib/store.ts` |
-| ...the editor canvas (drag, zoom, select) | `src/editor/core/Editor.svelte` |
-| ...what the editor sends to the agent on SAVE | `src/editor/core/Editor.svelte` (the `copySaveCommand` function) |
-| ...the web console (login screen, project list) | `src/console/App.svelte` |
-| ...the colour palette or pixel font | `src/ui/pixel.css` |
-| ...EN/RU translations | `src/editor/core/i18n.ts` |
-| ...the build (which entries, what bundles) | `src/build/build.ts` |
-| ...the on-disk format that the agent sees | `src/core/*` (then re-run `npm run sync-skill`) |
-| ...the skill's user manual for the agent | `src/skill/SKILL.md` (it's a verbatim copy of `SKILL/llmscheme/SKILL.md` after sync) |
-| ...the operator's guide for the docker image | `SERVICE-MCP/llmscheme/README.md` |
-| ...the deploy script for the dev sandbox | `.test_on_local_proxmox/deploy.sh` |
-| ...the current live snapshot for LLMs | `.llm` |
-| ...the CI pipeline | `.github/workflows/ci.yml` |
+| …модель данных (новое поле узла) | `src/core/types.ts` + `src/core/validate.ts` |
+| …спеку JSON-формата | `src/docs/SCHEME_FORMAT.md` |
+| …Markdown-экспорт (mermaid-диаграмму) | `src/core/exportMd.ts` |
+| …алгоритм автораскладки | `src/core/layout.ts` |
+| …как сохранение пишется на диск | `src/core/saveSchema.ts` |
+| …CLI-команду (новый флаг, поведение) | `src/cli/block.ts` |
+| …REST-эндпоинт | `src/service/lib/routes.ts` |
+| …MCP-инструмент (добавить инструмент, схему) | `src/service/lib/mcp.ts` (массив `TOOLS` + `callTool`) |
+| …авторизацию (cookie, Bearer, API-ключ) | `src/service/lib/auth.ts` + `src/service/lib/store.ts` |
+| …холст редактора (drag, zoom, select) | `src/editor/core/Editor.svelte` |
+| …что редактор шлёт агенту на SAVE | `src/editor/core/Editor.svelte` (функция `copySaveCommand`) |
+| …веб-консоль (логин, список проектов) | `src/console/App.svelte` |
+| …палитру или пиксельный шрифт | `src/ui/pixel.css` |
+| …переводы EN/RU | `src/editor/core/i18n.ts` |
+| …сборку (какие входы, что бандлить) | `src/build/build.ts` |
+| …формат на диске, что видит агент | `src/core/*` (потом `npm run sync-skill`) |
+| …мануал скилла для агента | `src/skill/SKILL.md` (копия `SKILL/llmscheme/SKILL.md` после синка) |
+| …справку оператора Docker-образа | `SERVICE-MCP/llmscheme/README.md` |
+| …скрипт деплоя на песочницу | `.test_on_local_proxmox/deploy.sh` |
+| …живой снимок для LLM | `.llm` |
+| …CI-пайплайн | `.github/workflows/ci.yml` |
 
 ---
 
-## How the three artifacts are produced
+## Как собираются три артефакта
 
 ```
 src/editor/skill/main.ts  ──┐
@@ -190,101 +184,98 @@ src/console/main.ts       ──┘                                       │
                                               ▼                                         ▼
                               SERVICE-MCP/llmscheme/editor.html             SKILL/llmscheme/editor.html
                               SERVICE-MCP/llmscheme/console.html           dist/editor.html
-                              (served by the HTTP service)                  (opened from file://)
+                              (отдаёт HTTP-сервис)                          (открывается с file://)
 ```
 
-The build script (`src/build/build.ts`) does:
+Скрипт сборки (`src/build/build.ts`) делает:
 
-1. Compile each `.svelte` component to JS + CSS
-2. Bundle the JS with esbuild
-3. Bundle the CSS (with the font either inlined as base64, or emitted
-   to `assets/`)
-4. Wrap the result in an HTML page with the scheme data baked into a
-   `<script type="application/json" id="scheme-data">` tag
+1. компилирует каждый `.svelte`-компонент в JS + CSS;
+2. бандлит JS esbuild'ом;
+3. бандлит CSS (шрифт либо встраивается base64, либо кладётся в `assets/`);
+4. оборачивает результат в HTML со схемой внутри
+   `<script type="application/json" id="scheme-data">`.
 
-`npm run sync-skill` then copies `src/core/*` and `src/cli/block.ts`
-into `SKILL/llmscheme/`, and copies `dist/editor.html` into
-`SKILL/llmscheme/editor.html`. The sha256 of every file is recorded in
-`SKILL/llmscheme/.manifest.json`.
+`npm run sync-skill` копирует `src/core/*` и `src/cli/block.ts` в
+`SKILL/llmscheme/`, а `dist/editor.html` — в `SKILL/llmscheme/editor.html`.
+sha256 каждого файла пишется в `SKILL/llmscheme/.manifest.json`.
 
-`npm run check` then verifies:
+`npm run check` проверяет:
 
-- `SKILL/llmscheme/core/*.ts` and `src/core/*.ts` are byte-identical
-- `SKILL/llmscheme/editor.html` is byte-identical to what `npm run
-  build` just produced
-- `editor.html` is within the 200 KB budget
-- `console.html` is within the 80 KB budget
-- `editor.html` has no external `src=` or `href=` (file:// invariant)
-- The two woff2 font subsets are inlined as base64 (so the file works
-  from `file://`)
+- `SKILL/llmscheme/core/*.ts` и `src/core/*.ts` побайтово идентичны;
+- `SKILL/llmscheme/editor.html` побайтово совпадает с тем, что собрал
+  `npm run build`;
+- `editor.html` в бюджете 200 КБ;
+- `console.html` в бюджете 80 КБ;
+- у `editor.html` нет внешних `src=` / `href=` (инвариант file://);
+- оба woff2-сабсета встроены base64 (чтобы файл работал с `file://`).
 
-If any of these checks fail, the build is broken — don't ship it.
+Любая из проверок упала — сборка сломана, не релизь.
 
 ---
 
-## Phase status (v2)
+## Статус фаз (v2)
 
-| phase | description | status |
+| фаза | описание | статус |
 |---|---|---|
-| 0 | archive v1, reset root | ✅ 916 KB archive, root = clean v2 |
-| 1 | core runs from .ts, 33 tests, CI | ✅ commit `e1745a8` |
-| 2 | CLI + skill + sync/check, 54 tests | ✅ commit `527c438` |
-| 3 | service: server.ts + pages.ts + 19 service tests + SERVICE-MCP/ | ✅ 73/73 tests |
-| 4 | editor + console (Svelte 5) + 3 single-file HTML artifacts | ✅ within budget |
+| 0 | архив v1, сброс корня | ✅ 916 КБ архив, корень = чистый v2 |
+| 1 | core работает из .ts, 33 теста, CI | ✅ коммит `e1745a8` |
+| 2 | CLI + скилл + sync/check, 54 теста | ✅ коммит `527c438` |
+| 3 | сервис: server.ts + pages.ts + 19 тестов сервиса | ✅ 73/73 тестов |
+| 4 | редактор + консоль (Svelte 5) + 3 single-file HTML | ✅ в бюджете |
 | 5 | DEMO-PROJECT/ + HERMES-PLUGIN/ | ✅ |
-| 6 | docs (README, PROJECT, INTRO, .llm) | ✅ (this file) |
-| 7 | acceptance | ✅ see below |
+| 6 | доки (README, PROJECT, INTRO, .llm) | ✅ (этот файл) |
+| 7 | приёмка | ✅ см. ниже |
 
 ---
 
-## Bug coverage
+## Покрытие багов
 
-The v1 audit catalogued 18 bugs. All closed and tested in v2:
+Аудит v1 насчитал 18 багов. Все закрыты и покрыты тестами в v2:
 
-| # | What v1 did wrong | How v2 fixed it |
+| # | Что v1 делал не так | Как v2 исправил |
 |---|---|---|
-| B1 | Formatter rewrote the built editor.html, breaking the size budget | `check.ts` byte-compares the artifact |
-| B2 | The service's bundled `core.mjs` lacked `w/h` validation | One shared core; validation runs everywhere |
-| B3 | The inspector mixed node fields and edge fields in one `{#if}` block | Separate branches per `sel.kind === "node" \| "edge" \| "zone"` |
-| B4 | Saving `project/scheme` returned 404 | The scheme name comes from the embedded data, not the URL tail |
-| B5 | `/editorial` and `/editorFOO` created scheme folders with garbage names | The route is exactly `/editor` or `/editor/<name>`, not `startsWith("/editor")` |
-| B6 | Logout didn't revoke the cookie session, only the Bearer | `currentTokenHash` reads whichever transport carried the credential |
-| B7 | `PUT` without a `meta` field returned 500 | `Schemes.put` validates first, then checks CAS — bad body = 400 |
-| B8 | `nodes: null` corrupted the scheme on disk | Strict validation rejects the write, the on-disk scheme stays healthy |
-| B9 | `?t=<token>` in the access log | `logRequest` strips the query string |
-| B10 | `SCHEME.md` wasn't idempotent (different `updatedAt` every render) | `exportMd` reads `meta.updatedAt` from the scheme |
-| B11 | Autosave rotation was a no-op | `AUTOSAVE_MIN_MS` + `AUTOSAVE_KEEP` actually enforce the cap |
-| B12 | `nodeW` / `nodeH` existed in two copies (editor vs core) that drifted | One source of truth in `src/core/geometry.ts` |
-| B13 | A `GET` to `/api/mcp-config` revoked every key and issued a new one | `GET` is read-only; rotate is an explicit `POST` with confirmation |
-| B14 | Dead exports (`jailReal`, `dirSizeLimitExceeded`, etc.) | `src/core/index.ts` is the curated public surface |
-| B15 | No Origin check on the MCP endpoint | `checkOrigin` returns 403 on a foreign browser Origin |
-| B16 | MCP spoke only the 2025-era protocol | Dual-era: modern (`2026-07-28`, `server/discover`, `_meta`) and legacy (`initialize`) |
-| B17 | No redo, no autosave, no dirty flag, no `beforeunload` | All four in `Editor.svelte` |
-| B18 | The console was hardcoded Russian, no password change, no user column | `App.svelte` i18n + settings page + users screen |
+| B1 | Форматтер переписывал editor.html, ломая бюджет | `check.ts` сравнивает артефакт побайтово |
+| B2 | `core.mjs` сервиса без валидации `w/h` | Одно общее ядро; валидация везде |
+| B3 | Инспектор смешивал поля узла и ребра в одном `{#if}` | Отдельные ветки на `sel.kind === "node" \| "edge" \| "zone"` |
+| B4 | SAVE `project/scheme` отдавал 404 | Имя схемы из встроенных данных, не из хвоста URL |
+| B5 | `/editorial` и `/editorFOO` создавали мусорные папки схем | Маршрут ровно `/editor` или `/editor/<name>` |
+| B6 | Logout не отзывал cookie-сессию, только Bearer | `currentTokenHash` читает любой транспорт |
+| B7 | `PUT` без `meta` отдавал 500 | `Schemes.put` валидирует сначала, потом CAS — битое тело = 400 |
+| B8 | `nodes: null` портил схему на диске | Строгая валидация отклоняет запись, схема здорова |
+| B9 | `?t=<token>` в логе доступа | `logRequest` вырезает query |
+| B10 | `SCHEME.md` не идемпотентен | `exportMd` берёт `meta.updatedAt` из схемы |
+| B11 | Ротация автосейва была no-op | `AUTOSAVE_MIN_MS` + `AUTOSAVE_KEEP` реально ограничивают |
+| B12 | `nodeW` / `nodeH` жили в двух копиях и разъехались | Одна истина в `src/core/geometry.ts` |
+| B13 | `GET /api/mcp-config` отзывал ключи и выдавал новый | `GET` только читает; ротация — явный `POST` с подтверждением |
+| B14 | Мёртвые экспорты (`jailReal`, `dirSizeLimitExceeded`) | `src/core/index.ts` — курируемая публичная поверхность |
+| B15 | Нет проверки Origin на MCP | `checkOrigin` отдаёт 403 чужому Origin |
+| B16 | MCP говорил только на протоколе 2025-го | Dual-era: modern (2026-07-28) + legacy (initialize) |
+| B17 | Нет redo, автосейва, dirty-флага, `beforeunload` | Все четыре в `Editor.svelte` |
+| B18 | Консоль захардкожена на русском, без смены пароля и колонки юзера | `App.svelte` i18n + настройки + экран юзеров |
 
 ---
 
-## Acceptance checklist (Phase 7)
+## Чек-лист приёмки (фаза 7)
 
-- [x] `npm run verify` green (typecheck + test + build + check)
-- [x] 73/73 unit tests + 19/19 service tests
-- [x] Three HTML artifacts within budget (137 K / 111 K / 77 K)
-- [x] `check` proves `SKILL/llmscheme/` matches `src/`
-- [x] No external `src/href` in `editor.html` (file:// invariant)
-- [x] No IP/secret in code
-- [x] All 18 v1 bugs (B1–B18) closed and covered by a test
-- [x] v2 layout: `SKILL/llmscheme/`, `SERVICE-MCP/llmscheme/`, `HERMES-PLUGIN/llmscheme/`, `DEMO-PROJECT/`
-- [x] Offline editor no longer blank (welcome seed in `src/editor/skill/main.ts`)
-- [x] `INTRO.md` (service start page) and `.llm` (live snapshot) exist
-- [x] `.test_on_local_proxmox/deploy.sh` and `test.sh` are real deploy scripts
+- [x] `npm run verify` зелёный (typecheck + test + build + check)
+- [x] 73/73 юнит-тестов + 19/19 тестов сервиса
+- [x] Три HTML-артефакта в бюджете (137 К / 111 К / 77 К)
+- [x] `check` доказывает, что `SKILL/llmscheme/` совпадает с `src/`
+- [x] Нет внешних `src/href` в `editor.html` (инвариант file://)
+- [x] Нет IP/секретов в коде
+- [x] Все 18 багов v1 (B1–B18) закрыты и покрыты тестом
+- [x] Раскладка v2: `SKILL/`, `SERVICE-MCP/`, `HERMES-PLUGIN/`, `DEMO-PROJECT/`
+- [x] Офлайн-редактор больше не пустой (приветственный посев)
+- [x] `INTRO.md` и `.llm` существуют
+- [x] `.test_on_local_proxmox/deploy.sh` и `test.sh` — реальные скрипты
 
 ---
 
-## Privacy checklist (before pushing)
+## Чек-лист приватности (перед push)
 
 ```bash
-git status                                          # clean tree
-git ls-files | grep -iE 'env$|data/|test_dev/'     # nothing
+git status                                          # чистое дерево
+git ls-files | grep -iE 'env$|data/|test_dev/'     # ничего
 grep -rE '10\.0\.20\.|admin:admin|llm_[a-f0-9]{20,}' \
-    . --include='*.ts' --include='*.json' --include='*.md'   # nothing
+    . --include='*.ts' --include='*.json' --include='*.md'   # ничего
 ```

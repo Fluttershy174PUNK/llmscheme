@@ -1,268 +1,233 @@
-# LOGIN.md — the web console (login + admin screens)
+# LOGIN.md — веб-консоль (логин + экраны админа)
 
-> **Who this is for:** anyone running the llmscheme HTTP service
-> (`node src/service/server.ts`) who needs to understand the web
-> console at `http://localhost:8080/`. If you only use the CLI or
-> the standalone editor, skip this file.
-
----
-
-## What is the console?
-
-The console is a small web app that lives at the root of the HTTP
-service. It lets a team share schemes: admins create user accounts,
-every user logs in and edits their own schemes, and the same JSON
-format is used by the CLI, the editor, and the REST/MCP APIs.
-
-The console is **one** single-file HTML page (~77 KB). It runs the
-same Svelte runtime as the editor, just with different components.
+> **Для кого:** тех, кто запускает HTTP-сервис llmscheme
+> (`node src/service/server.ts`) и хочет понять веб-консоль на
+> `http://localhost:8080/`. Пользуешься только CLI или отдельным редактором —
+> пропусти.
 
 ---
 
-## The four screens
+## Что такое консоль?
 
-The console has four screens, selected by the URL hash:
+Консоль — маленькое веб-приложение в корне HTTP-сервиса. Даёт команде делить
+схемы: админы заводят аккаунты, каждый логинится и правит свои схемы, а один
+JSON-формат используют CLI, редактор и REST/MCP API.
 
-| URL | Screen | Who sees it |
+Консоль — **одна** single-file HTML-страница (~77 КБ). Тот же Svelte-рантайм,
+что у редактора, только другие компоненты.
+
+---
+
+## Четыре экрана
+
+У консоли четыре экрана, выбираются hash'ом URL:
+
+| URL | Экран | Кто видит |
 |---|---|---|
-| `/#/login` | Login form | Everyone (no auth needed) |
-| `/#/projects` | Project list | After login |
-| `/#/users` | User management | Admins only |
-| `/#/settings` | Your own password + API keys | After login |
+| `/#/login` | Форма логина | Все (без авторизации) |
+| `/#/projects` | Список проектов | После логина |
+| `/#/users` | Управление юзерами | Только админы |
+| `/#/settings` | Свой пароль + API-ключи | После логина |
 
-You can also use `/#/logout` to sign out, but there are buttons
-for that in the top bar.
+Можно и `/#/logout` — но кнопки есть в верхней панели.
 
 ---
 
-## First start — what happens when the database is empty
+## Первый старт — что при пустой базе
 
-The very first time you start the service (with an empty `DATA_DIR`),
-it creates an admin account from environment variables:
+При самом первом запуске (пустой `DATA_DIR`) сервис создаёт админ-аккаунт из
+переменных окружения:
 
 ```bash
 ADMIN_LOGIN=admin
-ADMIN_PASSWORD=admin    # CHANGE THIS
+ADMIN_PASSWORD=admin    # СМЕНИ
 ```
 
-If `ADMIN_PASSWORD` is not set, it defaults to `admin` and the
-service prints a warning. **The docker-compose setup refuses to
-start without it set.**
+Если `ADMIN_PASSWORD` не задан — по умолчанию `admin` и сервис печатает
+предупреждение. **docker-compose отказывается стартовать без него.**
 
-### If you forgot the admin password
+### Забыл пароль админа
 
-There's no "forgot password" flow (by design — it's a self-hosted
-tool, there's no email server). The only way back is:
+Потока «забыл пароль» нет (намеренно — self-hosted, почтового сервера нет).
+Путь назад один:
 
-1. Stop the service.
-2. Delete `DATA_DIR/lightdb.json` (the user database — NOT the
-   `schemes/` directory).
-3. Restart the service. It will create a fresh admin from the env
-   vars.
+1. останови сервис;
+2. удали `DATA_DIR/lightdb.json` (базу юзеров — НЕ каталог `schemes/`);
+3. перезапусти. Сервис создаст свежего админа из env.
 
-**This wipes all users and sessions.** Your schemes on disk are
-untouched.
+**Сотрёт всех юзеров и сессии.** Схемы на диске не тронет.
 
 ---
 
-## The login screen
+## Экран логина
 
-The login screen has:
+На экране логина:
 
-- A small pixel-art cat (just decoration)
-- A form with two fields: login and password
-- A "reset admin password" collapsible help section (pointing to
-  the procedure above)
-- A live README panel on the right — the contents of the project
-  root's `README.md`, rendered as Markdown
+- маленький пиксельный кот (декорация);
+- форма с двумя полями: логин и пароль;
+- сворачиваемая справка «reset admin password» (ведёт на процедуру выше);
+- справа живая панель README — содержимое корневого `README.md`, рендер Markdown.
 
-The form submits when you press Enter. If the credentials are
-wrong, the error message shows under the form. After three failed
-attempts in a row, the server adds a small delay to slow down
-brute-force attacks.
+Форма отправляется по Enter. Неверные учётные данные — ошибка под формой.
+После трёх неудач подряд сервер добавляет небольшую задержку против брутфорса.
 
 ---
 
-## The projects screen
+## Экран проектов
 
-This is the home screen after login. It shows a table of all your
-schemes (or all schemes across all users, if you're an admin and
-toggle the "show all users' projects" switch).
+Домашний экран после логина. Таблица всех твоих схем (или всех юзеров, если ты
+админ и включил тумблер «show all users' projects»).
 
-| Column | What it means |
+| Колонка | Что значит |
 |---|---|
-| project | The project name (or `—` for a scheme that isn't in a project) |
-| scheme | The scheme name |
-| edit | A link that opens the scheme in the editor |
-| user | (admin only) Which user owns this scheme |
-| last edit | When the scheme was last modified |
-| del | A delete button (asks for confirmation) |
+| project | Имя проекта (или `—`, если схема не в проекте) |
+| scheme | Имя схемы |
+| edit | Ссылка, открывающая схему в редакторе |
+| user | (только админ) чья это схема |
+| last edit | Когда менялась последний раз |
+| del | Кнопка удаления (спрашивает подтверждение) |
 
-The "edit" link takes you to `/editor/<scheme-name>`, which loads
-the scheme in the browser editor. The first time you open a
-project, the server **auto-creates** the scheme if it doesn't
-exist yet — so you can start editing without a separate "create"
-step.
+Ссылка «edit» ведёт на `/editor/<имя-схемы>` — схема грузится в браузерном
+редакторе. При первом открытии проекта сервер **автосоздаёт** схему, если её
+нет — можно править без отдельного шага «создать».
 
-### Creating a new project
+### Создание проекта
 
-Click the **new project** button in the top-right. A dialog asks
-for the project name. Type it, confirm, and the project appears
-in the table. The first scheme is auto-created when you click
-"edit" on it.
+Кнопка **new project** справа вверху. Диалог спрашивает имя. Вводишь,
+подтверждаешь — проект появляется в таблице. Первая схема автосоздаётся при
+клике «edit».
 
-### Deleting a project or scheme
+### Удаление проекта или схемы
 
-Click the red `×` button. The console asks you to type the project
-or scheme name to confirm. This is intentional — destructive
-actions need a second confirmation that's hard to do by accident.
+Красная кнопка `×`. Консоль просит набрать имя проекта/схемы для подтверждения.
+Намеренно — разрушительные действия требуют второго подтверждения.
 
 ---
 
-## The users screen (admin only)
+## Экран юзеров (только админ)
 
-If you're logged in as an admin, the **users** tab appears in the
-top nav. It shows a table of all users:
+Если ты админ, в верхней навигации появляется вкладка **users**. Таблица всех
+юзеров:
 
-| Column | What it means |
+| Колонка | Что значит |
 |---|---|
-| login | The user's login name |
-| role | `admin` or `user` |
-| api keys | How many active API keys this user has |
-| created | When the account was created |
-| actions | Per-user buttons (see below) |
+| login | Логин юзера |
+| role | `admin` или `user` |
+| api keys | Сколько активных API-ключей |
+| created | Когда создан |
+| actions | Кнопки по юзеру (ниже) |
 
-### Per-user actions
+### Действия по юзеру
 
-- **pass** — change this user's password (admin can do this for
-  any user, including themselves)
-- **mcp** — show the MCP configuration (URL + hasKey) for this
-  user. **Read-only** — clicking it just shows a dialog, nothing
-  changes on the server.
-- **rotate** — revoke all of this user's API keys and issue a new
-  one. Destructive: the old key stops working immediately. The
-  console asks for confirmation, and the new secret is shown
-  **once** — copy it now, you can't see it again.
-- **×** — delete the user. The console won't let you delete
-  yourself or the last remaining admin.
+- **pass** — сменить пароль юзера (админ может для любого, включая себя);
+- **mcp** — показать MCP-конфиг (URL + hasKey) для юзера. **Только чтение** —
+  клик просто показывает диалог, на сервере ничего;
+- **rotate** — отозвать все ключи юзера и выдать новый. Разрушительно: старый
+  ключ сразу умирает. Консоль просит подтверждение, новый секрет показывается
+  **один раз** — скопируй сразу, больше не увидишь;
+- **×** — удалить юзера. Консоль не даст удалить себя или последнего админа.
 
-### Creating a new user
+### Создание юзера
 
-The **new user** button asks for a login and a password. The
-account is created with the `user` role by default. You can't
-create admins through the UI (admins are bootstrapped from the
-env vars or upgraded by another admin through the API — by
-design, you can't accidentally make everyone an admin).
+Кнопка **new user** спрашивает логин и пароль. Аккаунт по умолчанию с ролью
+`user`. Через UI админов не создать (админы бутстрапятся из env или повышаются
+другим админом через API — намеренно, чтобы случайно не раздать админов).
 
 ---
 
-## The settings screen
+## Экран настроек
 
-The **settings** tab is for managing your own account. It has
-three sections:
+Вкладка **settings** — про свой аккаунт. Три секции:
 
-### Change your password
+### Смена пароля
 
-Type your new password, click **change**. Your current session
-is dropped — you'll be sent back to the login screen. All your
-other sessions (other browsers, other devices) are dropped too.
+Вводишь новый пароль, жмёшь **change**. Текущая сессия сбрасывается — вернёшься
+на экран логина. Все остальные сессии (другие браузеры, устройства) тоже.
 
-### API keys
+### API-ключи
 
-A table of your active API keys. Each row shows:
+Таблица активных ключей. В строке:
 
-- The key's hash (first 12 characters — the full hash is too long
-  to display)
-- When it was created
-- A **revoke** button
+- хэш ключа (первые 12 символов — полный слишком длинный);
+- когда создан;
+- кнопка **revoke**.
 
-Click **new key** to issue a new one. The secret is shown once,
-in a dialog. **Copy it immediately** — the server only stores the
-hash, so it can never show you the full secret again. If you lose
-it, rotate (which revokes all your keys and issues a new one).
+Кнопка **new key** выдаёт новый. Секрет показывается один раз, в диалоге.
+**Скопируй сразу** — сервер хранит только хэш и полный секрет больше не покажет.
+Потерял — rotate (отзовёт все ключи и выдаст новый).
 
-### MCP configuration
+### MCP-конфиг
 
-A read-only panel showing the MCP server's URL and whether you
-have any active keys. This is the same info as the `mcp` button
-on the users screen, but for your own account.
+Панель только для чтения: URL MCP-сервера и есть ли активные ключи. Та же инфа,
+что кнопка `mcp` на экране юзеров, но для своего аккаунта.
 
 ---
 
-## The top bar — what every button does
+## Верхняя панель — что делает каждая кнопка
 
-The bar at the top of every screen has:
-
-- **llmscheme** (logo) — click to go to the projects screen
-- **projects / users / settings** (nav) — switch screens (the
-  **users** tab is admin-only)
-- **{login} ({role})** — your identity; read-only
-- **logout all** — sign out of every device/session at once
-- **logout** — sign out of this browser only
-- **EN/RU** — language toggle (persists in `localStorage`)
+- **llmscheme** (логотип) — на экран проектов;
+- **projects / users / settings** (навигация) — переключение экранов
+  (**users** только для админа);
+- **{login} ({role})** — твоя идентичность, только чтение;
+- **logout all** — выйти со всех устройств/сессий сразу;
+- **logout** — выйти только из этого браузера;
+- **EN/RU** — переключение языка (хранится в `localStorage`).
 
 ---
 
-## Auth lifecycle (for the curious)
+## Жизненный цикл авторизации (для любопытных)
 
-- A login creates a session token (a random 64-hex string). The
-  server stores `sha256(token)` in `lightdb.json`.
-- The token is sent to your browser as a cookie named `ls_token`,
-  marked `HttpOnly` and `SameSite=Lax`. JavaScript can't read it
-  (that's the point of `HttpOnly`).
-- For scripts and MCP clients, the same token works as a Bearer
-  header: `Authorization: Bearer <token>`.
-- The token expires after `TOKEN_TTL_DAYS` (default 30 days). The
-  cookie also has a `Max-Age` of the same value.
-- **Logout** drops the token that was used to call it (so the
-  cookie-based logout from the browser works end-to-end, not just
-  the Bearer-based logout from a script).
-- **Logout all** drops every token for your user, across all
-  devices.
-- **Changing your password** drops every token for your user too.
+- Логин создаёт токен сессии (случайная 64-hex строка). Сервер хранит
+  `sha256(token)` в `lightdb.json`.
+- Токен уходит в браузер cookie `ls_token` с `HttpOnly` и `SameSite=Lax`.
+  JavaScript его не читает (в этом смысл `HttpOnly`).
+- Для скриптов и MCP-клиентов тот же токен работает как Bearer:
+  `Authorization: Bearer <token>`.
+- Токен живёт `TOKEN_TTL_DAYS` (по умолчанию 30 дней). У cookie тот же `Max-Age`.
+- **Logout** сбрасывает токен, которым вызвали (cookie-выход из браузера
+  работает целиком, а не только Bearer-выход из скрипта).
+- **Logout all** сбрасывает все токены юзера на всех устройствах.
+- **Смена пароля** тоже сбрасывает все токены юзера.
 
 ---
 
-## What can an admin do that a regular user can't?
+## Что админ может, а обычный юзер нет?
 
-| Action | Regular user | Admin |
+| Действие | Обычный | Админ |
 |---|---|---|
-| Edit their own schemes | ✓ | ✓ |
-| Create new projects | ✓ | ✓ |
-| See the users tab | ✗ | ✓ |
-| Create new users | ✗ | ✓ |
-| Change another user's password | ✗ | ✓ (with `?login=`) |
-| Rotate another user's API keys | ✗ | ✓ (with `?login=`) |
-| See another user's schemes | ✗ | ✓ (with `?user=all`) |
-| Delete another user | ✗ | ✓ (but not self, not last admin) |
+| Править свои схемы | ✓ | ✓ |
+| Создавать проекты | ✓ | ✓ |
+| Видеть вкладку users | ✗ | ✓ |
+| Создавать юзеров | ✗ | ✓ |
+| Менять чужой пароль | ✗ | ✓ (через `?login=`) |
+| Ротировать чужие ключи | ✗ | ✓ (через `?login=`) |
+| Видеть чужие схемы | ✗ | ✓ (через `?user=all`) |
+| Удалять чужого юзера | ✗ | ✓ (но не себя и не последнего админа) |
 
-Everything admin-specific is gated. The console sends a
-`?login=<other-user>` query parameter when an admin acts on
-someone else's behalf, and the server rejects the request if
-the caller isn't an admin.
+Всё админское закрыто гейтом. Консоль шлёт `?login=<другой-юзер>`, когда админ
+действует от чужого имени, и сервер отклоняет запрос, если вызывающий не админ.
 
 ---
 
-## Troubleshooting
+## Решение проблем
 
-### "I see a blank screen after login"
+### «После логина пустой экран»
 
-Your session token may have expired. Click **logout** in the top
-bar, log in again, and the page will reload.
+Токен сессии мог протухнуть. Кликни **logout** вверху, зайди заново — страница
+перезагрузится.
 
-### "The 'new project' button does nothing"
+### «Кнопка new project ничего не делает»
 
-The dialog is open in a popup — check behind the main window or
-look for a new browser tab. Some browsers block the dialog if
-it's a cross-origin frame; click the main window first to make
-sure it has focus.
+Диалог открылся во всплывающем окне — проверь за главным окном или новую
+вкладку. Некоторые браузеры блокируют диалог в кросс-ориджин фрейме; кликни
+главное окно, чтобы дать фокус.
 
-### "I clicked 'rotate key' and now my MCP client stopped working"
+### «Нажал rotate key — MCP-клиент перестал работать»
 
-That's the point of rotate. The old key is dead. Paste the new
-key into your MCP client configuration and restart it.
+В этом смысл rotate. Старый ключ мёртв. Вставь новый в конфиг MCP-клиента и
+перезапусти его.
 
-### "The console says 'auth required' even though I just logged in"
+### «Консоль пишет auth required, хотя я только что вошёл»
 
-Your cookie was cleared (by a browser restart, a privacy
-extension, or by clicking "logout all"). Log in again.
+Cookie сброшен (перезапуском браузера, приватным расширением или «logout all»).
+Зайди заново.

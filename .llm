@@ -1,211 +1,177 @@
-# .llm — current structure + plan
+# .llm — актуальная структура + план
 
-> **For LLM agents:** this file is the authoritative snapshot of the
-> repo's actual state. If you need to know "what exists right now",
-> read this first. `README.md` is the user-facing intro; `PROJECT.md`
-> is the contributor's manual; `.llm` is the live truth.
+> **Для LLM-агентов:** этот файл — авторитетный снимок реального состояния
+> репозитория. Нужно знать «что есть прямо сейчас» — читай сначала это.
+> `README.md` — вводная для пользователя; `PROJECT.md` — мануал контрибьютора;
+> `.llm` — живая истина.
 
-Last regenerated: 2026-09-08
-
----
-
-## What this project is
-
-**llmscheme** — a tool that keeps a "living logic scheme" of a
-project's modules and data flow in a single JSON file, readable by
-humans, AI agents, and a visual editor. Three entry points over one
-shared core.
+Последняя регенерация: 2026-09-08
 
 ---
 
-## Current actual structure (v2 layout)
+## Что это за проект
+
+**llmscheme** — инструмент, который держит «живую логическую схему» модулей и
+потоков данных проекта в одном JSON-файле, читаемом человеком, AI-агентом и
+визуальным редактором. Три точки входа поверх одного общего ядра.
+
+---
+
+## Текущая структура (раскладка v2)
 
 ```
 llmscheme/
-├── SKILL/llmscheme/                [artifact] drop-in skill for AI agents
-│   ├── cli/block.ts                       the 16-command CLI
-│   ├── core/                              verbatim copy of src/core/
-│   │   ├── index.ts                       public surface (server-side)
-│   │   ├── browser.ts                     public surface (browser-side, no node:fs)
+├── SKILL/llmscheme/                [артефакт] drop-in скилл для агентов
+│   ├── cli/block.ts                       CLI на 16 команд
+│   ├── core/                              дословная копия src/core/
+│   │   ├── index.ts                       публичная поверхность (сервер)
+│   │   ├── browser.ts                     публичная поверхность (браузер, без node:fs)
 │   │   ├── types.ts                       Scheme, SchemeNode, SchemeEdge, SchemeZone
-│   │   ├── validate.ts                    error/warn rules
-│   │   ├── layout.ts                      auto-place
-│   │   ├── diff.ts                        what changed
-│   │   ├── exportMd.ts                    Markdown output
-│   │   ├── saveSchema.ts                  atomic disk write
-│   │   ├── renderHtml.ts                  bake data into HTML
-│   │   ├── ops.ts                         node/edge/zone mutations
-│   │   ├── pathjail.ts                    path safety
-│   │   ├── gitmd.ts                       .gitignore + AGENTS.md helpers
-│   │   ├── ids.ts                         watermark id minting
+│   │   ├── validate.ts                    правила error/warn
+│   │   ├── layout.ts                      авторазмещение
+│   │   ├── diff.ts                        что изменилось
+│   │   ├── exportMd.ts                    вывод Markdown
+│   │   ├── saveSchema.ts                  атомарная запись на диск
+│   │   ├── renderHtml.ts                  встройка данных в HTML
+│   │   ├── ops.ts                         мутации node/edge/zone
+│   │   ├── pathjail.ts                    безопасность путей
+│   │   ├── gitmd.ts                       .gitignore + AGENTS.md
+│   │   ├── ids.ts                         водяной знак id
 │   │   ├── errors.ts                      DataError, CasError, ValidationError
-│   │   └── geometry.ts                    nodeW/nodeH (single source of truth)
-│   ├── editor.html                [generated] file:// editor (self-contained)
-│   ├── SKILL.md                   [generated] agent-facing manual
-│   ├── references/                [generated] deeper docs
+│   │   └── geometry.ts                    nodeW/nodeH (единственная истина)
+│   ├── editor.html                [генерируется] file:// редактор (самодостаточный)
+│   ├── SKILL.md                   [генерируется] мануал для агента
+│   ├── references/                [генерируется] глубокие доки
 │   ├── VERSION
-│   └── .manifest.json             [generated] sha256 pin
+│   └── .manifest.json             [генерируется] пин sha256
 │
-├── SERVICE-MCP/llmscheme/         [artifact] Docker-deployable service
-│   ├── editor.html                [generated] service editor
-│   ├── console.html               [generated] admin console
-│   ├── assets/                    [generated] woff2 fonts
+├── SERVICE-MCP/llmscheme/         [артефакт] развёртываемый в Docker сервис
+│   ├── editor.html                [генерируется] редактор сервиса
+│   ├── console.html               [генерируется] админ-консоль
+│   ├── assets/                    [генерируется] woff2-шрифты + app.js
 │   ├── Dockerfile
 │   ├── docker-compose.yml
 │   ├── .env.example
 │   ├── VERSION
 │   └── README.md
 │
-├── HERMES-PLUGIN/llmscheme/       [artifact] hermes plugin (placeholder)
-│   ├── plugin.json                       manifest (name, entry, permissions)
-│   ├── plugin.mjs                        working entry: get/nodeAdd/...
+├── HERMES-PLUGIN/llmscheme/       [артефакт] hermes-плагин (заглушка)
+│   ├── plugin.json                       манифест (name, entry, permissions)
+│   ├── plugin.mjs                        рабочий вход: get/nodeAdd/...
 │   └── README.md
 │
-├── DEMO-PROJECT/                  [artifact] demo: test the skill here
-│   ├── src/run.ts                          cat generator (TUI + GIF)
-│   ├── cats.html                           browser UI (generate button + pixel cat)
-│   ├── cats.txt                            word list
-│   ├── .llmscheme/logic_scheme/scheme.json              demo scheme (2 nodes, 1 edge)
-│   ├── SCHEME.md                           generated markdown export
-│   ├── AGENTS.md                           agent section
+├── DEMO-PROJECT/                  [артефакт] демо: проверь скилл здесь
+│   ├── src/run.ts                          генератор котиков (TUI + GIF)
+│   ├── src/cat.ts                          TUI-рендер (ANSI, без зависимостей)
+│   ├── src/gif.ts                          GIF (LZW, без зависимостей)
+│   ├── cats.html                           браузерный UI (анимированный кот)
+│   ├── cats.txt                            список слов
+│   ├── .llmscheme/logic_scheme/scheme.json  демо-схема (7 узлов, 7 рёбер, 1 зона)
+│   ├── AGENTS.md                           секция агента
 │   ├── README.md
-│   ├── .gitignore
-│   └── .llmscheme/logic_scheme/VERSION
+│   └── .gitignore
 │
-├── src/                           [source] edit here, only here
-│   ├── core/                               shared data model (see SKILL/llmscheme/core)
-│   ├── cli/block.ts                        the CLI
-│   ├── service/                            HTTP service
-│   │   ├── server.ts                       entry point
+├── src/                           [исходник] править здесь, только здесь
+│   ├── core/                               общая модель данных (см. SKILL/llmscheme/core)
+│   ├── cli/block.ts                        CLI
+│   ├── service/                            HTTP-сервис
+│   │   ├── server.ts                       точка входа
 │   │   └── lib/                            http, auth, store, schemes, routes, mcp, pages, config
-│   ├── console/                            web admin console (Svelte 5)
-│   │   ├── App.svelte                      hash-routed 4-screen UI
-│   │   ├── api.ts                          fetch wrapper
+│   ├── console/                            веб-консоль админа (Svelte 5)
+│   │   ├── App.svelte                      hash-роутер, 4 экрана
+│   │   ├── api.ts                          обёртка fetch
 │   │   └── console.css
-│   ├── editor/                             browser editor (Svelte 5)
-│   │   ├── core/                           shared Svelte component
-│   │   │   ├── Editor.svelte                canvas + inspector + status bar
+│   ├── editor/                             браузерный редактор (Svelte 5)
+│   │   ├── core/                           общий Svelte-компонент
+│   │   │   ├── Editor.svelte                холст + инспектор + статусбар
 │   │   │   ├── editor.css
-│   │   │   └── i18n.ts                     EN/RU dictionary
-│   │   ├── skill/                          file:// entry
-│   │   │   ├── main.ts                      tier A/B/C save
-│   │   │   └── pristine.ts                  HTML snapshot
-│   │   └── service/                        http entry
-│   │       └── main.ts                      tier S save (PUT /api/scheme)
-│   ├── ui/pixel.css                        palette + font (one place)
-│   ├── build/                              build scripts
+│   │   │   └── i18n.ts                     словарь EN/RU
+│   │   ├── skill/                          вход file://
+│   │   │   ├── main.ts                      tier A/B/C + open local/export
+│   │   │   └── pristine.ts                  снимок HTML
+│   │   └── service/                        вход http
+│   │       └── main.ts                      tier S (PUT /api/scheme)
+│   ├── ui/pixel.css                        палитра + шрифт (одно место)
+│   ├── build/                              скрипты сборки
 │   │   ├── build.ts                        esbuild + svelte/compiler → 3 HTML
-│   │   ├── sync-skill.ts                   SKILL/llmscheme/ sync
-│   │   └── check.ts                        byte-compare check
-│   └── test/                               node:test, no frameworks
-│       ├── core.test.ts                     33 tests
-│       ├── cli.test.ts                      21 tests
-│       └── service.test.ts                  19 tests
+│   │   ├── sync-skill.ts                   синк SKILL/llmscheme/
+│   │   └── check.ts                        побайтовая сверка
+│   └── test/                               node:test, без фреймворков
+│       ├── core.test.ts                     33 теста
+│       ├── cli.test.ts                      21 тест
+│       └── service.test.ts                  19 тестов
 │
-├── .test_on_local_proxmox/        [deploy] LXC 999 test sandbox
-│   └── test_dev.md                         hermes skill for the sandbox
+├── .test_on_local_proxmox/        [деплой] песочница LXC 999
+│   ├── deploy.sh                           сборка + rsync + docker compose up
+│   ├── test.sh                             smoke-тест сервиса
+│   └── test_dev.md                         hermes-скилл по песочнице
 │
-├── docs/                          [source] in-depth guides
-│   ├── SCHEME_FORMAT.md                    JSON format reference
-│   ├── EDITOR.md                           editor tiers + file:// facts
-│   ├── LOGIN.md                            console + admin guide
-│   └── MIGRATION.md                        v1 → v2 changes
+├── src/docs/                      [исходник] подробные гайды
+│   ├── SCHEME_FORMAT.md                    справка по JSON-формату
+│   ├── EDITOR.md                           tier'ы редактора + факты file://
+│   ├── LOGIN.md                            консоль + админ
+│   └── MIGRATION.md                        изменения v1 → v2
 │
-├── schemes/                       [source] UI requirements
-│   └── UI-page.json                        35 nodes, 8 zones (UI spec)
+├── src/schemes/                   [исходник] UI-требования
+│   └── UI-page.json                        35 узлов, 8 зон (UI-спека)
 │
-├── .github/workflows/ci.yml      [source] CI: typecheck → test → build → check
+├── .github/workflows/ci.yml      [исходник] CI: typecheck → test → build → check
 │
-├── README.md                      [source] user-facing intro
-├── PROJECT.md                     [source] contributor's manual
-├── INTRO.md                       [source] service start page
-├── PLAN.md                        [history] v2 plan from v1 audit
-├── TODO.md                        [history] what was left to do
-├── LICENSE                        [source] MIT
+├── README.md                      [исходник] вводная для пользователя
+├── PROJECT.md                     [исходник] мануал контрибьютора
+├── INTRO.md                       [исходник] стартовая страница сервиса
+├── LICENSE                        [исходник] MIT
 │
-├── .llm                           [this file] live snapshot
-├── .gitignore                     [source]
-├── .gitattributes                  [source] linguist-generated markers
-├── .astgrep.yml                    [linter] ast-grep config
-├── svelte.config.js               [linter] svelte-check config
+├── .llm                           [этот файл] живой снимок
+├── .gitignore                     [исходник]
+├── .gitattributes                 [исходник] linguist-generated метки
+├── .pi-lens.json                  [линтер] ignore для сгенерированного
+├── svelte.config.js               [линтер] конфиг svelte-check
 │
-├── package.json                   [source] devDeps: esbuild, svelte, typescript
-├── tsconfig.json                  [source] strict, erasableSyntaxOnly
+├── package.json                   [исходник] devDeps: esbuild, svelte, typescript
+├── tsconfig.json                  [исходник] strict, erasableSyntaxOnly
 ├── package-lock.json
-├── VERSION                        skill: 2.0.0 / format: 1
 │
-├── dist/                          [gitignored] build intermediate
-│
+├── dist/                          [gitignored] промежуточное сборки
 ├── node_modules/                  [gitignored]
 └── .git/                          [git]
 ```
 
 ---
 
-## Plan (what's next, what's done)
+## План (что дальше, что сделано)
 
-| phase | description | status |
+| фаза | описание | статус |
 |---|---|---|
-| 0 | archive v1, reset root to clean v2 | ✅ done |
-| 1 | core runs from .ts, 33 tests, CI | ✅ done |
-| 2 | CLI + skill + sync/check, 54 tests | ✅ done |
-| 3 | service: server.ts + pages.ts + 19 service tests | ✅ done |
-| 3.4 | SERVICE-MCP deploy wrapper (Dockerfile, compose) | ✅ done |
-| 4 | editor + console (Svelte 5) + 3 single-file HTML artifacts | ✅ done |
-| 5 | demo/ + plugin/ | ✅ done |
-| 6 | docs (README, PROJECT, INTRO, docs/, .llm) | ✅ done |
-| 7 | acceptance — all green | ✅ done |
+| 0 | архив v1, сброс корня к чистому v2 | ✅ готово |
+| 1 | core работает из .ts, 33 теста, CI | ✅ готово |
+| 2 | CLI + скилл + sync/check, 54 теста | ✅ готово |
+| 3 | сервис: server.ts + pages.ts + 19 тестов | ✅ готово |
+| 3.4 | SERVICE-MCP (Dockerfile, compose) | ✅ готово |
+| 4 | редактор + консоль (Svelte 5) + 3 single-file HTML | ✅ готово |
+| 5 | demo/ + plugin/ | ✅ готово |
+| 6 | доки (README, PROJECT, INTRO, .llm) | ✅ готово |
+| 7 | приёмка — всё зелёное | ✅ готово |
 
-### Open items (not blocking)
+### Открытые пункты (не блокеры)
 
-- **e2e tests** — the puppeteer harness from v1 is not ported yet. Not
-  blocking acceptance; the 73 unit + service tests cover the same
-  surface. Port when a browser test rig is available.
-- **DEMO-PROJECT** is the cat generator (v1 leftover). The user asked
-  for a GIF TUI cat demo. See "next" below.
+- **e2e-тесты** — puppeteer-харнесс из v1 не портирован. Не блокирует приёмку:
+  те же поверхности покрыты 73 юнит + сервис тестами. Портировать, когда будет
+  браузерный стенд.
 
 ---
 
-## Next (suggested)
+## Соглашения
 
-The user asked for:
-1. **restructure** to `SKILL/llmscheme`, `SERVICE-MCP/llmscheme`,
-   `HERMES-PLUGIN/llmscheme`, `DEMO-PROJECT` — ✅ done
-2. **fix blank offline editor** — ✅ done (welcome seed in
-   `src/editor/skill/main.ts`)
-3. **real `.test_on_local_proxmox` deploy** — partial: `test_dev.md`
-   is a hermes skill reference, not a deploy script. Need a real
-   `deploy.sh` that SSHes to LXC 999 and runs the service.
-4. **GIF TUI cats demo** — replace the v1 cat generator with a
-   TUI-style cat generator that produces animated GIFs. New
-   `DEMO-PROJECT/src/`.
-
-### Suggested concrete next steps
-
-1. Create `DEMO-PROJECT/src/cat.ts` (TUI cat) and `DEMO-PROJECT/src/gif.ts`
-   (GIF output). Keep the scheme describing the data flow.
-2. Create `.test_on_local_proxmox/deploy.sh` that SSHes to LXC 999
-   and runs `docker compose up -d` for the service.
-3. Create `.test_on_local_proxmox/test.sh` that runs a smoke test
-   against the deployed service.
-4. Update `DEMO-PROJECT/README.md` to describe the new TUI cat demo.
-
----
-
-## Conventions
-
-- **Edit `src/`.** Everything else is generated or deployed.
-- **`SKILL/llmscheme/` mirrors `src/{core,cli}` exactly.** A rename
-  in `src/core/` breaks the copied import.
-- **The on-disk format is v1-compatible.** A live v1 service
-  upgrades in place by replacing the container.
-- **CAS by `rev` on every write.** The CLI enforces this via
-  `--rev N`.
-- **One core, three entry points.** Browser-safe subset lives at
-  `src/core/browser.ts` (re-exports from `core/index.ts` minus
-  `node:fs`).
-- **Svelte 5 runes mode.** `compilerOptions.runes: true` in
-  `svelte.config.js`. Don't use legacy Svelte 4 syntax.
-- **No new dependencies without a reason.** v2 has 2 devDeps
-  (esbuild, svelte). The runtime is Node 22.18+ native type-
-  stripping.
+- **Править `src/`.** Всё остальное генерируется или деплоится.
+- **`SKILL/llmscheme/` зеркалит `src/{core,cli}` точно.** Переименование в
+  `src/core/` ломает скопированный импорт.
+- **Формат на диске совместим с v1.** Живой v1-сервис обновляется заменой
+  контейнера.
+- **CAS по `rev` на каждой записи.** CLI принуждает через `--rev N`.
+- **Одно ядро, три точки входа.** Браузерное подмножество в
+  `src/core/browser.ts` (реэкспорт `core/index.ts` минус `node:fs`).
+- **Svelte 5 runes.** `compilerOptions.runes: true` в `svelte.config.js`.
+  Не использовать legacy-синтаксис Svelte 4.
+- **Без новых зависимостей без причины.** В v2 два devDep (esbuild, svelte).
+  Рантайм — нативный type-stripping Node 22.18+.

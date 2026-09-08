@@ -1,27 +1,25 @@
-# SCHEME_FORMAT.md — the `.block_llm/scheme.json` format
+# SCHEME_FORMAT.md — формат `.llmscheme/<type>_scheme/scheme.json`
 
-> **Who this is for:** anyone who wants to understand (or write by
-> hand) the JSON file that llmscheme uses to describe a project. If
-> you only ever use the CLI or the editor, you don't need to read
-> this — the tools handle the format for you.
-
----
-
-## What is a scheme, in plain English?
-
-A scheme is a JSON file that describes your project's **structure**:
-the boxes (modules, files, concepts) and the arrows (how data flows
-between them). It's the *what*, not the *how* — it tells you what's
-in the project and how it connects, not what each function does
-line by line.
-
-The file lives at `.block_llm/scheme.json` inside your project. The
-CLI and the editor read and write it. `SCHEME.md` and
-`.block_llm/scheme.html` are **generated** from it.
+> **Для кого:** тех, кто хочет понять (или написать руками) JSON-файл, которым
+> llmscheme описывает проект. Если пользуешься только CLI или редактором —
+> читать не обязательно: инструменты сами всё делают.
 
 ---
 
-## The smallest possible scheme
+## Что такое схема простыми словами
+
+Схема — это JSON-файл, который описывает **структуру** проекта: квадратики
+(модули, файлы, понятия) и стрелки (как данные текут между ними). Это *что*, а
+не *как* — что в проекте есть и как связано, а не построчно что делает каждая
+функция.
+
+Файл лежит в `.llmscheme/<type>_scheme/scheme.json` внутри проекта. CLI и
+редактор читают и пишут его. `SCHEME.md` и `scheme.html` из него
+**генерируются**.
+
+---
+
+## Минимально возможная схема
 
 ```json
 {
@@ -40,36 +38,36 @@ CLI and the editor read and write it. `SCHEME.md` and
 }
 ```
 
-That's what `block init` creates. Now let's add things.
+Это создаёт `block init`. Теперь добавляем.
 
 ---
 
-## Adding a node (a box on the diagram)
+## Добавление узла (квадратика на диаграмме)
 
 ```json
 {
   "id": "n1",
   "shape": "rect",
   "label": "Login page",
-  "description": "Reads email + password from the user, calls the auth API.",
+  "description": "Читает email + пароль, зовёт auth API.",
   "x": 100,
   "y": 80,
   "refs": ["src/login.ts"]
 }
 ```
 
-| Field | What it is | Required? |
+| Поле | Что это | Обязательно? |
 |---|---|---|
-| `id` | A unique string. Convention: `n1`, `n2`, `n3`... | yes |
-| `shape` | One of: `rect`, `square`, `circle`, `ellipse`, `diamond`, `table` | yes |
-| `label` | The text shown on the box. Use `\n` for line breaks. | yes |
-| `description` | A longer note (for humans and for the AI) | no |
-| `x`, `y` | Where the box sits on the canvas (pixels) | yes, but `autoLayout` can fill them in |
-| `w`, `h` | Override the box size (otherwise the editor sizes it from the label) | no |
-| `refs` | A list of file paths this node represents | no |
-| `table` | For `shape: "table"` — column headers and rows | only for tables |
+| `id` | Уникальная строка. Обычно `n1`, `n2`, `n3`… | да |
+| `shape` | Одна из: `rect`, `square`, `circle`, `ellipse`, `diamond`, `table` | да |
+| `label` | Текст на квадратике. `\n` — перенос строки. | да |
+| `description` | Длинная заметка (для людей и AI) | нет |
+| `x`, `y` | Где квадратик на холсте (пиксели) | да, но `autoLayout` может расставить |
+| `w`, `h` | Переопределение размера (иначе редактор считает из label) | нет |
+| `refs` | Список путей файлов, которые представляет узел | нет |
+| `table` | Для `shape: "table"` — заголовки колонок и строки | только для таблиц |
 
-**Via the CLI:**
+**Через CLI:**
 
 ```bash
 block node add --label "Login page" --ref src/login.ts --shape rect
@@ -77,7 +75,7 @@ block node add --label "Login page" --ref src/login.ts --shape rect
 
 ---
 
-## Adding an edge (an arrow between two boxes)
+## Добавление ребра (стрелки между двумя квадратиками)
 
 ```json
 {
@@ -89,16 +87,16 @@ block node add --label "Login page" --ref src/login.ts --shape rect
 }
 ```
 
-| Field | What it is |
+| Поле | Что это |
 |---|---|
-| `id` | A unique string. Convention: `e1`, `e2`, `e3`... |
-| `from` | The id of the source node |
-| `to` | The id of the target node |
-| `style` | `solid` (normal arrow) or `dashed` (optional / async / fallback flow) |
-| `label` | Optional text on the arrow |
-| `fromSide`, `toSide` | Where the arrow connects: `top`, `right`, `bottom`, `left` (otherwise the editor picks the closest side) |
+| `id` | Уникальная строка. Обычно `e1`, `e2`, `e3`… |
+| `from` | id узла-источника |
+| `to` | id узла-цели |
+| `style` | `solid` (обычная стрелка) или `dashed` (опциональный / async / fallback) |
+| `label` | Необязательный текст на стрелке |
+| `fromSide`, `toSide` | Куда цепляется стрелка: `top`, `right`, `bottom`, `left` (иначе редактор берёт ближайшую сторону) |
 
-**Via the CLI:**
+**Через CLI:**
 
 ```bash
 block edge add --from n1 --to n2 --style solid --label "calls"
@@ -106,7 +104,7 @@ block edge add --from n1 --to n2 --style solid --label "calls"
 
 ---
 
-## Adding a zone (a dashed rectangle that groups things)
+## Добавление зоны (пунктирного прямоугольника-группировки)
 
 ```json
 {
@@ -120,11 +118,10 @@ block edge add --from n1 --to n2 --style solid --label "calls"
 }
 ```
 
-Zones are for "this stuff belongs together" — a layer, a subsystem,
-a feature. They don't participate in CAS or diff; they're just
-visual grouping.
+Зоны — «это вместе»: слой, подсистема, фича. Не участвуют в CAS или diff —
+просто визуальная группировка.
 
-**Via the CLI:**
+**Через CLI:**
 
 ```bash
 block zone add --label "Frontend" --x 50 --y 50 --w 400 --h 200
@@ -132,7 +129,7 @@ block zone add --label "Frontend" --x 50 --y 50 --w 400 --h 200
 
 ---
 
-## The `meta` block
+## Блок `meta`
 
 ```json
 {
@@ -143,87 +140,83 @@ block zone add --label "Frontend" --x 50 --y 50 --w 400 --h 200
 }
 ```
 
-| Field | What it is |
+| Поле | Что это |
 |---|---|
-| `updatedAt` | ISO timestamp of the last write. The Markdown export reads this so the export is idempotent. |
-| `generator` | Who wrote the last change: an AI agent, a human through the editor, or a human editing the JSON. |
-| `nextId.n` | The next id to use for a new node. Monotonically increasing — once a node gets id `n3`, no future node will ever reuse `n3`, even after `n3` is deleted. This keeps diff and history clean. |
-| `nextId.e` | Same, for edges. |
-| `editor.rev` | The revision that the editor currently has open. Optional; set by the browser editor. |
+| `updatedAt` | ISO-время последней записи. Markdown-экспорт читает его, чтобы быть идемпотентным. |
+| `generator` | Кто писал последнее изменение: AI-агент, человек через редактор, человек в JSON. |
+| `nextId.n` | Следующий id для нового узла. Монотонно растёт — узел `n3` никогда не переиспользуется, даже после удаления. Держит diff и историю чистыми. |
+| `nextId.e` | То же для рёбер. |
+| `editor.rev` | Ревизия, которую сейчас открыл редактор. Необязательно; ставит браузерный редактор. |
 
-**You don't write `meta` by hand.** The CLI updates it on every
-write.
+**`meta` руками не пишут.** CLI обновляет его на каждой записи.
 
 ---
 
-## The `rev` field — what it is and why it matters
+## Поле `rev` — что это и зачем
 
-`rev` is a counter that starts at 0 and goes up by 1 on every write.
-It's the "version" of the scheme.
+`rev` — счётчик: стартует с 0, +1 на каждой записи. Это «версия» схемы.
 
-Why does it exist? Because two writers can clobber each other:
+Зачем? Два писателя могут перезаписать друг друга:
 
-1. Agent A reads the scheme. `rev = 7`.
-2. Agent B reads the scheme. `rev = 7`.
-3. Agent A writes its changes. `rev` is now 8.
-4. Agent B writes its changes — *based on the version it read* — and
-   the disk now says `rev = 8` with Agent A's changes. Agent B's
-   changes are lost.
+1. Агент A читает схему. `rev = 7`.
+2. Агент B читает схему. `rev = 7`.
+3. Агент A пишет. `rev` стал 8.
+4. Агент B пишет — *по прочитанной версии* — и диск уже 8 с изменениями A.
+   Изменения B потеряны.
 
-To prevent this, every write is a **Compare-And-Swap**: "I want to
-write, but only if the disk is still at the rev I read." If it
-isn't, the write is rejected with `conflict: ...`. The writer
-re-reads, merges, and retries.
+Чтобы так не было, каждая запись — **Compare-And-Swap**: «пишу, только если диск
+всё ещё на прочитанном мной rev». Иначе запись отклоняется с `conflict: ...`.
+Писатель перечитывает, мержит и повторяет.
 
-**Via the CLI:**
+**Через CLI:**
 
 ```bash
-# 1. read and remember the rev
+# 1. прочитай и запомни rev
 block get --json
 #  → { "rev": 7, ... }
 
-# 2. write, naming the rev you read
+# 2. пиши, называя прочитанный rev
 block node add --label "New node" --rev 7
-#  → if the disk is still 7: ok, rev is now 8
-#  → if the disk is 8: conflict, re-read and retry
+#  → диск всё ещё 7: ok, rev теперь 8
+#  → диск 8: conflict, перечитай и повтори
 ```
 
 ---
 
-## Validation: what's an error vs. a warning?
+## Валидация: ошибка или предупреждение?
 
-`block validate` checks the JSON and reports two kinds of issues:
+`block validate` проверяет JSON и выдаёт два вида проблем:
 
-### Errors — the write is rejected
+### Ошибки — запись отклоняется
 
-| Code | What it means |
+| Код | Что значит |
 |---|---|
-| `format` | The `format` field isn't `"block-llm"` |
-| `version` | The `version` is newer than the installed skill (update the skill) |
-| `bad rev` | `rev` isn't a number |
-| `name` | The scheme has no name |
-| `nodes must be an array` | `nodes` is `null` or not an array |
-| `edges must be an array` | Same for edges |
-| `meta required` | `meta` is missing or lacks `updatedAt` / `generator` / `nextId` |
-| `duplicate id` | Two nodes (or two edges) share the same id |
-| `unknown shape` | A node's `shape` isn't one of the five known shapes |
-| `bad edge` | An edge's `from` or `to` points to a node that doesn't exist |
-| `bad w/h` | A node's `w` or `h` is below 20 (or negative) |
+| `format` | Поле `format` не `"block-llm"` |
+| `version` | `version` новее установленного скилла (обнови скилл) |
+| `bad rev` | `rev` не число |
+| `name` | У схемы нет имени |
+| `nodes must be an array` | `nodes` — `null` или не массив |
+| `edges must be an array` | То же для рёбер |
+| `meta required` | `meta` отсутствует или нет `updatedAt` / `generator` / `nextId` |
+| `duplicate id` | Два узла (или ребра) с одним id |
+| `unknown shape` | `shape` узла не из шести известных |
+| `bad edge` | `from` или `to` ребра указывает на несуществующий узел |
+| `bad w/h` | `w` или `h` узла меньше 20 (или отрицательный) |
 
-### Warnings — the write is allowed
+### Предупреждения — запись разрешена
 
-| Code | What it means |
+| Код | Что значит |
 |---|---|
-| `stale-ref` | A path in a node's `refs` doesn't exist on disk |
-| `orphan` | A node has no edges (and there are 2+ nodes total) |
-| `empty label` | A node has an empty `label` |
-| `no code paths` | `project.codePaths` is empty — the editor won't know where to find source files |
+| `stale-ref` | Путь в `refs` узла не существует на диске |
+| `orphan` | У узла нет рёбер (и узлов всего 2+) |
+| `empty label` | У узла пустой `label` |
+| `no code paths` | `project.codePaths` пуст — редактор не знает, где исходники |
 
 ---
 
-## Tables
+## Таблицы
 
-Nodes with `shape: "table"` have a `table` field:
+Узлы с `shape: "table"` имеют поле `table`:
 
 ```json
 {
@@ -241,18 +234,18 @@ Nodes with `shape: "table"` have a `table` field:
 }
 ```
 
-Limits:
+Ограничения:
 
-- Max **10** columns
-- Max **50** rows
-- Cells are strings (no nested objects)
+- максимум **10** колонок;
+- максимум **50** строк;
+- ячейки — строки (без вложенных объектов).
 
 ---
 
-## The `refs` field — pointing at real files
+## Поле `refs` — указатели на реальные файлы
 
-`refs` connects a node to file paths in your project. The CLI uses
-this to flag **stale refs** (a path that no longer exists):
+`refs` связывает узел с путями файлов проекта. CLI помечает **протухшие refs**
+(путь, которого больше нет):
 
 ```bash
 block node add --label "Login page" --ref src/login.ts
@@ -260,63 +253,56 @@ block validate
 # → stale-ref: src/login.ts does not exist  (warning)
 ```
 
-This is the main signal that the scheme is out of sync with the
-code. After you rename or delete a file, either update the
-scheme or delete the node.
+Это главный сигнал, что схема разъехалась с кодом. Переименовал или удалил файл
+— обнови схему или удали узел.
 
-`refs` are relative to the project root (the directory containing
-`.block_llm/`).
+`refs` относительны корня **проекта** (каталога с `.llmscheme/`), не схемы.
 
 ---
 
-## Migrations and versioning
+## Миграции и версии
 
-- `version` in the JSON is the **format version**, not the scheme
-  version. It bumps when the JSON shape itself changes.
-- Current format version: `1`.
-- `block upgrade` checks compatibility: if the JSON is newer than
-  the installed skill can read, it fails with `update the skill`.
-- The on-disk format is **backward compatible**: a v1 CLI reads
-  v2 schemes and vice versa, as long as `version` is the same.
+- `version` в JSON — версия **формата**, не схемы. Растёт, когда меняется сам
+  вид JSON.
+- Текущая версия формата: `1`.
+- `block upgrade` проверяет совместимость: если JSON новее, чем умеет скилл —
+  ошибка `update the skill`.
+- Формат на диске **обратно совместим**: CLI v1 читает схемы v2 и наоборот,
+  пока `version` одинаковый.
 
-If you ever need to migrate (the format does change occasionally),
-`block upgrade` will tell you what to do. For most projects,
-nothing is needed.
-
----
-
-## Editing by hand
-
-You can. The CLI just reads and writes the same JSON. A few
-guidelines:
-
-- Use a JSON-aware editor (VS Code, vim with a JSON plugin) to
-  catch syntax errors.
-- After every edit, run `block sync` to regenerate `SCHEME.md` and
-  `scheme.html`. Or just run `block doctor` to see whether they
-  agree.
-- Don't change `meta.nextId` to a number below an existing node
-  id. The id system uses the watermark to prevent reuse.
-- Don't change `rev` to a value other than the disk's current `rev`
-  - 1. The CLI handles that automatically; if you do it by hand,
-  the next CLI write will get a CAS conflict and refuse.
+Если когда-то понадобится миграция (формат изредка меняется), `block upgrade`
+скажет, что делать. Большинству проектов ничего не нужно.
 
 ---
 
-## Quick reference card
+## Правка руками
 
-| What you want | How |
+Можно. CLI читает и пишет тот же JSON. Пара правил:
+
+- Используй JSON-редактор (VS Code, vim с JSON-плагином) для синтаксиса.
+- После каждой правки запусти `block sync`, чтобы перегенерировать `SCHEME.md`
+  и `scheme.html`. Или `block doctor`, чтобы увидеть, согласованы ли они.
+- Не ставь `meta.nextId` меньше существующего id узла — система id на водяном
+  знаке против переиспользования.
+- Не ставь `rev` в значение, отличное от текущего `rev` на диске — 1. CLI это
+  делает сам; руками поставишь — следующая запись получит CAS-конфликт.
+
+---
+
+## Шпаргалка
+
+| Что нужно | Как |
 |---|---|
-| Init a scheme | `block init --name "..."` |
-| Add a node | `block node add --label "..." --ref path.ts` |
-| Update a node | `block node update --id n1 --label "..."` |
-| Remove a node | `block node remove --id n1` |
-| Add an edge | `block edge add --from n1 --to n2` |
-| Add a zone | `block zone add --label "..." --x 0 --y 0 --w 400 --h 200` |
-| See the current scheme | `block get --json` |
-| See the current rev | `block get --json \| jq .rev` |
-| Write the whole scheme | `block put - < new-scheme.json` |
-| See what changed | `block diff --rev 5` |
-| Roll back | `block restore --rev 5` |
-| Check for errors | `block validate` |
-| Sanity check | `block doctor` |
+| Создать схему | `block init --name "..." --type logic` |
+| Добавить узел | `block node add --label "..." --ref path.ts` |
+| Обновить узел | `block node update --id n1 --label "..."` |
+| Удалить узел | `block node remove --id n1` |
+| Добавить ребро | `block edge add --from n1 --to n2` |
+| Добавить зону | `block zone add --label "..." --x 0 --y 0 --w 400 --h 200` |
+| Посмотреть схему | `block get --json` |
+| Посмотреть rev | `block get --json \| jq .rev` |
+| Записать всю схему | `block put - < new-scheme.json` |
+| Что изменилось | `block diff --rev 5` |
+| Откатиться | `block restore --rev 5` |
+| Проверить на ошибки | `block validate` |
+| Санитарная проверка | `block doctor` |

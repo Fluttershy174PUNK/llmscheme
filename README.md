@@ -1,88 +1,81 @@
 # llmscheme
 
-> **One sentence:** a tool that keeps a "map" of your project's modules
-> and data flow in a single file — readable by you, an AI assistant, and
-> a visual editor, all the same way.
+> **Одним предложением:** инструмент, который держит «карту» модулей и потоков
+> данных твоего проекта в одном файле — читаемом одинаково тобой, AI-ассистентом
+> и визуальным редактором.
 
-Think of it like an auto-updated diagram for your code. Instead of
-drawing boxes and arrows in a slide deck that goes stale the moment
-someone renames a file, the diagram lives in `.llmscheme/logic_scheme/scheme.json`
-and regenerates every time you save.
+Представь себе автообновляемую схему твоего кода. Вместо рисования квадратиков
+и стрелок в презентации, которая устаревает в момент переименования файла,
+схема живёт в `.llmscheme/logic_scheme/scheme.json` и перегенерируется при каждом
+сохранении.
 
 ---
 
-## What's in this repo (v2 layout)
+## Что в этом репозитории (раскладка v2)
 
 ```
 llmscheme/
-├── SKILL/llmscheme/          ← drop-in skill for AI agents
-├── SERVICE-MCP/llmscheme/    ← Docker-deployable HTTP service
-├── HERMES-PLUGIN/llmscheme/  ← hermes plugin (placeholder)
-├── DEMO-PROJECT/             ← demo: test the skill in a real project
-├── src/                      ← all source code (edit here)
-├── .llm                      ← current structure + plan (for LLMs)
-├── .test_on_local_proxmox/   ← real deploy + test scripts
+├── SKILL/llmscheme/          ← скилл для AI-агентов (drop-in)
+├── SERVICE-MCP/llmscheme/    ← HTTP-сервис для Docker
+├── HERMES-PLUGIN/llmscheme/  ← hermes-плагин (заглушка)
+├── DEMO-PROJECT/             ← демо: проверь скилл на реальном проекте
+├── src/                      ← весь исходный код (править только здесь)
+├── .llm                      ← актуальная структура + план (для LLM)
+├── .test_on_local_proxmox/   ← реальные скрипты деплоя и теста
 ├── README.md  PROJECT.md  INTRO.md  LICENSE
-│   ├── docs/                 ← in-depth guides (moved under src/)
-├── schemes/                  ← UI requirements
-└── PLAN.md  TODO.md          ← historical planning
+└── src/docs/                 ← подробные гайды
 ```
 
-- **SKILL/llmscheme/** is a self-contained copy of `src/{core,cli}`.
-  Drop it into your agent's skills directory and it gets the `block`
-  command.
-- **SERVICE-MCP/llmscheme/** is the Docker image. The Dockerfile runs
-  `node src/service/server.ts` directly — no build step in the image.
-- **HERMES-PLUGIN/llmscheme/** is a placeholder until the hermes plugin
-  spec is final.
-- **DEMO-PROJECT/** is a real project with a scheme. Use it to test
-  the skill end-to-end.
+- **SKILL/llmscheme/** — самодостаточная копия `src/{core,cli}`. Положи в папку
+  скиллов агента — и у него появится команда `block`.
+- **SERVICE-MCP/llmscheme/** — Docker-образ. Dockerfile запускает
+  `node src/service/server.ts` напрямую — без шага сборки в образе.
+- **HERMES-PLUGIN/llmscheme/** — заглушка до финализации спеки hermes-плагинов.
+- **DEMO-PROJECT/** — реальный проект со схемой. Проверяй на нём скилл целиком.
 
 ---
 
-## Table of contents
+## Содержание
 
-1. [What problem does this solve?](#what-problem-does-this-solve)
-2. [What is a "scheme"?](#what-is-a-scheme)
-3. [The three ways to use it](#the-three-ways-to-use-it)
-4. [Quick start (5 minutes)](#quick-start-5-minutes)
-5. [How it works (the 30-second version)](#how-it-works-the-30-second-version)
-6. [For LLM agents](#for-llm-agents)
-7. [For humans (browser editor)](#for-humans-browser-editor)
-8. [For operators (HTTP service)](#for-operators-http-service)
-9. [Glossary](#glossary)
-10. [Troubleshooting](#troubleshooting)
-11. [Where to read next](#where-to-read-next)
-
----
-
-## What problem does this solve?
-
-When you (or an AI) work on a real codebase, you constantly need to
-answer:
-
-- "What modules does this project have?"
-- "Where does data flow from here to there?"
-- "What does this file actually do?"
-- "Is this `ref` still pointing at a real file?"
-
-Most projects answer those questions by either:
-
-- **Grep + guess** — slow, error-prone, breaks the moment the code changes
-- **Hand-written docs** — go stale the moment the code changes
-- **A wiki nobody updates** — same problem
-
-**llmscheme** keeps a single file (`.llmscheme/logic_scheme/scheme.json`) that
-describes the **WHAT** of the project — the boxes (modules) and the
-arrows (data flow) — and regenerates a human-readable `SCHEME.md` and
-an interactive `scheme.html` from it on every change. The file is the
-source of truth. The Markdown and the HTML are just pretty views.
+1. [Какую проблему это решает?](#какую-проблему-это-решает)
+2. [Что такое «схема»?](#что-такое-схема)
+3. [Три способа использования](#три-способа-использования)
+4. [Быстрый старт (5 минут)](#быстрый-старт-5-минут)
+5. [Как это работает (30 секунд)](#как-это-работает-30-секунд)
+6. [Для LLM-агентов](#для-llm-агентов)
+7. [Для человека (браузерный редактор)](#для-человека-браузерный-редактор)
+8. [Для оператора (HTTP-сервис)](#для-оператора-http-сервис)
+9. [Глоссарий](#глоссарий)
+10. [Решение проблем](#решение-проблем)
+11. [Куда читать дальше](#куда-читать-дальше)
 
 ---
 
-## What is a "scheme"?
+## Какую проблему это решает?
 
-A scheme is a JSON file with this shape:
+Когда ты (или AI) работаешь над реальной кодовой базой, постоянно нужно отвечать:
+
+- «Какие модули есть в проекте?»
+- «Куда идут данные от этого к этому?»
+- «Что вообще делает этот файл?»
+- «Этот `ref` ещё указывает на живой файл?»
+
+Большинство проектов отвечают на это либо так:
+
+- **Grep + угадывание** — медленно, ошибочно, ломается при каждом изменении кода
+- **Рукописные доки** — устаревают в момент изменения кода
+- **Вики, которую никто не обновляет** — та же проблема
+
+**llmscheme** держит один файл (`.llmscheme/logic_scheme/scheme.json`), который
+описывает **ЧТО** есть в проекте — квадратики (модули) и стрелки (поток данных) —
+и перегенерирует из него читаемый `SCHEME.md` и интерактивный `scheme.html` при
+каждом изменении. Файл — источник истины. Markdown и HTML — просто красивые виды.
+
+---
+
+## Что такое «схема»?
+
+Схема — это JSON-файл примерно такого вида:
 
 ```json
 {
@@ -97,36 +90,34 @@ A scheme is a JSON file with this shape:
 }
 ```
 
-That's it. A scheme is just a list of **nodes** (things in your project)
-connected by **edges** (how data flows between them). You can also add
-**zones** (dashed rectangles that group things) and **labels** (free
-text on each shape).
+Вот и всё. Схема — это просто список **узлов** (объекты проекта), связанных
+**рёбрами** (как между ними текут данные). Можно добавить **зоны** (пунктирные
+прямоугольники-группировки) и **подписи** (свободный текст на фигуре).
 
-Open `.llmscheme/logic_scheme/scheme.html` in a browser and you get a clickable,
-draggable diagram. Open `.llmscheme/logic_scheme/SCHEME.md` in any text editor and
-you get a Markdown summary. Both are generated from the same JSON.
+Открой `.llmscheme/logic_scheme/scheme.html` в браузере — получишь кликабельную
+перетаскиваемую диаграмму. Открой `.llmscheme/logic_scheme/SCHEME.md` в любом
+редакторе — получишь Markdown-сводку. Оба генерируются из одного JSON.
 
 ---
 
-## The three ways to use it
+## Три способа использования
 
-| Who | How | What they get |
+| Кто | Как | Что получает |
 |---|---|---|
-| **LLM agent** (Claude Code, Cursor, etc.) | Command-line tool (`block`) | A skill it can read + write |
-| **Human** (you) | Browser editor | Click & drag visual editor |
-| **Operator** (you, in production) | HTTP service + MCP | Web UI for multiple users |
+| **LLM-агент** (Claude Code, Cursor и т.п.) | Командная строка (`block`) | Скилл, который читает и пишет схему |
+| **Человек** (ты) | Браузерный редактор | Визуальный редактор кликом и перетаскиванием |
+| **Оператор** (ты, в проде) | HTTP-сервис + MCP | Веб-UI для нескольких пользователей |
 
-All three read the **same** on-disk format. Edit in the browser, the
-CLI sees the change. Edit via the CLI, the browser sees the change.
+Все три читают **один и тот же** формат на диске. Поменял в браузере — CLI видит
+изменение. Поменял через CLI — браузер видит.
 
 ---
 
-## Quick start (5 minutes)
+## Быстрый старт (5 минут)
 
-You need [Node.js 22.18 or newer](https://nodejs.org/) installed. If you
-already have a recent Node, you're good.
+Нужен [Node.js 22.18 или новее](https://nodejs.org/). Если Node свежий — всё готово.
 
-### Step 1: install the dev tools (one time)
+### Шаг 1: установи dev-инструменты (один раз)
 
 ```bash
 git clone <this-repo> llmscheme
@@ -134,39 +125,38 @@ cd llmscheme
 npm install
 ```
 
-This installs `esbuild` and `svelte` (the build tools). The CLI and
-the service don't need them at runtime — only the HTML editor build
-does.
+Ставит `esbuild` и `svelte` (инструменты сборки). CLI и сервису они в рантайме не
+нужны — только сборке HTML-редактора.
 
-### Step 2: try the skill in a fresh project
+### Шаг 2: попробуй скилл в свежем проекте
 
 ```bash
 mkdir my-project && cd my-project
-node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts init --name "My Project"
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts init --type logic --name "Мой проект"
 ```
 
-That creates `.llmscheme/logic_scheme/scheme.json`, a `.gitignore` line, and an
-`AGENTS.md` section. It also writes `SCHEME.md` (the readable summary)
-and `.llmscheme/logic_scheme/scheme.html` (the browser editor).
+Создаёт `.llmscheme/logic_scheme/scheme.json`, строку в `.gitignore` и секцию в
+`AGENTS.md`. А также `SCHEME.md` (читаемая сводка) и
+`.llmscheme/logic_scheme/scheme.html` (браузерный редактор).
 
-### Step 3: add a few nodes
+### Шаг 3: добавь пару узлов
 
 ```bash
 node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts node add \
-    --label "Login page" --ref src/login.ts
+    --type logic --label "Страница логина" --ref src/login.ts
 
 node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts node add \
-    --label "Token store" --ref src/tokens.ts
+    --type logic --label "Хранилище токенов" --ref src/tokens.ts
 
 node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts edge add \
-    --from n1 --to n2
+    --type logic --from n1 --to n2
 ```
 
-Each `node add` adds one box; `edge add` draws an arrow.
+`node add` добавляет квадратик; `edge add` рисует стрелку.
 
-### Step 4: open the visual editor
+### Шаг 4: открой визуальный редактор
 
-Double-click `.llmscheme/logic_scheme/scheme.html` in your file manager, or:
+Двойной клик по `.llmscheme/logic_scheme/scheme.html` в файловом менеджере, или:
 
 ```bash
 xdg-open .llmscheme/logic_scheme/scheme.html      # Linux
@@ -174,272 +164,260 @@ open .llmscheme/logic_scheme/scheme.html          # macOS
 start .llmscheme/logic_scheme/scheme.html         # Windows
 ```
 
-The page works **without** a web server. It opens straight from
-`file://` because everything is self-contained.
+Страница работает **без** веб-сервера — открывается прямо с `file://`, потому что
+всё самодостаточно.
 
-### Step 5: check everything is healthy
+### Шаг 5: проверь здоровье
 
 ```bash
-node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts doctor
-node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts validate
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts doctor --type logic
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts validate --type logic
 ```
 
-`doctor` checks that `scheme.json`, `SCHEME.md`, and `scheme.html`
-agree. `validate` checks the JSON for errors (broken edges, unknown
-shapes, etc.).
+`doctor` проверяет согласованность `scheme.json`, `SCHEME.md`, `scheme.html`.
+`validate` проверяет JSON на ошибки (битые рёбра, неизвестные фигуры и т.п.).
 
-### Step 6: test the demo project
+### Шаг 6: проверь демо-проект
 
 ```bash
 cd /path/to/llmscheme/DEMO-PROJECT
-cat .llmscheme/logic_scheme/scheme.json   # a real scheme
-cat .llmscheme/logic_scheme/SCHEME.md     # its markdown export
-open .llmscheme/logic_scheme/scheme.html  # the browser editor (the scheme)
-open cats.html                  # the demo's own browser UI (a pixel cat)
-node src/run.ts                 # the same program as a TUI cat
-node src/run.ts --gif cat.gif   # …and as an animated GIF
+cat .llmscheme/logic_scheme/scheme.json   # настоящая схема
+cat .llmscheme/logic_scheme/SCHEME.md     # её markdown-экспорт
+open .llmscheme/logic_scheme/scheme.html  # браузерный редактор (схема)
+open cats.html                  # браузерный UI демо (анимированный кот)
+node src/run.ts                 # та же программа как TUI-кот
+node src/run.ts --gif cat.gif   # …и как анимированный GIF
 ```
 
 ---
 
-## How it works (the 30-second version)
+## Как это работает (30 секунд)
 
 ```
          ┌─────────────────┐
-         │  scheme.json    │  ← single source of truth
-         │  (your data)    │
+         │  scheme.json    │  ← единый источник истины
+         │  (твои данные)  │
          └────────┬────────┘
                   │
       ┌───────────┼───────────┐
       │           │           │
       ▼           ▼           ▼
    block.ts   SCHEME.md   scheme.html
-   (CLI)     (Markdown)  (browser)
+   (CLI)     (Markdown)  (браузер)
       │           │           │
       ▼           ▼           ▼
-    Agent      Humans      Humans
-   reads+     (any text    (visual
-   writes      editor)      editor)
+    Агент      Человек     Человек
+   читает+    (любой      (визуальный
+   пишет      редактор)    редактор)
 ```
 
-- `scheme.json` is the truth.
-- `block.ts` is the CLI tool. It reads + writes `scheme.json` and
-  regenerates the other two files on every save.
-- `SCHEME.md` is auto-generated Markdown (for grep, for LLMs, for code
-  review).
-- `scheme.html` is a self-contained browser editor (no server needed).
+- `scheme.json` — истина.
+- `block.ts` — CLI-инструмент. Читает + пишет `scheme.json` и перегенерирует два
+  других файла при каждом сохранении.
+- `SCHEME.md` — автосгенерированный Markdown (для grep, LLM, code review).
+- `scheme.html` — самодостаточный браузерный редактор (сервер не нужен).
 
-When you (or the agent) run `node add` or `edge add`, the CLI:
+Когда ты (или агент) запускаешь `node add` или `edge add`, CLI:
 
-1. Updates `.llmscheme/logic_scheme/scheme.json`
-2. Regenerates `SCHEME.md` (with mermaid diagram + tables)
-3. Regenerates `.llmscheme/logic_scheme/scheme.html` (with the new data baked in)
+1. обновляет `.llmscheme/logic_scheme/scheme.json`;
+2. перегенерирует `SCHEME.md` (mermaid-диаграмма + таблицы);
+3. перегенерирует `.llmscheme/logic_scheme/scheme.html` (с новыми данными внутри).
 
-If you edit `scheme.html` in the browser and hit SAVE, the editor
-gives you back a command to paste into your agent — the agent then
-runs `block put` which does the same three steps.
+Если правишь `scheme.html` в браузере и жмёшь SAVE — редактор отдаёт команду,
+которую вставляешь агенту; агент запускает `block put`, и те же три шага.
 
 ---
 
-## For LLM agents
+## Для LLM-агентов
 
-Drop the `SKILL/llmscheme/` directory into your agent's skills folder
-(for Claude Code: `${CLAUDE_SKILL_DIR}`). The agent will then have a
-`block` command available with subcommands like `init`, `get`,
-`node add`, `edge add`, `validate`, `diff`, `doctor`, `pull`, `sync`,
+Положи каталог `SKILL/llmscheme/` в папку скиллов агента (для Claude Code:
+`${CLAUDE_SKILL_DIR}`). У агента появится команда `block` с подкомандами `init`,
+`get`, `node add`, `edge add`, `validate`, `diff`, `doctor`, `pull`, `sync`,
 `restore`, `history`, `render`, `upgrade`, `version`.
 
-The agent's job is to keep the scheme in sync with the code. The
-ritual is:
+Работа агента — держать схему синхронной с кодом. Ритуал:
 
-1. `validate --json` — fix any errors before changing code
-2. `get --json` — read the current state, remember the `rev` number
-3. Make the code change
-4. `node add` / `node update` / `edge add` / etc. with `--rev N` (the
-   rev you read in step 2)
-5. `doctor` to confirm JSON + MD + HTML are all consistent
+1. `validate --json` — исправь ошибки до изменения кода;
+2. `get --json` — прочитай текущее состояние, запомни `rev`;
+3. сделай изменение кода;
+4. `node add` / `node update` / `edge add` с `--rev N` (тот rev, что прочитал);
+5. `doctor` — подтверди согласованность JSON + MD + HTML.
 
-Full reference: [SKILL/llmscheme/SKILL.md](SKILL/llmscheme/SKILL.md) —
-this is what the agent sees.
+Скилл умеет вести до трёх схем на проект: `logic` (модули + потоки), `code`
+(граф вызовов), `ui` (экраны/маршруты). Тип выбирается флагом `--type`. Если
+пользователь не уточнил, какую схему — спроси.
 
----
-
-## For humans (browser editor)
-
-Open `.llmscheme/logic_scheme/scheme.html` in a browser. You get:
-
-- **Click and drag** a node to move it
-- **Drag the bottom-right corner** of a node to resize it
-- **Click a node** to select it; **Ctrl+click** to multi-select
-- **Right sidebar**: edit the selected node's label, description,
-  shape, position, refs
-- **Top toolbar**: add a node, add a zone, connect two nodes (click
-  the green `+` port on one node, then the `+` port on another),
-  undo/redo, delete, save
-- **Grid and snap** toggles in the top-right
-- **Language** toggle (EN / RU) in the top-right
-
-When you hit **SAVE**, the editor gives you three options:
-
-- **Tier A** (always works): a copy-pasteable command for your agent.
-  Run it in your terminal; the agent commits the change.
-- **Tier B** (Chromium browsers): a "Save As" dialog writes the files
-  directly. No agent needed.
-- **Tier S** (when the editor is served by the HTTP service): a
-  direct write to the server.
-
-For the full editor manual, see
-[SKILL/llmscheme/references/EDITOR.md](SKILL/llmscheme/references/EDITOR.md).
+Полная справка: [SKILL/llmscheme/SKILL.md](SKILL/llmscheme/SKILL.md) — это то, что
+видит агент.
 
 ---
 
-## For operators (HTTP service)
+## Для человека (браузерный редактор)
 
-The HTTP service is for when you want a shared, multi-user setup —
-a team with one scheme per project, or a web-facing console for
-admins. It exposes:
+Открой `.llmscheme/logic_scheme/scheme.html` в браузере. Получишь:
 
-- A **web console** at `http://localhost:8080/` (login, projects,
-  users, settings)
-- A **visual editor** at `http://localhost:8080/editor/<scheme-name>`
-- A **REST API** at `http://localhost:8080/api/...` for scripts
-- An **MCP endpoint** at `http://localhost:8080/mcp` for AI clients
+- **клик + перетаскивание** — двигать узел;
+- **угловые ручки** — растягивать узел в любую сторону;
+- **клик по узлу** — выделить; **Ctrl+клик** — мультивыделение;
+- **правая панель** — label, description, shape, позиция, refs;
+- **верхняя панель** — добавить узел, добавить зону, соединить два узла (клик по
+  зелёному `+` на одной стороне источника, потом по `+` на нужной стороне цели),
+  undo/redo, удалить, сохранить;
+- **open local / export** — открыть локальный `scheme.json` и скачать текущую
+  схему (только в скилл-редакторе);
+- **сетка и магнит** — вверху справа;
+- **язык (EN / RU)** — вверху справа.
 
-### Start the service
+Шесть фигур: `rect`, `square`, `circle`, `ellipse` (овал), `diamond`, `table`.
+
+При **SAVE** редактор даёт варианты:
+
+- **Tier A** (работает всегда): команда для агента — вставил в терминал, агент
+  применил;
+- **Tier B** (Chromium): диалог «Сохранить как» пишет файлы напрямую;
+- **Tier S** (редактор отдаёт HTTP-сервис): прямая запись на сервер.
+
+Полный мануал: [SKILL/llmscheme/references/EDITOR.md](SKILL/llmscheme/references/EDITOR.md).
+
+---
+
+## Для оператора (HTTP-сервис)
+
+HTTP-сервис — для общего многопользовательского режима: команда с одной схемой
+на проект или веб-консоль для админов. Отдаёт:
+
+- **веб-консоль** на `http://localhost:8080/` (логин, проекты, юзеры, настройки);
+- **визуальный редактор** на `http://localhost:8080/editor/<имя-схемы>`;
+- **REST API** на `http://localhost:8080/api/...` для скриптов;
+- **MCP-эндпоинт** на `http://localhost:8080/mcp` для AI-клиентов.
+
+### Запуск сервиса
 
 ```bash
 cd llmscheme
 npm install
-npm run build              # one-time: produces the HTML artifacts
-npm run sync-skill         # one-time: updates SKILL/ from src/
+npm run build              # разово: собирает HTML-артефакты
+npm run sync-skill         # разово: обновляет SKILL/ из src/
 
 ADMIN_PASSWORD=changeme PORT=8080 \
     DATA_DIR=./data \
     node src/service/server.ts
 ```
 
-Open `http://localhost:8080/` in a browser. Log in as `admin` /
-`changeme`. **Change the password on the settings page immediately.**
+Открой `http://localhost:8080/` в браузере. Вход `admin` / `changeme`.
+**Сразу смени пароль на странице настроек.**
 
-### Or run it with Docker
+### Или через Docker
 
 ```bash
 cd SERVICE-MCP/llmscheme
 cp .env.example .env
-# edit .env: set ADMIN_PASSWORD to something strong
+# отредактируй .env: задай надёжный ADMIN_PASSWORD
 
 docker compose up -d
 ```
 
-The container runs the same `node src/service/server.ts` command.
-Schemes and user accounts live in the `llm-data` named volume.
+Контейнер запускает тот же `node src/service/server.ts`. Схемы и аккаунты живут в
+именованном volume `llm-data`.
 
-### Deploy to the dev sandbox (proxmox LXC 999)
+### Деплой на dev-песочницу (proxmox LXC 999)
 
 ```bash
-export DEV_PASSWORD='…'           # from .test_on_local_proxmox/test_dev.md
+export DEV_PASSWORD='…'           # из .test_on_local_proxmox/test_dev.md
 export ADMIN_PASSWORD='changeme'
-./.test_on_local_proxmox/deploy.sh     # build + rsync + docker up
-./.test_on_local_proxmox/test.sh        # smoke test
+./.test_on_local_proxmox/deploy.sh     # сборка + rsync + docker up
+./.test_on_local_proxmox/test.sh       # smoke-тест
 ```
 
-Full operator reference:
-[SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md).
+Полная справка оператора: [SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md).
 
 ---
 
-## Glossary
+## Глоссарий
 
-| Term | What it means |
+| Термин | Что значит |
 |---|---|
-| **scheme** | The JSON file (`.llmscheme/logic_scheme/scheme.json`) that describes your project's structure |
-| **node** | A box on the diagram — a module, file, or concept in your project |
-| **edge** | An arrow between two nodes — a data flow, dependency, or call |
-| **zone** | A dashed rectangle that groups nodes — a layer, subsystem, or "this stuff belongs together" |
-| **rev** | A revision number. Starts at 0, increments on every write. Used for CAS to prevent two writers from clobbering each other |
-| **CAS** | Compare-And-Swap. A write that succeeds only if the on-disk `rev` matches what the writer read. |
-| **core** | The data model + validation library. Pure TypeScript, zero dependencies. |
-| **skill** | A directory an AI agent loads to gain new capabilities. Here, `SKILL/llmscheme/`. |
-| **MCP** | Model Context Protocol. A standard way for AI assistants to call tools on a server. |
-| **tier** | A save strategy for the browser editor: A = command for the agent, B = direct file write, C = download, S = HTTP PUT to the service |
-| **wrap** | Auto-wrap long labels to fit a box. Set to 34 characters wide. |
+| **scheme** | JSON-файл (`.llmscheme/<type>_scheme/scheme.json`), описывающий структуру проекта |
+| **node** | Квадратик на диаграмме — модуль, файл или понятие проекта |
+| **edge** | Стрелка между двумя узлами — поток данных, зависимость или вызов |
+| **zone** | Пунктирный прямоугольник-группировка узлов — слой, подсистема |
+| **rev** | Номер ревизии. Начинается с 0, растёт на каждой записи. Нужен для CAS |
+| **CAS** | Compare-And-Swap. Запись проходит, только если `rev` на диске совпал с прочитанным |
+| **core** | Модель данных + валидация. Чистый TypeScript, ноль зависимостей |
+| **skill** | Каталог, который загружает AI-агент ради новых возможностей. Здесь `SKILL/llmscheme/` |
+| **MCP** | Model Context Protocol — стандарт вызова инструментов агентом на сервере |
+| **tier** | Стратегия сохранения редактора: A = команда агенту, B = прямая запись, C = скачивание, S = PUT на сервис |
+| **--type** | Тип схемы: `logic` (модули+потоки), `code` (граф вызовов), `ui` (экраны/маршруты) |
 
 ---
 
-## Troubleshooting
+## Решение проблем
 
-### "I get a warning that my `ref` is stale"
+### «Предупреждение, что мой `ref` протух»
 
 ```
 stale-ref: src/foo.ts does not exist
 ```
 
-The path in your node's `refs` array points to a file that doesn't
-exist anymore. Either:
+Путь в `refs` узла указывает на несуществующий файл. Либо переименуй файл и
+обнови схему, либо удали узел.
 
-- Rename the file in your code, then update the scheme
-- Delete the node
-
-### "Two writers clobbered each other"
+### «Два писателя перезаписали друг друга»
 
 ```
 conflict: scheme changed on disk (rev 7 → 8), re-read and retry
 ```
 
-Someone wrote to the scheme between when you read it and when you
-tried to write. Re-run `get --json` to see the new `rev`, and retry
-your write with `--rev N` set to the new value.
+Кто-то записал схему между твоим чтением и записью. Запусти `get --json`, узнай
+новый `rev` и повтори запись с `--rev N`.
 
-### "The CLI says `node` is not found"
+### «CLI говорит `node` не найден»
 
-You're using Node < 22.18, or the path to the CLI is wrong.
+Node < 22.18, либо неверный путь к CLI.
 
-- `node --version` should be 22.18 or newer
-- The path you typed actually points at `SKILL/llmscheme/cli/block.ts`
+- `node --version` должен быть 22.18+;
+- путь должен указывать на `SKILL/llmscheme/cli/block.ts`.
 
-### "The browser editor shows a blank canvas"
+### «Редактор показывает пустой холст»
 
-If the scheme has no nodes, the editor shows a welcome seed
-(3 nodes, 2 edges) so you have something to work with. Add a real
-scheme with `block init` and refresh.
+Если в схеме нет узлов, редактор показывает приветственный посев (3 узла,
+2 ребра). Добавь реальную схему через `block init` и обнови страницу.
 
-### "The MCP endpoint returns 403 origin not allowed"
+### «MCP отвечает 403 origin not allowed»
 
-Your browser sent an `Origin` header that the server doesn't trust.
-Set `ORIGIN_ALLOWLIST` in the server's environment to a
-comma-separated list of allowed origins.
+Браузер прислал `Origin`, которому сервер не доверяет. Задай
+`ORIGIN_ALLOWLIST` в окружении сервера списком разрешённых origin через запятую.
 
-### "I forgot the admin password"
+### «Забыл пароль админа»
 
-Stop the service. Delete `DATA_DIR/lightdb.json`. Restart with
-`ADMIN_PASSWORD=...` in the environment. **This wipes all users and
-sessions** but leaves your schemes on disk intact.
+Останови сервис. Удали `DATA_DIR/lightdb.json`. Перезапусти с `ADMIN_PASSWORD=...`
+в окружении. **Сотрёт всех пользователей и сессии**, но схемы на диске останутся.
 
 ---
 
-## Where to read next
+## Куда читать дальше
 
-- **If you're an LLM agent** (or configuring one):
+- **Если ты LLM-агент** (или настраиваешь его):
   [SKILL/llmscheme/SKILL.md](SKILL/llmscheme/SKILL.md)
-- **If you're using the browser editor:**
+- **Если пользуешься браузерным редактором:**
   [SKILL/llmscheme/references/EDITOR.md](SKILL/llmscheme/references/EDITOR.md)
-  or [src/docs/EDITOR.md](src/docs/EDITOR.md)
-- **If you're running the HTTP service:**
+  или [src/docs/EDITOR.md](src/docs/EDITOR.md)
+- **Если запускаешь HTTP-сервис:**
   [SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md)
-  or [src/docs/LOGIN.md](src/docs/LOGIN.md)
-- **If you want to know the JSON format inside-out:**
+  или [src/docs/LOGIN.md](src/docs/LOGIN.md)
+- **Если хочешь знать JSON-формат досконально:**
   [src/docs/SCHEME_FORMAT.md](src/docs/SCHEME_FORMAT.md)
-- **If you're upgrading from v1:**
+- **Если обновляешься с v1:**
   [src/docs/MIGRATION.md](src/docs/MIGRATION.md)
-- **If you're contributing code:**
+- **Если контрибьютишь код:**
   [PROJECT.md](PROJECT.md)
-- **If you want a live snapshot of the project:**
+- **Если нужен живой снимок проекта:**
   [.llm](.llm)
-- **If you want to deploy to the dev sandbox:**
+- **Если хочешь задеплоить на dev-песочницу:**
   [.test_on_local_proxmox/README.md](.test_on_local_proxmox/README.md)
 
 ---
 
-## License
+## Лицензия
 
 MIT.

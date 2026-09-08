@@ -1,44 +1,45 @@
-# demo — cat generator (TUI + GIF + browser UI)
+# Демо — генератор котиков (TUI + GIF + браузер)
 
-> A worked example for the **block-llm** skill: a real project with a
-> real scheme. Small enough to read in one window, complete enough to
-> exercise the whole skill ritual.
+> Рабочий пример для скилла **block-llm**: настоящий проект с настоящей
+> схемой. Достаточно маленький, чтобы прочитать за один раз, и достаточно
+> полный, чтобы прогнать весь ритуал скилла.
 
-The program picks a random adjective + noun from `cats.txt` and renders
-it three ways:
+Программа берёт случайное прилагательное + существительное из `cats.txt`
+и рисует котика тремя способами:
 
-| entry | what | how to run |
+| вход | что | как запустить |
 |---|---|---|
-| `src/run.ts` | TUI cat (ANSI colours) | `node src/run.ts` |
-| `src/run.ts --gif` | animated GIF | `node src/run.ts --gif cat.gif` |
-| `cats.html` | browser UI (button + pixel cat) | `xdg-open cats.html` |
+| `src/run.ts` | TUI-кот (ANSI-цвета) | `node src/run.ts` |
+| `src/run.ts --gif` | анимированный GIF | `node src/run.ts --gif cat.gif` |
+| `cats.html` | браузер: живой анимированный кот | `xdg-open cats.html` |
 
-## Run
+## Запуск
 
 ```bash
-# TUI mode
+# TUI — один кот в терминале
 node src/run.ts
 
-# GIF mode
+# GIF — анимированный кот в файл
 node src/run.ts --gif cat.gif
 xdg-open cat.gif
 
-# browser UI (no Node, no server)
+# браузер — кот живёт и анимируется (хвост виляет, глаза мигают),
+# кнопка «новый котик» генерит нового, чекбокс включает/выключает анимацию.
+# Node и сервер не нужны — просто открыть файл.
 xdg-open cats.html
 ```
 
-## Scheme
+## Схема
 
-The logic scheme lives in `.llmscheme/logic_scheme/` and describes the
-data flow:
+Логическая схема лежит в `.llmscheme/logic_scheme/` и описывает поток данных:
 
 ```text
 cats.txt ──> pickAdj() / pickNoun() ──> compose() ──> render() / gif() ──> stdout / file
-     └────> cats.html (browser UI: generate button → pixel cat)
+     └────> cats.html (браузер: кнопка «новый котик» → анимированный кот)
 ```
 
-Open `.llmscheme/logic_scheme/scheme.html` in a browser to edit it
-visually, or read it as JSON:
+Открой `.llmscheme/logic_scheme/scheme.html` в браузере, чтобы править схему
+визуально, или читай как JSON:
 
 ```bash
 node <skill-dir>/cli/block.ts get . --type logic
@@ -46,13 +47,13 @@ node <skill-dir>/cli/block.ts validate . --type logic
 node <skill-dir>/cli/block.ts doctor . --type logic
 ```
 
-## What this demo exercises
+## Что это демо проверяет
 
-- **7 nodes + 6 edges + 1 zone** (TUI, GIF and browser UI are all
-  separate nodes with `--ref` pointing at the real files)
-- **refs** to `cats.txt`, `src/cat.ts`, `src/gif.ts`, `src/run.ts`,
+- **7 узлов + 7 рёбер + 1 зона** — TUI, GIF и браузерный UI разнесены по
+  отдельным узлам с `--ref` на реальные файлы
+- **refs** на `cats.txt`, `src/cat.ts`, `src/gif.ts`, `src/run.ts`,
   `cats.html`
-- the full **ritual**: `init --type logic` → `get` → `node add` →
+- полный **ритуал**: `init --type logic` → `get` → `node add` →
   `edge add` → `validate` → `doctor`
-- the **three scheme types**: logic (this one), code, ui — one project,
-  up to three independent schemes
+- **три типа схем**: logic (эта), code, ui — один проект, до трёх
+  независимых схем

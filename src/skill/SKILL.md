@@ -8,39 +8,37 @@ compatibility: Requires Node >= 22.18 and Bash. No network, no npm install in th
   or an API key.
 ---
 
-# block-llm — living logic schemes of the project
+# block-llm — живые логические схемы проекта
 
-Schemes live in `<project>/.llmscheme/<type>_scheme/`. Each scheme dir contains
-`scheme.json` (the data), `SCHEME.md` (readable export), `scheme.html`
-(double-click editor) and `cache/` (journal, backups, autosaves). A scheme
-describes WHAT exists (modules, data flows, screens), not how it is written.
+Схемы лежат в `<project>/.llmscheme/<type>_scheme/`. В каждой папке схемы:
+`scheme.json` (данные), `SCHEME.md` (читаемый экспорт), `scheme.html`
+(редактор двойным кликом) и `cache/` (журнал, бэкапы, автосейвы). Схема
+описывает ЧТО есть (модули, потоки данных, экраны), а не как написано.
 
-## The three scheme types
+## Три типа схем
 
-The skill can maintain up to three independent schemes per project. Pick the one
-the user actually asked for:
+Скилл ведёт до трёх независимых схем на проект. Выбирай ту, которую попросил
+пользователь:
 
-| `--type` | scheme dir | what it describes |
+| `--type` | папка схемы | что описывает |
 |---|---|---|
-| `logic` | `.llmscheme/logic_scheme/` | modules + data flow (the default "architecture" view) |
-| `code` | `.llmscheme/code_scheme/` | call graph / code structure (functions, classes, files) |
-| `ui` | `.llmscheme/ui_scheme/` | screens, routes, UI components |
+| `logic` | `.llmscheme/logic_scheme/` | модули + потоки данных (вид «архитектура» по умолчанию) |
+| `code` | `.llmscheme/code_scheme/` | граф вызовов / структура кода (функции, классы, файлы) |
+| `ui` | `.llmscheme/ui_scheme/` | экраны, маршруты, UI-компоненты |
 
-**If the user asks for a scheme but does not say which type, ASK.** Offer the
-three options; never guess. Once they pick, pass it as `--type` to every
-command. Each type is fully independent — separate rev counter, separate
-journal, separate SCHEME.md.
+**Если пользователь просит схему, но не говорит какую — СПРОСИ.** Предложи три
+варианта; не угадывай. Когда выбрал — передавай `--type` в каждую команду.
+Каждый тип полностью независим — свой счётчик rev, свой журнал, свой SCHEME.md.
 
-Fast path — the scheme already exists: run `validate --json --type <T>` +
-`get --json --type <T>` and work from the scheme. Do NOT re-init and do NOT
-re-derive the architecture from scratch. No `.llmscheme/` found upward from cwd
-and the user wants a scheme → run `init --type <T>` first, then build it node
-by node.
+Быстрый путь — схема уже есть: `validate --json --type <T>` + `get --json
+--type <T>` и работай от схемы. НЕ переинициализируй и НЕ пересобирай
+архитектуру с нуля. Нет `.llmscheme/` вверх от cwd, а пользователь хочет схему →
+сначала `init --type <T>`, потом строй узел за узлом.
 
-Replace `<skill-dir>` below with the directory containing this SKILL.md.
+Замени `<skill-dir>` ниже на каталог с этим SKILL.md.
 (Claude Code: `<skill-dir>` = `${CLAUDE_SKILL_DIR}`.)
 
-## Quick start
+## Быстрый старт
 
 ```bash
 node <skill-dir>/cli/block.ts init [project] --type logic --name "Auth Flow"
@@ -51,72 +49,70 @@ node <skill-dir>/cli/block.ts edge add --type logic --from n1 --to n2 --label ok
 node <skill-dir>/cli/block.ts validate [project] --type logic
 ```
 
-Commands resolve `[project]` from the argument (a project root or a scheme dir),
-else search upward from cwd. `--type` defaults to `logic`. Exit codes: 0 ok,
-1 data error/conflict, 2 usage error. `--json` for machine-readable output.
-No npm install, no network, no URL, no API key.
+Команды берут `[project]` из аргумента (корень проекта или папка схемы), иначе
+ищут вверх от cwd. `--type` по умолчанию `logic`. Коды выхода: 0 ок, 1 ошибка
+данных/конфликт, 2 ошибка использования. `--json` для машинного вывода. Без
+npm install, без сети, без URL, без API-ключа.
 
-The CLI runs straight from `.ts` — Node 22.18+ strips the types, there is no
-build step and nothing to install.
+CLI работает прямо из `.ts` — Node 22.18+ стрипает типы, без сборки и установки.
 
-## Ritual: read the scheme before working
+## Ритуал: прочитай схему до работы
 
-1. `validate --json --type <T>` — fix errors before code changes; keep warnings in mind.
-2. `get --json --type <T>` — remember the `rev` (used for CAS on write).
-3. Overview: read `SCHEME.md`. Node details: read `.llmscheme/<type>_scheme/scheme.json`.
+1. `validate --json --type <T>` — исправь ошибки до правок кода; держи warnings в уме.
+2. `get --json --type <T>` — запомни `rev` (для CAS на записи).
+3. Обзор: читай `SCHEME.md`. Детали узлов: `.llmscheme/<type>_scheme/scheme.json`.
 
-## Ritual: sync the scheme with the project (the main value)
+## Ритуал: синхронизируй схему с проектом (главная ценность)
 
-After changing code, run the checklist:
+После изменения кода прогнай чек-лист:
 
-- new modules/files → new nodes with `--ref` pointing at real paths (refs are
-  relative to the PROJECT root, not the scheme dir);
-- new data flows → edges (solid = normal flow, dashed = async/optional);
-- removed things → remove nodes/edges, leave no corpses;
-- node `--desc` — brief facts (what it does, not how);
-- `--label` may contain `\n` — the box grows downward (mermaid renders `<br/>`);
+- новые модули/файлы → новые узлы с `--ref` на реальные пути (refs относительны
+  корня ПРОЕКТА, не папки схемы);
+- новые потоки данных → рёбра (solid = обычный поток, dashed = async/опционально);
+- удалённое → удаляй узлы/рёбра, не оставляй трупов;
+- `--desc` узла — краткие факты (что делает, не как);
+- `--label` может содержать `\n` — квадратик растёт вниз (mermaid рендерит `<br/>`);
 - `--shape table` + `--table-cols "a,b,c"` + `--table-rows "r1c1|r1c2;r2c1|r2c2"`
-  — table element (up to 10 columns, 50 rows; `;` separates rows, `|` cells);
-- `--w N --h N` — explicit size (the human may have resized the box in the
-  editor; never clear those without a reason);
-- `validate` shows stale refs → update them or delete the node.
+  — таблица (до 10 колонок, 50 строк; `;` разделяет строки, `|` ячейки);
+- `--w N --h N` — явный размер (человек мог растянуть в редакторе; не сбрасывай
+  без причины);
+- `validate` показывает протухшие refs → обнови или удали узел.
 
-Then write with the remembered revision:
+Потом пиши с запомненной ревизией:
 
 ```bash
 node <skill-dir>/cli/block.ts node add --type logic --label "Report" --ref src/report.ts --rev 7
 ```
 
-SCHEME.md and scheme.html regenerate automatically on every write.
+SCHEME.md и scheme.html перегенерируются автоматически при каждой записи.
 
-If `rev` grew unexpectedly (the human edited the scheme) → `diff --rev N`,
-understand the intent, then continue. NEVER overwrite blindly.
+Если `rev` вырос неожиданно (человек правил схему) → `diff --rev N`, пойми
+намерение, потом продолжай. НИКОГДА не перезаписывай вслепую.
 
-## Reliability rules
+## Правила надёжности
 
-- Read before write; pass `--rev` when you read the scheme earlier. On a
-  conflict message, re-read with `get` and retry — do not force.
-- Prefer the CLI over hand-editing `scheme.json`. If you (or the human) edited
-  the JSON directly, run `sync` afterwards, or md/html will drift from json.
-- Never delete `.llmscheme/<type>_scheme/cache/` while working (backups live there).
-- `cache/` is git-ignored; commit scheme.json, scheme.html, VERSION, SCHEME.md.
-- After a batch of writes run `doctor` — it checks json/md/html consistency,
-  stale refs and the html size budget.
-- This skill writes ONLY: `.llmscheme/`, and an idempotent `.gitignore` line +
-  `AGENTS.md` section (on `init`). It never touches project code — code changes
-  are your job on explicit user request.
+- Читай перед записью; передавай `--rev`, если читал схему ранее. На сообщение о
+  конфликте — перечитай `get` и повтори, не дави.
+- Предпочитай CLI ручной правке `scheme.json`. Если ты (или человек) правили JSON
+  напрямую — запусти `sync`, иначе md/html разъедутся с json.
+- Не удаляй `.llmscheme/<type>_scheme/cache/` во время работы (там бэкапы).
+- `cache/` в git-ignore; коммить scheme.json, scheme.html, VERSION, SCHEME.md.
+- После пачки записей запусти `doctor` — проверит согласованность json/md/html,
+  протухшие refs и бюджет размера html.
+- Этот скилл пишет ТОЛЬКО: `.llmscheme/`, идемпотентную строку `.gitignore` +
+  секцию `AGENTS.md` (при `init`). Код проекта не трогает — правки кода твоя
+  работа по явному запросу пользователя.
 
-## Deeper references (read only when needed)
+## Глубокие справки (читай по нужде)
 
-- `references/SCHEME_FORMAT.md` — json format, validation rules, migrations.
-  Read when working with the json directly, on format disputes, or before
-  `upgrade`.
-- `references/EDITOR.md` — scheme.html editor internals, save tiers (A/B/C),
-  browser facts. Read when the user mentions the editor, browser, or their saved
-  changes are not visible.
+- `references/SCHEME_FORMAT.md` — json-формат, правила валидации, миграции.
+  Читай при работе с json напрямую, спорах о формате или перед `upgrade`.
+- `references/EDITOR.md` — устройство редактора scheme.html, tier'ы записи
+  (A/B/C), браузерные факты. Читай, когда пользователь упоминает редактор,
+  браузер или «мои правки не видны».
 
-## Command map
+## Карта команд
 
 `init` `get` `validate` `node add|update|remove` `edge add|update|remove`
 `zone add|update|remove` `put` `sync` `render` `diff` `history` `restore`
-`doctor` `upgrade` `version` — full options: run any command without arguments.
+`doctor` `upgrade` `version` — полные опции: запусти команду без аргументов.
