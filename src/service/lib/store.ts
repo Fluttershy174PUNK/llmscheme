@@ -169,6 +169,18 @@ export class Store {
 		this.save();
 	}
 
+	// change a user's role. Never demote the last remaining admin (that would
+	// lock every admin out of the console).
+	setRole(u: User, role: "admin" | "user"): void {
+		if (u.role === role) return;
+		if (role === "user" && u.role === "admin") {
+			const admins = this.data.users.filter((x) => x.role === "admin").length;
+			if (admins === 1) throw new HttpError(400, "cannot demote the last admin");
+		}
+		u.role = role;
+		this.save();
+	}
+
 	checkPassword(u: User, password: string): boolean {
 		return verifyPassword(password, u);
 	}

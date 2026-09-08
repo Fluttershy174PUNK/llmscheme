@@ -151,6 +151,20 @@ export function buildRoutes(deps: RoutesDeps): Router {
 		send(ctx.res, 200, { ok: true });
 	});
 
+	// change a user's role (admin -> user, user -> admin)
+	r.patch("/api/user/:id", (ctx) => {
+		const me = requireAdmin(ctx);
+		const id = Number(ctx.params.id);
+		if (!Number.isInteger(id)) throw new DataError("id must be an integer");
+		const u = store.userById(id);
+		if (!u) throw new HttpError(404, "no such user");
+		if (u.id === me.id) throw new HttpError(400, "cannot change your own role");
+		const b = parseJson(ctx.body);
+		const role = b.role === "admin" ? "admin" : "user";
+		store.setRole(u, role);
+		send(ctx.res, 200, publicUser(u));
+	});
+
 	// own password; an admin may set someone else's via ?login=
 	r.post("/api/password", (ctx) => {
 		const b = parseJson(ctx.body);

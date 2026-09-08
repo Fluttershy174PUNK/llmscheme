@@ -131,6 +131,9 @@ export class Router {
 	delete(pattern: string, handler: RouteMatch["handler"]): void {
 		this.add("DELETE", pattern, handler);
 	}
+	patch(pattern: string, handler: RouteMatch["handler"]): void {
+		this.add("PATCH", pattern, handler);
+	}
 
 	match(method: string, pathname: string): RouteMatch | null {
 		for (const r of this.routes) {

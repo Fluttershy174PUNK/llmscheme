@@ -26,6 +26,26 @@ main {
 .topbar .muted {
 	color: var(--dim);
 }
+.topbar .showall {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--dim);
+	font-size: 9px;
+	cursor: pointer;
+}
+.topbar .showall input {
+	width: auto;
+}
+.project-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--panel2);
+	box-shadow: inset -2px -2px 0 var(--dark), inset 2px 2px 0 var(--accent);
+	padding: 4px 8px;
+	margin: 4px 6px 4px 0;
+}
 
 h2,
 h3 {

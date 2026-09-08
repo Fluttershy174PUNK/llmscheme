@@ -345,6 +345,63 @@ test("isolation: user2 cannot see admin's schemes", async () => {
 	assert.equal(j.length, 0);
 });
 
+test("PATCH /api/user/:id changes a user's role (admin-only, never self, never last admin)", async () => {
+	const admin = await login("admin", "admin");
+	// two fresh users: one to act on, one to try acting as a non-admin
+	const mk = async (login: string) => {
+		const r = await fetch(`${baseUrl}/api/users`, {
+			method: "POST",
+			headers: admin.headers,
+			body: JSON.stringify({ login, password: `${login}pw` }),
+		});
+		return (await r.json()) as { id: number };
+	};
+	const target = await mk("roletarget");
+	await mk("roleactor");
+
+	// a non-admin cannot change anyone's role
+	const actorLogin = await login("roleactor", "roleactorpw");
+	const forbidden = await fetch(`${baseUrl}/api/user/${target.id}`, {
+		method: "PATCH",
+		headers: actorLogin.headers,
+		body: JSON.stringify({ role: "admin" }),
+	});
+	assert.equal(forbidden.status, 403);
+
+	// promote user -> admin
+	const promo = await fetch(`${baseUrl}/api/user/${target.id}`, {
+		method: "PATCH",
+		headers: admin.headers,
+		body: JSON.stringify({ role: "admin" }),
+	});
+	assert.equal(promo.status, 200);
+	assert.equal(((await promo.json()) as { role: string }).role, "admin");
+
+	// admin cannot change their own role
+	const self = await fetch(`${baseUrl}/api/user/1`, {
+		method: "PATCH",
+		headers: admin.headers,
+		body: JSON.stringify({ role: "user" }),
+	});
+	assert.equal(self.status, 400);
+
+	// demote the promoted admin back down (now 2 admins exist, so ok)
+	const demo = await fetch(`${baseUrl}/api/user/${target.id}`, {
+		method: "PATCH",
+		headers: admin.headers,
+		body: JSON.stringify({ role: "user" }),
+	});
+	assert.equal(demo.status, 200);
+
+	// cannot demote the LAST admin (only "admin" left now)
+	const last = await fetch(`${baseUrl}/api/user/1`, {
+		method: "PATCH",
+		headers: admin.headers,
+		body: JSON.stringify({ role: "user" }),
+	});
+	assert.equal(last.status, 400);
+});
+
 test("admin can scope ?user=all to see every user's schemes", async () => {
 	const admin = await login("admin", "admin");
 	await fetch(`${baseUrl}/api/users`, {

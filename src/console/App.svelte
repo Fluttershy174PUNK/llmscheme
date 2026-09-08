@@ -1,14 +1,14 @@
 <script lang="ts">
 	// console — single Svelte 5 runes component, hash-routed.
 	// four screens: #/login, #/projects, #/users, #/settings
-	// the URL fragment survives reloads and deep-links.
 	import { onMount } from "svelte";
 	import { api, getToken, setToken, confirmDialog, promptDialog } from "./api.ts";
-	import { loadLang, saveLang, type Lang } from "../editor/core/i18n.ts";
+	import { DICT, loadLang, saveLang, type Lang } from "../editor/core/i18n.ts";
 
 	type Screen = "login" | "projects" | "users" | "settings";
 	let route: Screen = $state(parseHash());
 	let lang: Lang = $state(loadLang());
+	const t = $derived(DICT[lang]);
 
 	let me: { id: number; login: string; role: "admin" | "user" } | null = $state(null);
 	let meErr: string = $state("");
@@ -25,7 +25,7 @@
 	// --- projects state ---
 	let schemes: { project: string; name: string; owner?: string; rev: number; updatedAt: string }[] =
 		$state([]);
-	let allUsers = $state(false); // admin toggle
+	let allUsers = $state(false); // admin toggle, lives in the top bar
 	let projectsErr = $state("");
 
 	// --- users state (admin) ---
@@ -33,10 +33,12 @@
 		$state([]);
 	let usersErr = $state("");
 
-	// --- settings (own password + own keys) ---
+	// --- settings (own password + keys) ---
 	let newPass = $state("");
-	let keys: { hash: string; createdAt: string }[] = $state([]);
-	let mcpConfig: unknown = $state(null);
+	let myKeys: { hash: string; createdAt: string }[] = $state([]);
+	let allKeys: { user: string; hash: string; createdAt: string }[] = $state([]);
+	let mcpConfig: { url: string; hasKey: boolean; activeKeys: number; hint: string } | null =
+		$state(null);
 
 	function parseHash(): Screen {
 		const h = location.hash.replace(/^#\/?/, "");
@@ -55,7 +57,6 @@
 	window.addEventListener("hashchange", () => (route = parseHash()));
 
 	onMount(async () => {
-		// login: try /api/me with whatever token is in storage
 		if (getToken()) {
 			try {
 				me = await api("/api/me");
@@ -63,20 +64,12 @@
 				me = null;
 			}
 		}
-		// readme is public, always fetched
 		try {
 			const r = (await api("/api/readme")) as { markdown: string; url: string };
 			readmeMd = r.markdown;
 			readmeUrl = r.url;
 		} catch {
 			/* no readme */
-		}
-		// redirect to the saved next if we landed here unauthenticated
-		const u = new URL(location.href);
-		const next = u.searchParams.get("next");
-		if (!me && next && next.startsWith("/")) {
-			// we are not logged in, and the editor sent us here — just sit
-			// on the login screen; the editor will bounce back on success.
 		}
 		if (me && route === "login") go("projects");
 	});
@@ -91,7 +84,6 @@
 			})) as { token: string };
 			setToken(r.token);
 			me = await api("/api/me");
-			// honour ?next from the editor
 			const u = new URL(location.href);
 			const next = u.searchParams.get("next");
 			if (next && next.startsWith("/")) {
@@ -118,7 +110,7 @@
 	}
 
 	async function revokeAllSessions() {
-		if (!(await confirmDialog("Revoke all sessions? You will be signed out."))) return;
+		if (!(await confirmDialog(t.logoutAll + "?"))) return;
 		try {
 			await api("/api/session/revoke-all", { method: "POST" });
 		} catch (e) {
@@ -153,8 +145,13 @@
 	async function loadSettings() {
 		if (!me) return;
 		try {
-			keys = (await api("/api/keys")) as typeof keys;
-			mcpConfig = await api("/api/mcp-config");
+			if (me.role === "admin") {
+				allKeys = (await api("/api/admin/keys")) as typeof allKeys;
+				users = (await api("/api/users")) as typeof users;
+			} else {
+				myKeys = (await api("/api/keys")) as typeof myKeys;
+			}
+			mcpConfig = (await api("/api/mcp-config")) as typeof mcpConfig;
 		} catch (e) {
 			meErr = (e as Error).message;
 		}
@@ -166,10 +163,16 @@
 		if (route === "settings" && me) loadSettings();
 	});
 
-	async function createProject() {
-		const name = await promptDialog("Project name:");
+	// reload the current screen when the "show all users' data" toggle flips
+	function onShowAll() {
+		if (route === "projects") loadProjects();
+		else if (route === "settings") loadSettings();
+	}
+
+	// ---------- projects ----------
+	async function createScheme() {
+		const name = await promptDialog(t.newScheme + " (project/scheme или scheme):");
 		if (!name) return;
-		const desc = await promptDialog("Description (optional):");
 		try {
 			await api("/api/schemes", {
 				method: "POST",
@@ -179,12 +182,11 @@
 		} catch (e) {
 			projectsErr = (e as Error).message;
 		}
-		void desc;
 	}
 
-	async function deleteProject(name: string) {
-		const confirm = await promptDialog(`Type project name to confirm: ${name}`, "");
-		if (confirm !== name) return;
+	async function deleteScheme(name: string) {
+		const ok = await confirmDialog(`${t.confirmDeleteScheme} ${name}?`);
+		if (!ok) return;
 		try {
 			await api(`/api/scheme/${encodeURIComponent(name)}`, { method: "DELETE" });
 			await loadProjects();
@@ -193,15 +195,39 @@
 		}
 	}
 
+	// a "project" is a group of schemes sharing the same prefix. Deleting it
+	// deletes every scheme in the group (one DELETE per scheme — the store has
+	// no bulk endpoint).
+	async function deleteProject(project: string) {
+		const members = schemes.filter((s) => s.project === project);
+		if (!members.length) return;
+		const ok = await confirmDialog(`${t.delProject} "${project}" (${members.length} ${t.allProjects})?`);
+		if (!ok) return;
+		try {
+			for (const s of members) {
+				await api(`/api/scheme/${encodeURIComponent(s.project ? `${s.project}/${s.name}` : s.name)}`, {
+					method: "DELETE",
+				});
+			}
+			await loadProjects();
+		} catch (e) {
+			projectsErr = (e as Error).message;
+		}
+	}
+
+	// ---------- users ----------
 	async function createUser() {
-		const login = await promptDialog("Login:");
+		const login = await promptDialog(t.login + ":");
 		if (!login) return;
-		const password = await promptDialog("Password:");
+		const password = await promptDialog(t.password + ":");
 		if (!password) return;
+		const role = (await promptDialog(`${t.role} (${t.admin}/${t.userRole}):`, "user")) === "admin"
+			? "admin"
+			: "user";
 		try {
 			await api("/api/users", {
 				method: "POST",
-				body: JSON.stringify({ login, password, role: "user" }),
+				body: JSON.stringify({ login, password, role }),
 			});
 			await loadUsers();
 		} catch (e) {
@@ -210,7 +236,7 @@
 	}
 
 	async function deleteUser(id: number, login: string) {
-		if (!(await confirmDialog(`Delete user ${login}?`))) return;
+		if (!(await confirmDialog(`${t.confirmDeleteUser} ${login}?`))) return;
 		try {
 			await api(`/api/user/${id}`, { method: "DELETE" });
 			await loadUsers();
@@ -220,7 +246,7 @@
 	}
 
 	async function changePassForUser(login: string) {
-		const pw = await promptDialog(`New password for ${login}:`);
+		const pw = await promptDialog(`${t.newPassword} (${login}):`);
 		if (!pw) return;
 		try {
 			await api("/api/password", {
@@ -232,29 +258,19 @@
 		}
 	}
 
-	async function showMcpConfig(login: string) {
+	async function changeRole(id: number, role: "admin" | "user") {
 		try {
-			const c = await api(`/api/mcp-config?login=${encodeURIComponent(login)}`);
-			alert(JSON.stringify(c, null, 2));
-		} catch (e) {
-			usersErr = (e as Error).message;
-		}
-	}
-
-	async function rotateKey(login: string) {
-		if (!(await confirmDialog(`Rotate API key for ${login}? The old key stops working.`))) return;
-		try {
-			const r = (await api("/api/keys/rotate", {
-				method: "POST",
-				body: JSON.stringify({ login }),
-			})) as { apiKey: string; mcpConfig: unknown };
-			alert(`New key (save it now):\n\n${r.apiKey}\n\n${JSON.stringify(r.mcpConfig, null, 2)}`);
+			await api(`/api/user/${id}`, {
+				method: "PATCH",
+				body: JSON.stringify({ role }),
+			});
 			await loadUsers();
 		} catch (e) {
 			usersErr = (e as Error).message;
 		}
 	}
 
+	// ---------- settings ----------
 	async function changeOwnPassword() {
 		if (newPass.length < 4) {
 			meErr = "min 4 chars";
@@ -265,7 +281,6 @@
 				method: "POST",
 				body: JSON.stringify({ password: newPass }),
 			});
-			// password change drops our session
 			setToken("");
 			me = null;
 			go("login");
@@ -276,18 +291,24 @@
 
 	async function createOwnKey() {
 		try {
-			const r = (await api("/api/keys", { method: "POST" })) as { apiKey: string; mcpConfig: unknown };
-			alert(`New key (save it now):\n\n${r.apiKey}\n\n${JSON.stringify(r.mcpConfig, null, 2)}`);
+			const r = (await api("/api/keys", { method: "POST" })) as {
+				apiKey: string;
+				mcpConfig: unknown;
+			};
+			alert(`${t.shownOnce}\n\n${r.apiKey}\n\n${JSON.stringify(r.mcpConfig, null, 2)}`);
 			await loadSettings();
 		} catch (e) {
 			meErr = (e as Error).message;
 		}
 	}
 
-	async function revokeOwnKey(hash: string) {
-		if (!(await confirmDialog("Revoke this key?"))) return;
+	async function revokeKey(hash: string, login?: string) {
+		if (!(await confirmDialog(t.confirmRevoke))) return;
 		try {
-			await api(`/api/keys/${hash}/revoke`, { method: "POST" });
+			await api(`/api/keys/${hash}/revoke`, {
+				method: "POST",
+				body: JSON.stringify(login ? { login } : {}),
+			});
 			await loadSettings();
 		} catch (e) {
 			meErr = (e as Error).message;
@@ -295,14 +316,14 @@
 	}
 
 	function renderReadme(md: string): string {
-		// minimal renderer: paragraphs + fenced code + headings. enough for the
-		// "live README on the login page" UI requirement (n1 in the spec).
 		return md
 			.split(/\n{2,}/)
 			.map((p) => {
 				if (p.startsWith("```")) {
 					const m = p.match(/^```\w*\n([\s\S]*?)\n```$/);
-					return m ? `<pre>${m[1]!.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!)}</pre>` : "";
+					return m
+						? `<pre>${m[1]!.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!)}</pre>`
+						: "";
 				}
 				if (p.startsWith("# ")) return `<h1>${p.slice(2)}</h1>`;
 				if (p.startsWith("## ")) return `<h2>${p.slice(3)}</h2>`;
@@ -311,20 +332,28 @@
 			})
 			.join("\n");
 	}
+
+	// unique project names (non-empty) for the "del project" section
+	const projectNames = $derived([...new Set(schemes.map((s) => s.project).filter(Boolean))]);
 </script>
 
 <header class="topbar">
 	<span class="title">llmscheme</span>
 	{#if me}
 		<nav>
-			<button class:on={route === "projects"} onclick={() => go("projects")}>projects</button>
-			{#if me.role === "admin"}<button class:on={route === "users"} onclick={() => go("users")}>users</button>{/if}
-			<button class:on={route === "settings"} onclick={() => go("settings")}>settings</button>
+			<button class:on={route === "projects"} onclick={() => go("projects")}>{t.projects}</button>
+			{#if me.role === "admin"}<button class:on={route === "users"} onclick={() => go("users")}>{t.users}</button>{/if}
+			<button class:on={route === "settings"} onclick={() => go("settings")}>{t.settings}</button>
 		</nav>
 		<span class="spacer"></span>
+		{#if me.role === "admin"}
+			<label class="showall">
+				<input type="checkbox" bind:checked={allUsers} onchange={onShowAll} /> {t.showAll}
+			</label>
+		{/if}
 		<span class="muted">{me.login} ({me.role})</span>
-		<button onclick={revokeAllSessions}>logout all</button>
-		<button onclick={doLogout}>logout</button>
+		<button onclick={revokeAllSessions}>{t.logoutAll}</button>
+		<button onclick={doLogout}>{t.logout}</button>
 		<button onclick={() => (lang = lang === "en" ? "ru" : "en")}>{lang.toUpperCase()}</button>
 	{:else}
 		<span class="spacer"></span>
@@ -336,21 +365,21 @@
 	{#if route === "login"}
 		<section class="login">
 			<div class="card">
-				<h2>login</h2>
+				<h2>{t.login}</h2>
 				<form
 					onsubmit={(e) => {
 						e.preventDefault();
 						doLogin();
 					}}
 				>
-					<label>login <input bind:value={loginName} autocomplete="username" required /></label>
-					<label>password <input type="password" bind:value={loginPass} autocomplete="current-password" required /></label>
+					<label>{t.login} <input bind:value={loginName} autocomplete="username" required /></label>
+					<label>{t.password} <input type="password" bind:value={loginPass} autocomplete="current-password" required /></label>
 					{#if loginErr}<p class="err">{loginErr}</p>{/if}
-					<button type="submit" disabled={loginBusy}>{loginBusy ? "..." : "login"}</button>
+					<button type="submit" disabled={loginBusy}>{loginBusy ? "..." : t.login}</button>
 				</form>
 				<details>
-					<summary>reset admin password</summary>
-					<p class="hint">if you are locked out: stop the container, delete <code>DATA_DIR/lightdb.json</code>, and restart with <code>ADMIN_PASSWORD=...</code> in the env.</p>
+					<summary>{t.resetAdmin}</summary>
+					<p class="hint">{t.resetHint}</p>
 				</details>
 			</div>
 			<aside class="readme">
@@ -365,24 +394,32 @@
 		</section>
 	{:else if route === "projects"}
 		<section>
-			<h2>projects</h2>
-			{#if me?.role === "admin"}
-				<label><input type="checkbox" bind:checked={allUsers} onchange={loadProjects} /> show all users' projects</label>
-			{/if}
-			<button onclick={createProject}>new project</button>
+			<h2>{t.projects}</h2>
+			<button onclick={createScheme}>{t.newScheme}</button>
 			{#if projectsErr}<p class="err">{projectsErr}</p>{/if}
+
+			{#if projectNames.length}
+				<h3>{t.delProject}</h3>
+				{#each projectNames as p}
+					<span class="project-chip">
+						{p}
+						<button class="warn mini" onclick={() => deleteProject(p)}>×</button>
+					</span>
+				{/each}
+			{/if}
+
 			{#if schemes.length === 0}
-				<p class="hint">no schemes yet — create a project to begin.</p>
+				<p class="hint">{t.noSchemes}</p>
 			{:else}
 				<table>
 					<thead>
 						<tr>
-							<th>project</th>
+							<th>{t.projects}</th>
 							<th>scheme</th>
-							<th>edit</th>
-							{#if me?.role === "admin" && allUsers}<th>user</th>{/if}
-							<th>last edit</th>
-							<th>del</th>
+							<th>{t.edit}</th>
+							{#if me?.role === "admin" && allUsers}<th>{t.ownedBy}</th>{/if}
+							<th>{t.lastEdit}</th>
+							<th>{t.delScheme}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -391,40 +428,43 @@
 								<td>{s.project || "—"}</td>
 								<td>{s.name}</td>
 								<td>
-									<a href={`#/editor/${encodeURIComponent((s.project ? `${s.project}/${s.name}` : s.name))}`}>edit</a>
+									<a href={`/editor/${encodeURIComponent(s.project ? `${s.project}/${s.name}` : s.name)}`}>{t.edit}</a>
 								</td>
 								{#if me?.role === "admin" && allUsers}<td>{s.owner}</td>{/if}
 								<td>{new Date(s.updatedAt).toLocaleString()}</td>
-								<td><button class="warn mini" onclick={() => deleteProject(s.project ? `${s.project}/${s.name}` : s.name)}>×</button></td>
+								<td>
+									<button class="warn mini" onclick={() => deleteScheme(s.project ? `${s.project}/${s.name}` : s.name)}>×</button>
+								</td>
 							</tr>
 						{/each}
 					</tbody>
 				</table>
 			{/if}
-			<!-- the "edit" links target the server editor route; we use plain anchors so it survives a no-JS browser -->
 		</section>
 	{:else if route === "users" && me?.role === "admin"}
 		<section>
-			<h2>users</h2>
-			<button onclick={createUser}>new user</button>
+			<h2>{t.users}</h2>
+			<button onclick={createUser}>{t.newUser}</button>
 			{#if usersErr}<p class="err">{usersErr}</p>{/if}
 			<table>
 				<thead>
-					<tr><th>login</th><th>role</th><th>api keys</th><th>created</th><th>actions</th></tr>
+					<tr><th>{t.login}</th><th>{t.password}</th><th>{t.role}</th><th></th></tr>
 				</thead>
 				<tbody>
 					{#each users as u}
 						<tr>
 							<td>{u.login}</td>
-							<td>{u.role}</td>
-							<td>{u.apiKeys}</td>
-							<td>{new Date(u.createdAt).toLocaleDateString()}</td>
+							<td><button class="mini" onclick={() => changePassForUser(u.login)}>{t.changePassword}</button></td>
 							<td>
-								<button class="mini" onclick={() => changePassForUser(u.login)}>pass</button>
-								<button class="mini" onclick={() => showMcpConfig(u.login)}>mcp</button>
-								<button class="mini warn" onclick={() => rotateKey(u.login)}>rotate</button>
-								<button class="mini warn" onclick={() => deleteUser(u.id, u.login)}>×</button>
+								<select
+									value={u.role}
+									onchange={(e) => changeRole(u.id, (e.currentTarget as HTMLSelectElement).value as "admin" | "user")}
+								>
+									<option value="user">{t.userRole}</option>
+									<option value="admin">{t.admin}</option>
+								</select>
 							</td>
+							<td><button class="warn mini" onclick={() => deleteUser(u.id, u.login)}>×</button></td>
 						</tr>
 					{/each}
 				</tbody>
@@ -432,40 +472,68 @@
 		</section>
 	{:else if route === "settings" && me}
 		<section>
-			<h2>settings</h2>
-			<h3>change password</h3>
+			<h2>{t.settings}</h2>
+
+			<h3>{t.changePassword}</h3>
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();
 					changeOwnPassword();
 				}}
 			>
-				<label>new password <input type="password" bind:value={newPass} /></label>
-				<button type="submit">change</button>
+				<label>{t.newPassword} <input type="password" bind:value={newPass} /></label>
+				<button type="submit">{t.change}</button>
 			</form>
 			{#if meErr}<p class="err">{meErr}</p>{/if}
 
-			<h3>api keys</h3>
-			<button onclick={createOwnKey}>new key</button>
-			<table>
-				<thead><tr><th>hash</th><th>created</th><th></th></tr></thead>
-				<tbody>
-					{#each keys as k}
-						<tr>
-							<td><code>{k.hash.slice(0, 12)}…</code></td>
-							<td>{new Date(k.createdAt).toLocaleString()}</td>
-							<td><button class="warn mini" onclick={() => revokeOwnKey(k.hash)}>revoke</button></td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
+			<h3>{t.keys}</h3>
+			{#if me.role === "admin"}
+				<!-- admin: every user's keys, each with its MCP target -->
+				{#if allKeys.length === 0}
+					<p class="hint">{t.noKeys}</p>
+				{:else}
+					<table>
+						<thead>
+							<tr><th>{t.login}</th><th>key</th><th>{t.created}</th><th>mcp</th><th></th></tr>
+						</thead>
+						<tbody>
+							{#each allKeys as k}
+								<tr>
+									<td>{k.user}</td>
+									<td><code>{k.hash.slice(0, 12)}…</code></td>
+									<td>{new Date(k.createdAt).toLocaleString()}</td>
+									<td>{mcpConfig?.url ?? "/mcp"}</td>
+									<td><button class="warn mini" onclick={() => revokeKey(k.hash, k.user)}>{t.revoke}</button></td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+			{:else}
+				<!-- regular user: only their own keys -->
+				<button onclick={createOwnKey}>{t.newKey}</button>
+				{#if myKeys.length === 0}
+					<p class="hint">{t.noKeys}</p>
+				{:else}
+					<table>
+						<thead><tr><th>key</th><th>{t.created}</th><th></th></tr></thead>
+						<tbody>
+							{#each myKeys as k}
+								<tr>
+									<td><code>{k.hash.slice(0, 12)}…</code></td>
+									<td>{new Date(k.createdAt).toLocaleString()}</td>
+									<td><button class="warn mini" onclick={() => revokeKey(k.hash)}>{t.revoke}</button></td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+			{/if}
 
-			<h3>mcp</h3>
+			<h3>{t.mcp}</h3>
 			{#if mcpConfig}
 				<pre>{JSON.stringify(mcpConfig, null, 2)}</pre>
 			{/if}
 		</section>
 	{/if}
 </main>
-
-<!-- styles live in src/console/console.css; kept out of the .svelte to avoid duplicate rules -->

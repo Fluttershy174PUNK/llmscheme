@@ -188,7 +188,7 @@ const server = http.createServer(async (req, res) => {
 // an empty body and avoids an unnecessary stream.
 function needsBody(method: string | undefined, pathname: string): boolean {
 	if (pathname === "/mcp") return true;
-	return method === "POST" || method === "PUT" || method === "DELETE";
+	return method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
 }
 
 function handleError(res: http.ServerResponse, e: unknown, pathname: string): void {
