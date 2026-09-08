@@ -41,19 +41,21 @@ The TUI output looks like:
 
 ## Scheme
 
-`.block_llm/scheme.json` describes the data flow:
+The logic scheme lives in `.llmscheme/logic_scheme/scheme.json` and
+ describes the data flow:
 
 ```
-cats.txt ──> pickWord() ──> compose() ──> render() / gif() ──> stdout / file
+cats.txt ──> pickAdj() / pickNoun() ──> compose() ──> render() / gif() ──> stdout / file
 ```
 
-Open `.block_llm/scheme.html` in a browser to see it visually, or
-`node <skill-dir>/cli/block.ts get .` to read it as JSON.
+Open `.llmscheme/logic_scheme/scheme.html` in a browser to see it
+visually, or `node <skill-dir>/cli/block.ts get . --type logic` to
+read it as JSON.
 
 ## What this demo teaches the skill
 
-- A project with **2-5 nodes** (a small CLI tool)
-- A few **edges** (data flow)
-- A **table node** (could be added to show word categories)
+- A project with **5 nodes + 5 edges + 1 zone** (a small CLI tool)
 - **refs** pointing at the source files (`src/cat.ts`, `src/gif.ts`)
-- The full **ritual**: init → get → node add → validate → doctor
+- The full **ritual**: init --type logic → get → node add → validate → doctor
+- The **three scheme types**: logic (this one), code, ui — one project,
+  up to three independent schemes

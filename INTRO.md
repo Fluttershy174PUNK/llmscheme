@@ -84,17 +84,17 @@ click "settings" in the top bar → change password
 # (for Claude Code: ${CLAUDE_SKILL_DIR})
 
 # the agent then has these commands:
-node <skill-dir>/cli/block.ts init my-project
-node <skill-dir>/cli/block.ts node add --label "Login" --ref src/login.ts
-node <skill-dir>/cli/block.ts validate
+node <skill-dir>/cli/block.ts init my-project --type logic
+node <skill-dir>/cli/block.ts node add --type logic --label "Login" --ref src/login.ts
+node <skill-dir>/cli/block.ts validate --type logic
 ```
 
 ### 2. The browser editor (for humans, offline)
 
 ```bash
 # in any project with a scheme:
-xdg-open .block_llm/scheme.html     # Linux
-open .block_llm/scheme.html         # macOS
+xdg-open .llmscheme/logic_scheme/scheme.html     # Linux
+open .llmscheme/logic_scheme/scheme.html         # macOS
 ```
 
 The page is self-contained. It opens straight from `file://` — no
@@ -119,8 +119,6 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/schemes
 - **README.md** — what llmscheme is, 5-minute quick start, glossary
 - **PROJECT.md** — repo map for contributors, day-to-day commands
 - **src/docs/** — in-depth guides (format, editor, console, migration)
-- **PLAN.md** — historical: the v2 plan from the v1 audit
-- **TODO.md** — historical: what was left to do (all done now)
 
 For the operator's guide, see
 [SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md).

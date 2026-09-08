@@ -6,7 +6,7 @@
 
 Think of it like an auto-updated diagram for your code. Instead of
 drawing boxes and arrows in a slide deck that goes stale the moment
-someone renames a file, the diagram lives in `.block_llm/scheme.json`
+someone renames a file, the diagram lives in `.llmscheme/logic_scheme/scheme.json`
 and regenerates every time you save.
 
 ---
@@ -72,7 +72,7 @@ Most projects answer those questions by either:
 - **Hand-written docs** — go stale the moment the code changes
 - **A wiki nobody updates** — same problem
 
-**llmscheme** keeps a single file (`.block_llm/scheme.json`) that
+**llmscheme** keeps a single file (`.llmscheme/logic_scheme/scheme.json`) that
 describes the **WHAT** of the project — the boxes (modules) and the
 arrows (data flow) — and regenerates a human-readable `SCHEME.md` and
 an interactive `scheme.html` from it on every change. The file is the
@@ -102,8 +102,8 @@ connected by **edges** (how data flows between them). You can also add
 **zones** (dashed rectangles that group things) and **labels** (free
 text on each shape).
 
-Open `.block_llm/scheme.html` in a browser and you get a clickable,
-draggable diagram. Open `.block_llm/SCHEME.md` in any text editor and
+Open `.llmscheme/logic_scheme/scheme.html` in a browser and you get a clickable,
+draggable diagram. Open `.llmscheme/logic_scheme/SCHEME.md` in any text editor and
 you get a Markdown summary. Both are generated from the same JSON.
 
 ---
@@ -145,9 +145,9 @@ mkdir my-project && cd my-project
 node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts init --name "My Project"
 ```
 
-That creates `.block_llm/scheme.json`, a `.gitignore` line, and an
+That creates `.llmscheme/logic_scheme/scheme.json`, a `.gitignore` line, and an
 `AGENTS.md` section. It also writes `SCHEME.md` (the readable summary)
-and `.block_llm/scheme.html` (the browser editor).
+and `.llmscheme/logic_scheme/scheme.html` (the browser editor).
 
 ### Step 3: add a few nodes
 
@@ -166,12 +166,12 @@ Each `node add` adds one box; `edge add` draws an arrow.
 
 ### Step 4: open the visual editor
 
-Double-click `.block_llm/scheme.html` in your file manager, or:
+Double-click `.llmscheme/logic_scheme/scheme.html` in your file manager, or:
 
 ```bash
-xdg-open .block_llm/scheme.html      # Linux
-open .block_llm/scheme.html          # macOS
-start .block_llm/scheme.html         # Windows
+xdg-open .llmscheme/logic_scheme/scheme.html      # Linux
+open .llmscheme/logic_scheme/scheme.html          # macOS
+start .llmscheme/logic_scheme/scheme.html         # Windows
 ```
 
 The page works **without** a web server. It opens straight from
@@ -192,9 +192,9 @@ shapes, etc.).
 
 ```bash
 cd /path/to/llmscheme/DEMO-PROJECT
-cat .block_llm/scheme.json          # a real scheme
+cat .llmscheme/logic_scheme/scheme.json          # a real scheme
 cat SCHEME.md                       # its markdown export
-open .block_llm/scheme.html         # the browser editor
+open .llmscheme/logic_scheme/scheme.html         # the browser editor
 node src/run.ts                     # the actual program
 ```
 
@@ -229,9 +229,9 @@ node src/run.ts                     # the actual program
 
 When you (or the agent) run `node add` or `edge add`, the CLI:
 
-1. Updates `.block_llm/scheme.json`
+1. Updates `.llmscheme/logic_scheme/scheme.json`
 2. Regenerates `SCHEME.md` (with mermaid diagram + tables)
-3. Regenerates `.block_llm/scheme.html` (with the new data baked in)
+3. Regenerates `.llmscheme/logic_scheme/scheme.html` (with the new data baked in)
 
 If you edit `scheme.html` in the browser and hit SAVE, the editor
 gives you back a command to paste into your agent — the agent then
@@ -264,7 +264,7 @@ this is what the agent sees.
 
 ## For humans (browser editor)
 
-Open `.block_llm/scheme.html` in a browser. You get:
+Open `.llmscheme/logic_scheme/scheme.html` in a browser. You get:
 
 - **Click and drag** a node to move it
 - **Drag the bottom-right corner** of a node to resize it
@@ -350,7 +350,7 @@ Full operator reference:
 
 | Term | What it means |
 |---|---|
-| **scheme** | The JSON file (`.block_llm/scheme.json`) that describes your project's structure |
+| **scheme** | The JSON file (`.llmscheme/logic_scheme/scheme.json`) that describes your project's structure |
 | **node** | A box on the diagram — a module, file, or concept in your project |
 | **edge** | An arrow between two nodes — a data flow, dependency, or call |
 | **zone** | A dashed rectangle that groups nodes — a layer, subsystem, or "this stuff belongs together" |

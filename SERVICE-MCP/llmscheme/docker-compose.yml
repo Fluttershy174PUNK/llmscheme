@@ -1,6 +1,11 @@
 services:
   llmscheme:
-    build: .
+    # the Dockerfile needs the repo root as its build context (it COPYs
+    # src/ and SERVICE-MCP/llmscheme/), so point build at ../.. and give
+    # the Dockerfile path explicitly.
+    build:
+      context: ../..
+      dockerfile: SERVICE-MCP/llmscheme/Dockerfile
     image: llmscheme-service:2.0.0
     container_name: llmscheme
     restart: unless-stopped
@@ -16,8 +21,9 @@ services:
       MCP_ENABLED: "true"
       ORIGIN_ALLOWLIST: ${ORIGIN_ALLOWLIST:-}
     volumes:
+      # schemes + users persist across container restarts; the built HTML
+      # artifacts are COPY'd into the image, so no bind mount is needed.
       - llm-data:/data
-      - ./:/app/mcp-service:ro
     healthcheck:
       test:
         [

@@ -69,17 +69,14 @@ export class Schemes {
 		const root = this.root(u, name);
 		const tpl = this.template();
 		return saveSchema(root, scheme, {
-			extraFiles: tpl
-				? (final) => ({ "scheme.html": renderHtml(tpl, final) })
-				: undefined,
+			extraFiles: tpl ? (final) => ({ "scheme.html": renderHtml(tpl, final) }) : undefined,
 			journal: { actor: scheme.meta.generator, op, summary: `${op} via service` },
 		});
 	}
 
 	private mustRead(u: User, name: string): { root: string; scheme: Scheme } {
 		const root = this.root(u, name);
-		if (!fs.existsSync(path.join(root, "scheme.json")))
-			throw new HttpError(404, "no such scheme");
+		if (!fs.existsSync(path.join(root, "scheme.json"))) throw new HttpError(404, "no such scheme");
 		return { root, scheme: readRaw(root) };
 	}
 
@@ -129,8 +126,7 @@ export class Schemes {
 
 	create(u: User, name: string, scheme?: Scheme): { rev: number } {
 		const root = this.root(u, name);
-		if (fs.existsSync(path.join(root, "scheme.json")))
-			throw new HttpError(409, "scheme exists");
+		if (fs.existsSync(path.join(root, "scheme.json"))) throw new HttpError(409, "scheme exists");
 		if (scheme) {
 			if (scheme.rev !== 0) throw new DataError("imported scheme must have rev 0");
 			return this.save(u, name, scheme, "put");

@@ -30,6 +30,31 @@ const config = loadConfig();
 const store = new Store({ dataDir: config.dataDir, dbQuotaBytes: config.dbQuotaBytes });
 store.ensureAdmin(config.adminLogin, config.adminPassword);
 
+const ASSET_EXT: Record<string, string> = {
+	woff2: "font/woff2",
+	woff: "font/woff",
+	css: "text/css; charset=utf-8",
+	js: "text/javascript; charset=utf-8",
+};
+
+// public static files (font, css, the console/editor bundle) — no auth, no
+// traversal (path.basename), immutable cache for fonts.
+function serveAsset(assetsDir: string, name: string, res: http.ServerResponse): void {
+	const safe = path.basename(name);
+	const file = path.join(assetsDir, safe);
+	if (!fs.existsSync(file)) {
+		fail(res, 404, "no such asset");
+		return;
+	}
+	const ext = safe.split(".").pop() ?? "";
+	res.writeHead(200, {
+		"content-type": ASSET_EXT[ext] ?? "application/octet-stream",
+		"cache-control": "public, max-age=31536000, immutable",
+		"x-content-type-options": "nosniff",
+	});
+	res.end(fs.readFileSync(file));
+}
+
 const artifacts = resolveArtifactPaths();
 // editor template lives next to the data dir (deployed as a single file in
 // the artifact image) or falls back to the asset dir
@@ -37,6 +62,9 @@ const editorTpl = fs.existsSync(path.join(config.dataDir, "..", "editor.html"))
 	? path.join(config.dataDir, "..", "editor.html")
 	: artifacts.editorTemplatePath;
 const readmePath = path.resolve("README.md");
+// console.html and editor.html live in the artifact dir; the font + app.js
+// live one level deeper in artifacts/<assets>/. Served at /assets/<name>.
+const assetsDir = path.join(path.dirname(artifacts.consolePath), "assets");
 
 const schemes = new Schemes({ store, templatePath: editorTpl });
 const routes = buildRoutes({
@@ -45,7 +73,7 @@ const routes = buildRoutes({
 	config,
 	readmePath,
 	repoUrl: "https://example.invalid/llmscheme",
-	assetsDir: path.dirname(artifacts.consolePath),
+	assetsDir,
 });
 
 interface AuthScope {
@@ -85,6 +113,15 @@ const server = http.createServer(async (req, res) => {
 		// 2. /health
 		if (pathname === "/health" && req.method === "GET") {
 			res.writeHead(200, { "content-type": "application/json" }).end('{"ok":true}');
+			logRequest(req, res, pathname, started);
+			return;
+		}
+
+		// 3. /assets/* — public static files (font, css, app.js). No auth: the
+		// console and editor <script src> and @font-face load these before a
+		// session exists (the login page needs the font + the console bundle).
+		if (pathname.startsWith("/assets/")) {
+			serveAsset(assetsDir, pathname.slice("/assets/".length), res);
 			logRequest(req, res, pathname, started);
 			return;
 		}

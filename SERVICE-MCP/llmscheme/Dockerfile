@@ -3,7 +3,7 @@
 # artifacts (SERVICE-MCP/llmscheme/*.html + assets/). `npm run build` runs on
 # the developer's machine (Node 22.18+), never inside this image, so the
 # sandbox does not need Node on the host.
-FROM node:22.22-bookworm-slim
+FROM node:22-alpine
 
 WORKDIR /app
 # the service has zero runtime dependencies, but npm ci keeps the lockfile honest

@@ -427,6 +427,7 @@ const ASSET_EXT: Record<string, string> = {
 	woff2: "font/woff2",
 	woff: "font/woff",
 	css: "text/css; charset=utf-8",
+	js: "text/javascript; charset=utf-8",
 };
 
 function serveAsset(deps: RoutesDeps, ctx: Context): void {

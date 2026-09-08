@@ -64,12 +64,12 @@ llmscheme/
 ├── DEMO-PROJECT/                  [artifact] demo: test the skill here
 │   ├── src/run.ts                          1-file cat generator
 │   ├── cats.txt                            word list
-│   ├── .block_llm/scheme.json              demo scheme (2 nodes, 1 edge)
+│   ├── .llmscheme/logic_scheme/scheme.json              demo scheme (2 nodes, 1 edge)
 │   ├── SCHEME.md                           generated markdown export
 │   ├── AGENTS.md                           agent section
 │   ├── README.md
 │   ├── .gitignore
-│   └── .block_llm/VERSION
+│   └── .llmscheme/logic_scheme/VERSION
 │
 ├── src/                           [source] edit here, only here
 │   ├── core/                               shared data model (see SKILL/llmscheme/core)

@@ -1,105 +1,88 @@
 #!/usr/bin/env bash
-# deploy.sh — build the service and deploy it to the dev sandbox LXC 999.
+# deploy.sh — build locally, rsync, docker compose up on the dev sandbox LXC 999.
 #
-# Usage: ./.test_on_local_proxmox/deploy.sh
+# Usage: DEV_PASSWORD=... ADMIN_PASSWORD=... ./.test_on_local_proxmox/deploy.sh
 #
-# What it does:
-#   1. ssh to dev@10.0.20.250 and create ~/llmscheme/ if missing
-#   2. rsync the repo (excluding node_modules, .git, dist) to the sandbox
-#   3. npm install + npm run build on the sandbox
-#   4. docker compose up -d the service from SERVICE-MCP/llmscheme/
-#   5. wait for /health to return 200
-#   6. tail the logs
+# Why build LOCALLY: the sandbox has docker + rsync but no Node, and the
+# Dockerfile deliberately does not build anything (it ships pre-built
+# artifacts). So `npm run build` runs here, then rsync pushes source + built
+# HTML, and the sandbox just runs `docker compose up -d --build`.
 #
-# Required env:
-#   DEV_PASSWORD  — ssh password for dev@10.0.20.250 (from test_dev.md)
-#
-# This is the "real" deploy that replaces the v1-era copy-paste workflow.
-# It is safe to re-run: the sandbox gets a fresh build every time.
+# No sshpass dependency: SSH_ASKPASS supplies the password non-interactively.
 
 set -euo pipefail
 
-# ---- config ----
 REMOTE="${REMOTE:-dev@10.0.20.250}"
-REMOTE_DIR="${REMOTE_DIR:-~/llmscheme}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:?ADMIN_PASSWORD env var is required (e.g. export ADMIN_PASSWORD=changeme)}"
+REMOTE_DIR="${REMOTE_DIR:-llmscheme}" # relative to the dev home
+ADMIN_PASSWORD="${ADMIN_PASSWORD:?ADMIN_PASSWORD env var is required}"
+DEV_PASSWORD="${DEV_PASSWORD:?DEV_PASSWORD env var is required}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# .test_on_local_proxmox/ lives at the repo root, so up one level is the repo
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# ---- preflight ----
-if ! command -v sshpass >/dev/null 2>&1; then
-  echo "ERROR: sshpass is required. Install with: sudo apt install sshpass" >&2
-  exit 1
-fi
+# ---- SSH without sshpass: use SSH_ASKPASS ----
+ASKPASS="$(mktemp)"
+printf '#!/bin/sh\necho "%s"\n' "$DEV_PASSWORD" >"$ASKPASS"
+chmod +x "$ASKPASS"
+trap 'rm -f "$ASKPASS"' EXIT
+export SSH_ASKPASS="$ASKPASS" SSH_ASKPASS_REQUIRE=force DISPLAY=:0
+SSH=(ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no)
+RSYNC_RSH="ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no"
+
 if ! command -v rsync >/dev/null 2>&1; then
-  echo "ERROR: rsync is required." >&2
+  echo "ERROR: rsync is required locally." >&2
   exit 1
 fi
 
 cd "$REPO_DIR"
 echo "→ repo: $REPO_DIR"
-echo "→ target: $REMOTE:$REMOTE_DIR"
+echo "→ target: $REMOTE:~/$REMOTE_DIR"
 
-# ---- 1. prepare the remote directory ----
-echo "→ preparing remote directory..."
-sshpass -p "$DEV_PASSWORD" ssh -o StrictHostKeyChecking=no "$REMOTE" \
-  "mkdir -p '$REMOTE_DIR'"
+# ---- 1. build locally (Node is HERE, not on the sandbox) ----
+echo "→ building artifacts locally..."
+npm install --no-audit --no-fund
+npm run build
+npm run sync-skill
+npm run check
 
-# ---- 2. rsync the source (exclude build artefacts) ----
-echo "→ rsyncing source..."
-sshpass -p "$DEV_PASSWORD" rsync -az --delete \
+# ---- 2. rsync source + built artifacts (exclude build detritus) ----
+echo "→ rsyncing..."
+"${SSH[@]}" "$REMOTE" "mkdir -p '$REMOTE_DIR'"
+RSYNC_RSH="$RSYNC_RSH" rsync -az --delete \
   --exclude='node_modules' \
   --exclude='.git' \
   --exclude='dist' \
   --exclude='*.log' \
+  --exclude='data/' \
+  --exclude='llmscheme-service-mcp/' \
   --exclude='.test_on_local_proxmox/test_dev.md~' \
   "$REPO_DIR/" \
   "$REMOTE:$REMOTE_DIR/"
 
-# ---- 3. build on the sandbox ----
-echo "→ installing deps and building on the sandbox..."
-sshpass -p "$DEV_PASSWORD" ssh -o StrictHostKeyChecking=no "$REMOTE" \
-  "bash -lc 'set -e; cd \"$REMOTE_DIR\"; \
-    echo \"  node \$(node -v)\"; \
-    echo \"  npm \$(npm -v)\"; \
-    [ -d node_modules ] || npm install --no-audit --no-fund; \
-    npm run build; \
-    npm run sync-skill; \
-    npm run check'"
-
-# ---- 4. docker compose up ----
+# ---- 3. docker compose up (build inside docker, no Node on host needed) ----
 echo "→ starting the service via docker compose..."
-sshpass -p "$DEV_PASSWORD" ssh -o StrictHostKeyChecking=no "$REMOTE" \
+"${SSH[@]}" "$REMOTE" \
   "bash -lc 'set -e; cd \"$REMOTE_DIR/SERVICE-MCP/llmscheme\"; \
     [ -f .env ] || cp .env.example .env; \
-    sed -i \"s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=${ADMIN_PASSWORD}/\" .env; \
+    sed -i \"s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${ADMIN_PASSWORD}|\" .env; \
     docker compose down --remove-orphans 2>/dev/null || true; \
     docker compose up -d --build; \
-    echo; echo \"  service:\"; \
     docker compose ps'"
 
-# ---- 5. wait for health ----
+# ---- 4. wait for health ----
 echo "→ waiting for /health..."
-for i in $(seq 1 30); do
-  if sshpass -p "$DEV_PASSWORD" ssh -o StrictHostKeyChecking=no "$REMOTE" \
-    "curl -fsS http://127.0.0.1:8080/health" >/dev/null 2>&1; then
+for i in $(seq 1 60); do
+  if "${SSH[@]}" "$REMOTE" "curl -fsS http://127.0.0.1:8080/health" >/dev/null 2>&1; then
     echo "  → /health OK after ${i}s"
     break
   fi
-  sleep 1
+  sleep 2
 done
 
-# ---- 6. final state ----
+# ---- 5. final state ----
 echo
 echo "→ service status:"
-sshpass -p "$DEV_PASSWORD" ssh -o StrictHostKeyChecking=no "$REMOTE" \
-  "curl -sS http://127.0.0.1:8080/health && echo"
-echo
-echo "→ last 20 log lines:"
-sshpass -p "$DEV_PASSWORD" ssh -o StrictHostKeyChecking=no "$REMOTE" \
-  "docker compose -f \"$REMOTE_DIR/SERVICE-MCP/llmscheme/docker-compose.yml\" logs --tail=20 llmscheme || true"
-
+"${SSH[@]}" "$REMOTE" "curl -sS http://127.0.0.1:8080/health && echo"
 echo
 echo "✓ deploy complete. Console: http://10.0.20.250:8080/"
-echo "  login:    admin"
-echo "  password: \$ADMIN_PASSWORD (set above)"
+echo "  login: admin / \$ADMIN_PASSWORD"

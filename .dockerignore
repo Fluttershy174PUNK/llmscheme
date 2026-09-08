@@ -1,0 +1,14 @@
+node_modules
+.git
+dist
+data
+*.log
+.env
+.test_on_local_proxmox
+DEMO-PROJECT
+HERMES-PLUGIN
+SKILL
+docs
+schemes
+e2e
+plugin

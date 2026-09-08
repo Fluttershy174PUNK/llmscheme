@@ -77,7 +77,10 @@ test("init is idempotent: no dup gitignore line, single AGENTS.md section", () =
 	const ag = fs.readFileSync(path.join(proj, "AGENTS.md"), "utf8");
 	assert.equal(ag.split(core.AGENTS_START).length - 1, 1, "one AGENTS section");
 	// VERSION lands once, inside the scheme dir
-	assert.match(fs.readFileSync(path.join(core.schemeDir(proj, "logic"), "VERSION"), "utf8"), /^skill: /);
+	assert.match(
+		fs.readFileSync(path.join(core.schemeDir(proj, "logic"), "VERSION"), "utf8"),
+		/^skill: /,
+	);
 });
 
 test("node update/remove: w/h override, table cols/rows, edges cleaned with the node", () => {

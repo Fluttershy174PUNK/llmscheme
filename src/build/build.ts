@@ -169,8 +169,26 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 	const marker = e.schemeMarker
 		? `\t\t<script type="application/json" id="scheme-data">\n${EMPTY_SCHEME}\n\t\t</script>\n`
 		: "";
+
+	// Inline vs external script:
+	//   dataurl (skill editor, file://) → the JS MUST be inline: a relative
+	//     <script src> on file:// is a NetworkError, so single-file is required.
+	//   file (service editor + console, http) → the JS is emitted to
+	//     assets/app.js and referenced. The HTML stays thin (CSS + a src tag),
+	//     the browser caches the JS, and the minified Svelte runtime never
+	//     sits inside a scanned .html file.
+	let scriptTag: string;
+	if (e.font === "dataurl") {
+		scriptTag = `\t\t<script>${js}</script>`;
+	} else {
+		const dest = path.dirname(path.join(repo, e.out));
+		const assetsDir = path.join(dest, "assets");
+		fs.mkdirSync(assetsDir, { recursive: true });
+		fs.writeFileSync(path.join(assetsDir, "app.js"), js);
+		scriptTag = `\t\t<script src="/assets/app.js"></script>`;
+	}
+
 	const html = `<!doctype html>
-<!-- pi-lens-ignore-file: the inline script is the minified Svelte runtime bundled by esbuild -->
 <html lang="en">
 \t<head>
 \t\t<meta charset="UTF-8" />
@@ -180,7 +198,7 @@ ${marker}\t\t<style>${css}</style>
 \t</head>
 \t<body>
 \t\t<div id="app"></div>
-\t\t<script>${js}</script>
+${scriptTag}
 \t</body>
 </html>
 `;

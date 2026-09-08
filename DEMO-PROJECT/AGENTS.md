@@ -1,11 +1,12 @@
 # AGENTS.md
 
-This project uses the block-llm skill to maintain a living scheme.
-The scheme lives in `.block_llm/scheme.json`; SCHEME.md and
-`.block_llm/scheme.html` are generated exports.
+This project uses the block-llm skill to maintain living schemes in
+`.llmscheme/` (`logic_scheme/`, `code_scheme/`, `ui_scheme/`). Each
+scheme dir holds `scheme.json` (the data) and its generated
+`SCHEME.md` + `scheme.html` exports.
 
-Update the scheme when the code changes. Read SCHEME.md to orient
-yourself; the JSON is the source of truth.
+Update the scheme when the code changes. Read the matching `SCHEME.md`
+to orient yourself; the JSON is the source of truth.
 
 <!-- block-llm:start -->
 ## Project schemes

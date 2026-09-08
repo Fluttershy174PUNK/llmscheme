@@ -86,7 +86,7 @@ llmscheme/
 │   ├── src/gif.ts              ← GIF output (LZW + global colour table, no deps)
 │   ├── src/run.ts              ← entry point
 │   ├── cats.txt                ← word list
-│   ├── .block_llm/scheme.json  ← a real scheme (5 nodes, 5 edges, 1 zone)
+│   ├── .llmscheme/logic_scheme/scheme.json  ← a real scheme (5 nodes, 5 edges, 1 zone)
 │   ├── SCHEME.md               ← generated markdown export
 │   ├── AGENTS.md               ← agent section
 │   ├── README.md

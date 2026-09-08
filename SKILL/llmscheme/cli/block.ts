@@ -247,7 +247,9 @@ function resolveScheme(explicit?: string): string {
 		);
 		process.exit(2);
 	}
-	process.stderr.write(`no .llmscheme/<type>_scheme found from ${process.cwd()} upward (run init first)\n`);
+	process.stderr.write(
+		`no .llmscheme/<type>_scheme found from ${process.cwd()} upward (run init first)\n`,
+	);
 	process.exit(2);
 }
 
