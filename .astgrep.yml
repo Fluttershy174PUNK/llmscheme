@@ -1,0 +1,8 @@
+ruleDirs:
+  - ~/.pi/agent/npm/node_modules/pi-lens/rules/ast-grep-rules
+ignore:
+  - node_modules/**
+  - dist/**
+  - skill/**
+  - "mcp-service/**/*.html"
+  - "**/*.svelte.css"
