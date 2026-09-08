@@ -29,4 +29,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      # unit + service tests in one go: service.test.ts spins its own server
+      # on a random port in a temp DATA_DIR, so it parallelises safely with
+      # the cli / core tests.
       - run: npm test
+      # the build is the second half of "verify": artifacts + budgets + drift
+      - run: npm run build
+      - run: npm run sync-skill
+      - run: npm run check
