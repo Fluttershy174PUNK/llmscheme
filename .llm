@@ -62,7 +62,8 @@ llmscheme/
 │   └── README.md
 │
 ├── DEMO-PROJECT/                  [artifact] demo: test the skill here
-│   ├── src/run.ts                          1-file cat generator
+│   ├── src/run.ts                          cat generator (TUI + GIF)
+│   ├── cats.html                           browser UI (generate button + pixel cat)
 │   ├── cats.txt                            word list
 │   ├── .llmscheme/logic_scheme/scheme.json              demo scheme (2 nodes, 1 edge)
 │   ├── SCHEME.md                           generated markdown export

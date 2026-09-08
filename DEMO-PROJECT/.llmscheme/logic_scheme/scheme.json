@@ -1,7 +1,7 @@
 {
   "format": "block-llm",
   "version": 1,
-  "rev": 12,
+  "rev": 16,
   "name": "cats (TUI + GIF)",
   "project": {
     "root": ".",
@@ -65,6 +65,28 @@
       ],
       "x": 0,
       "y": 400
+    },
+    {
+      "id": "n6",
+      "shape": "rect",
+      "label": "cats.html",
+      "description": "browser UI: generate button + pixel cat",
+      "refs": [
+        "cats.html"
+      ],
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "n7",
+      "shape": "rect",
+      "label": "renderUI()",
+      "description": "inline JS picks adjective+noun, draws ASCII cat",
+      "refs": [
+        "cats.html"
+      ],
+      "x": 0,
+      "y": 500
     }
   ],
   "edges": [
@@ -97,6 +119,18 @@
       "from": "n4",
       "to": "n5",
       "style": "solid"
+    },
+    {
+      "id": "e7",
+      "from": "n1",
+      "to": "n6",
+      "style": "solid"
+    },
+    {
+      "id": "e8",
+      "from": "n6",
+      "to": "n7",
+      "style": "solid"
     }
   ],
   "zones": [
@@ -110,11 +144,11 @@
     }
   ],
   "meta": {
-    "updatedAt": "2026-09-08T20:44:17.208Z",
+    "updatedAt": "2026-09-08T22:01:55.189Z",
     "generator": "agent",
     "nextId": {
-      "n": 6,
-      "e": 7
+      "n": 8,
+      "e": 9
     }
   }
 }

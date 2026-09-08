@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>cat generator — demo</title>
+<style>
+	:root {
+		--bg: #1a1c2c;
+		--panel: #29366f;
+		--panel2: #3b5dc9;
+		--ink: #f4f4f4;
+		--accent: #ffcd75;
+		--orange: #ff9c41;
+		--gray: #94b0c2;
+		--yellow: #ffd75f;
+		--dark: #091428;
+	}
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		min-height: 100vh;
+		display: grid;
+		place-items: center;
+		background: var(--bg);
+		color: var(--ink);
+		font-family: "Courier New", monospace;
+	}
+	.card {
+		background: var(--panel);
+		box-shadow: inset -3px -3px 0 var(--dark), inset 3px 3px 0 var(--accent);
+		padding: 24px 28px;
+		text-align: center;
+	}
+	h1 { margin: 0 0 4px; color: var(--accent); font-size: 16px; }
+	.sub { margin: 0 0 16px; color: var(--gray); font-size: 12px; }
+	.cat {
+		font-size: 15px;
+		line-height: 1.15;
+		white-space: pre;
+		color: var(--orange);
+		min-height: 7em;
+		margin-bottom: 12px;
+	}
+	.name { color: var(--yellow); font-size: 15px; margin-bottom: 16px; min-height: 1.2em; }
+	button {
+		font: inherit;
+		background: var(--panel2);
+		color: var(--ink);
+		border: 0;
+		box-shadow: inset -2px -2px 0 var(--dark), inset 2px 2px 0 var(--accent);
+		padding: 8px 16px;
+		cursor: pointer;
+		font-size: 14px;
+	}
+	button:hover { filter: brightness(1.15); }
+	button:active { transform: translateY(1px); }
+</style>
+</head>
+<body>
+	<div class="card">
+		<h1>♥ cat generator</h1>
+		<p class="sub">browser UI demo — the scheme for this lives in <code>.llmscheme/logic_scheme/</code></p>
+		<div class="cat" id="cat"></div>
+		<div class="name" id="name"></div>
+		<button id="gen">generate</button>
+	</div>
+
+<script>
+	// a handful of words stand in for cats.txt so the page is self-contained;
+	// the CLI (src/run.ts) reads the real cats.txt. Same pick logic, same idea.
+	const ADJ = ["cosmic", "fluffy", "sneaky", "majestic", "grumpy", "chaotic", "sleepy", "derpy", "turbo", "void"];
+	const NOUN = ["cat", "void", "noodle", "agent", "kefir", "biscuit", "loaf", "tofu", "chonk", "sock"];
+
+	const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+	// pixel-ish ASCII cat; six rows, two cats back to back
+	const FRAME = (adj, noun) => [
+		`    /\\_____/     /*\\_____/*\\`,
+		`   /  o   o  \\    /  o   o  \\`,
+		`  ( =  ^  = )   ( =  ^  = )`,
+		`   \\__^__//       \\__^__//`,
+		`    /   \\         /   \\`,
+		`   /     \\___     /     \\___`,
+		`   ${adj.padEnd(12)} ${noun}`,
+	];
+
+	function render() {
+		const adj = pick(ADJ);
+		const noun = pick(NOUN);
+		document.getElementById("cat").textContent = FRAME(adj, noun).slice(0, 6).join("\n");
+		document.getElementById("name").textContent = `name: ${adj} ${noun}`;
+	}
+
+	document.getElementById("gen").addEventListener("click", render);
+	render();
+</script>
+</body>
+</html>

@@ -50,8 +50,8 @@ The page is divided into three regions:
 - **Top toolbar**: add a node, add a zone, undo/redo, grid, snap,
   delete, save, language toggle, help (?)
 - **Canvas** (left): your scheme — click and drag to move things
-- **Palette** (middle): the five shape buttons (rect, square,
-  circle, diamond, table)
+- **Palette** (middle): the six shape buttons (rect, square, circle,
+  ellipse, diamond, table)
 - **Inspector** (right): fields for the selected node/edge/zone
 - **Status bar** (bottom): the current rev, dirty flag, tier
   indicator, node/edge counts
@@ -69,6 +69,8 @@ The page is divided into three regions:
 | Move a group | Select multiple, then drag any one of them |
 | Delete the selection | Press Delete or Backspace |
 | Add a new node | Click a shape in the palette, then click the canvas |
+| Open a local scheme file | **open local** button in the toolbar (skill editor) — picks a `scheme.json` from disk |
+| Save a local copy | **export** button — downloads the current scheme as `<name>.json` |
 | Connect two nodes | Click the green `+` on the source, then the `+` on the target |
 | Add a zone | Click `+ zone` in the toolbar, then drag on the canvas |
 | Pan the canvas | Shift+drag the empty area |
@@ -221,18 +223,26 @@ The status bar at the bottom shows, left to right:
 
 ---
 
-## Opening a local file
+## Opening and saving a local file
 
-If you have a `scheme.json` from somewhere else (say, a colleague
-emailed it to you), you can open it in the editor:
+The skill editor (the one opened from `file://`) has two extra buttons
+next to the SAVE button, for when you have a `scheme.json` outside the
+project — a colleague emailed it, or you want to back it up before a
+big edit:
 
-1. In the editor, click the **open local** button in the toolbar
-   (if the skill entry shows it).
-2. Pick the file.
-3. The editor loads it as an in-memory scheme. To save it as your
-   own, use SAVE — Tier A will give you a `block put` command.
+- **open local** — a file picker. Loads any `scheme.json` (must have
+  `"format": "block-llm"`) into the editor as the current scheme.
+  After that you can edit and SAVE as usual (Tier A gives the `put`
+  command, Tier B writes the files).
+- **export** — downloads the current scheme as `<name>.json`, no
+  questions asked. A plain `<a download>` — works in every browser,
+  including Firefox.
 
-The HTTP-service version of the editor doesn't have this button
+Both are plain browser primitives (`<input type=file>` + `<a
+ download>`), so they work offline from `file://` with no File System
+Access API.
+
+The HTTP-service version of the editor doesn't show these buttons
 (schemes there live on the server, not in your filesystem).
 
 ---

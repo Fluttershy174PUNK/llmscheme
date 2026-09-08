@@ -89,7 +89,9 @@ mount(Editor, {
 	props: {
 		initial,
 		save,
-		canOpenLocal: () => true,
-		canPatchProject: undefined, // server-side has no need; pull is in the CLI
+		// the service editor saves to the server (tier S); local file open/export
+		// are skill-only conveniences and would only confuse here
+		canOpenLocal: () => false,
+		canPatchProject: undefined,
 	},
 });

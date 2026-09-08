@@ -1,5 +1,10 @@
 import type http from "node:http";
-import { type Scheme, CasError, DataError, ValidationError } from "../../core/index.ts";
+import {
+	type Scheme,
+	CasError,
+	DataError,
+	ValidationError,
+} from "../../core/index.ts";
 import { header, send } from "./http.ts";
 import type { Schemes } from "./schemes.ts";
 import type { Store, User } from "./store.ts";
@@ -19,7 +24,11 @@ import type { Store, User } from "./store.ts";
 // SSE. No session ids are minted and none are echoed back.
 
 export const MODERN_VERSION = "2026-07-28";
-export const LEGACY_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"] as const;
+export const LEGACY_VERSIONS = [
+	"2025-11-25",
+	"2025-06-18",
+	"2025-03-26",
+] as const;
 export const SUPPORTED_VERSIONS = [MODERN_VERSION, ...LEGACY_VERSIONS];
 
 const SERVER_INFO = { name: "llmscheme", version: "2.0.0" };
@@ -49,8 +58,17 @@ export interface McpDeps {
 	allowedOrigins: string[];
 }
 
-const ok = (id: RpcRequest["id"], result: unknown) => ({ jsonrpc: "2.0", id, result });
-const rpcError = (id: RpcRequest["id"], code: number, message: string, data?: unknown) => ({
+const ok = (id: RpcRequest["id"], result: unknown) => ({
+	jsonrpc: "2.0",
+	id,
+	result,
+});
+const rpcError = (
+	id: RpcRequest["id"],
+	code: number,
+	message: string,
+	data?: unknown,
+) => ({
 	jsonrpc: "2.0",
 	id,
 	error: { code, message, ...(data === undefined ? {} : { data }) },
@@ -61,7 +79,10 @@ const rpcError = (id: RpcRequest["id"], code: number, message: string, data?: un
 // means "not a browser" and is allowed; a present one must match the request's
 // own host or the allowlist, otherwise a malicious page could drive the server
 // through a DNS-rebinding victim.
-export function checkOrigin(req: http.IncomingMessage, allowed: string[]): string | null {
+export function checkOrigin(
+	req: http.IncomingMessage,
+	allowed: string[],
+): string | null {
 	const origin = header(req, "origin");
 	if (!origin) return null;
 	if (allowed.includes(origin)) return null;
@@ -85,7 +106,10 @@ interface Tool {
 const nameOnly = {
 	type: "object",
 	properties: {
-		name: { type: "string", description: "Scheme name: `project/scheme` or `scheme`" },
+		name: {
+			type: "string",
+			description: "Scheme name: `project/scheme` or `scheme`",
+		},
 	},
 	required: ["name"],
 	additionalProperties: false,
@@ -114,13 +138,29 @@ const SHAPES = {
 };
 const SIDES = { type: "string", enum: ["top", "bottom", "left", "right"] };
 
-const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true };
+const READ_ONLY = {
+	readOnlyHint: true,
+	destructiveHint: false,
+	idempotentHint: true,
+};
 // repeating a write bumps rev, so it is NOT idempotent; destructive only where
 // data disappears
-const WRITE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false };
-const DESTROY = { readOnlyHint: false, destructiveHint: true, idempotentHint: false };
+const WRITE = {
+	readOnlyHint: false,
+	destructiveHint: false,
+	idempotentHint: false,
+};
+const DESTROY = {
+	readOnlyHint: false,
+	destructiveHint: true,
+	idempotentHint: false,
+};
 // updating the same id with the same fields converges to one state
-const CONVERGING = { readOnlyHint: false, destructiveHint: false, idempotentHint: true };
+const CONVERGING = {
+	readOnlyHint: false,
+	destructiveHint: false,
+	idempotentHint: true,
+};
 
 const TOOLS: Tool[] = [
 	{
@@ -140,14 +180,16 @@ const TOOLS: Tool[] = [
 	{
 		name: "get_scheme_md",
 		title: "Get scheme markdown",
-		description: "Get the human-readable SCHEME.md export (mermaid + tables) of a scheme",
+		description:
+			"Get the human-readable SCHEME.md export (mermaid + tables) of a scheme",
 		inputSchema: nameOnly,
 		annotations: READ_ONLY,
 	},
 	{
 		name: "create_scheme",
 		title: "Create scheme",
-		description: "Create a new empty scheme, or import a full scheme object that has rev 0",
+		description:
+			"Create a new empty scheme, or import a full scheme object that has rev 0",
 		inputSchema: {
 			type: "object",
 			properties: { name: { type: "string" }, scheme: { type: "object" } },
@@ -235,7 +277,8 @@ const TOOLS: Tool[] = [
 	{
 		name: "edge_add",
 		title: "Add edge",
-		description: "Connect two nodes with an arrow (style solid|dashed). Returns the new edge id.",
+		description:
+			"Connect two nodes with an arrow (style solid|dashed). Returns the new edge id.",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -276,10 +319,14 @@ const TOOLS: Tool[] = [
 // ---------- tool execution ----------
 const argStr = (a: Record<string, unknown>, key: string): string => {
 	const v = a[key];
-	if (typeof v !== "string" || !v) throw new DataError(`${key} must be a non-empty string`);
+	if (typeof v !== "string" || !v)
+		throw new DataError(`${key} must be a non-empty string`);
 	return v;
 };
-const argNum = (a: Record<string, unknown>, key: string): number | undefined => {
+const argNum = (
+	a: Record<string, unknown>,
+	key: string,
+): number | undefined => {
 	const v = a[key];
 	if (v === undefined || v === null) return undefined;
 	const n = Number(v);
@@ -289,7 +336,13 @@ const argNum = (a: Record<string, unknown>, key: string): number | undefined => 
 const argId = (a: Record<string, unknown>): string => argStr(a, "id");
 
 // what a tool returns: a scheme or markdown text for reads, a receipt for writes
-export type ToolResult = Scheme | string | string[] | { ok: true } | WriteReceipt | DiffResult;
+export type ToolResult =
+	| Scheme
+	| string
+	| string[]
+	| { ok: true }
+	| WriteReceipt
+	| DiffResult;
 interface WriteReceipt {
 	ok?: true;
 	rev: number;
@@ -306,7 +359,10 @@ interface DiffResult {
 // agree with the body, or a load balancer and this server would act on
 // different requests. A missing header is not an error: clients on older
 // revisions do not send them.
-function headerMismatch(req: http.IncomingMessage, msg: RpcRequest): string | null {
+function headerMismatch(
+	req: http.IncomingMessage,
+	msg: RpcRequest,
+): string | null {
 	const hdrMethod = header(req, "mcp-method");
 	if (hdrMethod && msg.method && hdrMethod !== msg.method)
 		return `Mcp-Method "${hdrMethod}" does not match body method "${msg.method}"`;
@@ -457,27 +513,43 @@ export function handleMcpMessage(
 	// Spec MUST: the mirrored headers have to agree with the body, otherwise a
 	// proxy routing on headers and this server executing the body would disagree.
 	const mismatch = headerMismatch(req, msg);
-	if (mismatch) return { status: 400, body: rpcError(id ?? null, HEADER_MISMATCH, mismatch) };
+	if (mismatch)
+		return { status: 400, body: rpcError(id ?? null, HEADER_MISMATCH, mismatch) };
 
 	// a declared version we do not speak must be refused with the list we do
 	const declared =
-		headerVersion || (msg._meta?.["io.modelcontextprotocol/protocolVersion"] as string | undefined);
+		headerVersion ||
+		(msg._meta?.["io.modelcontextprotocol/protocolVersion"] as
+			| string
+			| undefined);
 	if (declared && !SUPPORTED_VERSIONS.includes(declared))
 		return {
 			status: 400,
-			body: rpcError(id ?? null, UNSUPPORTED_VERSION, `unsupported protocol version ${declared}`, {
-				supported: SUPPORTED_VERSIONS,
-			}),
+			body: rpcError(
+				id ?? null,
+				UNSUPPORTED_VERSION,
+				`unsupported protocol version ${declared}`,
+				{
+					supported: SUPPORTED_VERSIONS,
+				},
+			),
 		};
 
 	// notifications (no id) get 202 and no body, per JSON-RPC over HTTP
 	if (id === undefined || id === null) {
 		// an invalid notification is still a bad request
 		if (!method)
-			return { status: 400, body: rpcError(null, INVALID_PARAMS, "notification without method") };
+			return {
+				status: 400,
+				body: rpcError(null, INVALID_PARAMS, "notification without method"),
+			};
 		return { status: 202, body: null };
 	}
-	if (!method) return { status: 400, body: rpcError(id, INVALID_PARAMS, "method is required") };
+	if (!method)
+		return {
+			status: 400,
+			body: rpcError(id, INVALID_PARAMS, "method is required"),
+		};
 
 	switch (method) {
 		// ---- modern era ----
@@ -496,7 +568,9 @@ export function handleMcpMessage(
 		// ---- legacy era handshake, still answered for today's clients ----
 		case "initialize": {
 			const requested = (params?.protocolVersion as string) || LEGACY_VERSIONS[1];
-			const agreed = SUPPORTED_VERSIONS.includes(requested) ? requested : MODERN_VERSION;
+			const agreed = SUPPORTED_VERSIONS.includes(requested)
+				? requested
+				: MODERN_VERSION;
 			return {
 				status: 200,
 				body: ok(id, {
@@ -523,20 +597,25 @@ export function handleMcpMessage(
 				return {
 					status: 200,
 					body: ok(id, {
-						tools: TOOLS.map(({ name, title, description, inputSchema, annotations }) => ({
-							name,
-							title,
-							description,
-							inputSchema,
-							annotations,
-						})),
+						tools: TOOLS.map(
+							({ name, title, description, inputSchema, annotations }) => ({
+								name,
+								title,
+								description,
+								inputSchema,
+								annotations,
+							}),
+						),
 					}),
 				};
 
 			const toolName = params?.name;
 			const args = (params?.arguments ?? {}) as Record<string, unknown>;
 			if (typeof toolName !== "string" || !toolName)
-				return { status: 400, body: rpcError(id, INVALID_PARAMS, "params.name is required") };
+				return {
+					status: 400,
+					body: rpcError(id, INVALID_PARAMS, "params.name is required"),
+				};
 			if (!TOOLS.some((t) => t.name === toolName))
 				return {
 					status: 404,
@@ -545,7 +624,8 @@ export function handleMcpMessage(
 
 			try {
 				const result = callTool(deps, u, toolName, args);
-				const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+				const text =
+					typeof result === "string" ? result : JSON.stringify(result, null, 2);
 				return {
 					status: 200,
 					body: ok(id, {
@@ -558,7 +638,9 @@ export function handleMcpMessage(
 				// tool failures are reported INSIDE a 200 result per MCP, except for
 				// a bad scheme name, which is an invalid-params protocol error
 				const known =
-					e instanceof CasError || e instanceof ValidationError || e instanceof DataError;
+					e instanceof CasError ||
+					e instanceof ValidationError ||
+					e instanceof DataError;
 				const message = known ? (e as Error).message : "internal error";
 				return {
 					status: 200,
@@ -589,7 +671,12 @@ export function handleMcpHttp(
 	// the modern transport defines POST only; GET/DELETE belong to older
 	// revisions that used a standalone SSE stream and a session delete
 	if (req.method !== "POST") {
-		send(res, 405, { error: "method not allowed: /mcp accepts POST only" }, { allow: "POST" });
+		send(
+			res,
+			405,
+			{ error: "method not allowed: /mcp accepts POST only" },
+			{ allow: "POST" },
+		);
 		return;
 	}
 	const badOrigin = checkOrigin(req, deps.allowedOrigins);

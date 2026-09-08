@@ -192,10 +192,12 @@ shapes, etc.).
 
 ```bash
 cd /path/to/llmscheme/DEMO-PROJECT
-cat .llmscheme/logic_scheme/scheme.json          # a real scheme
-cat SCHEME.md                       # its markdown export
-open .llmscheme/logic_scheme/scheme.html         # the browser editor
-node src/run.ts                     # the actual program
+cat .llmscheme/logic_scheme/scheme.json   # a real scheme
+cat .llmscheme/logic_scheme/SCHEME.md     # its markdown export
+open .llmscheme/logic_scheme/scheme.html  # the browser editor (the scheme)
+open cats.html                  # the demo's own browser UI (a pixel cat)
+node src/run.ts                 # the same program as a TUI cat
+node src/run.ts --gif cat.gif   # …and as an animated GIF
 ```
 
 ---

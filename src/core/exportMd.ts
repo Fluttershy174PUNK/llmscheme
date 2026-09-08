@@ -34,10 +34,12 @@ export function exportMermaid(s: Scheme): string {
 			.map((n) => n.id);
 		for (const id of members) zoneOf.set(id, z.id);
 		lines.push(`  subgraph ${z.id}["${escMermaid(z.label)}"]`, "  direction TB");
-		for (const id of members) lines.push(`  ${nodeDecl(s.nodes.find((x) => x.id === id)!)}`);
+		for (const id of members)
+			lines.push(`  ${nodeDecl(s.nodes.find((x) => x.id === id)!)}`);
 		lines.push("  end");
 	}
-	for (const n of s.nodes ?? []) if (!zoneOf.has(n.id)) lines.push(`  ${nodeDecl(n)}`);
+	for (const n of s.nodes ?? [])
+		if (!zoneOf.has(n.id)) lines.push(`  ${nodeDecl(n)}`);
 	for (const e of s.edges ?? []) {
 		const arrow = e.style === "dashed" ? "-.->" : "-->";
 		const label = e.label ? `|"${escMermaid(e.label)}"|` : "";
@@ -79,7 +81,8 @@ export function exportMd(s: Scheme, issues: { warnings: Issue[] }): string {
 		);
 		if (n.shape === "table" && n.table) {
 			const cols = n.table.cols ?? [];
-			if (cols.length) L.push("", `**${n.id} columns:** ${escTd(cols.join(" · "))}`);
+			if (cols.length)
+				L.push("", `**${n.id} columns:** ${escTd(cols.join(" · "))}`);
 			for (const row of n.table.rows ?? [])
 				L.push(`> ${n.id} | ${row.map((c) => escTd(c)).join(" | ")} |`);
 		}
@@ -96,17 +99,26 @@ export function exportMd(s: Scheme, issues: { warnings: Issue[] }): string {
 			`| ${e.id} | ${e.from} | ${e.to} | ${e.style} | ${escTd(e.label ?? "")} | ${escTd(e.description ?? "")} |`,
 		);
 	if (s.zones?.length) {
-		L.push("", "## Zones", "", "| id | label | description | nodes |", "|---|---|---|---|");
+		L.push(
+			"",
+			"## Zones",
+			"",
+			"| id | label | description | nodes |",
+			"|---|---|---|---|",
+		);
 		for (const z of s.zones) {
 			const members = (s.nodes ?? [])
 				.filter((n) => inZone(z, n.x + nodeW(n) / 2, n.y + nodeH(n) / 2))
 				.map((n) => n.id)
 				.join(", ");
-			L.push(`| ${z.id} | ${escTd(z.label)} | ${escTd(z.description ?? "")} | ${members} |`);
+			L.push(
+				`| ${z.id} | ${escTd(z.label)} | ${escTd(z.description ?? "")} | ${members} |`,
+			);
 		}
 	}
 	L.push("", "## Sync", "");
-	if (issues.warnings.length) for (const w of issues.warnings) L.push(`- [${w.code}] ${w.message}`);
+	if (issues.warnings.length)
+		for (const w of issues.warnings) L.push(`- [${w.code}] ${w.message}`);
 	else L.push("_No warnings._");
 	L.push("");
 	return L.join("\n");

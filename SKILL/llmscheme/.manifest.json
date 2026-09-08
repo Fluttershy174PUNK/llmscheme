@@ -5,7 +5,7 @@
   "core/browser.ts": "1371da619ee9e53b668ae8fe2543ed2e2a8e4702928908b9f04ddbb13e7e91b0",
   "core/diff.ts": "3eb354b1ffd1e5d235f044e886430ed4d66410b505df983573d5623ea4ce4243",
   "core/errors.ts": "45b446b4019af49fc6639e0d9d188874d72ec1ee794c14e4162d0889d6a5dc9f",
-  "core/exportMd.ts": "53d1735299683789c7a9b7a7539196cdbeeafe83e045905ce077c89e8af072fe",
+  "core/exportMd.ts": "f3f227cee53f8c528265c13135e9dbde1490c2bfca5bafa51b26fc9286fccab4",
   "core/geometry.ts": "f7030bb351f195c9888b5c52bb254b7fa6da283df68e791149825c60ecc95ba5",
   "core/gitmd.ts": "e1c2d35d425486fc60295f5c2dbc2b1367b566aa9ed9c585fef3138e6ac7966f",
   "core/ids.ts": "6d76df60adc47b16c82b9f75aea84cb993d9e7097b60270b39c27fb0b95812a9",
@@ -15,9 +15,9 @@
   "core/pathjail.ts": "6a4adc3cfbaf585fe4ade8b4ea2d5874801895f6eeb848bc158a3af7e51e4d8d",
   "core/renderHtml.ts": "9dd525d40b18ab0e44dad0bd6255214dfea3cf77bfbeba71f3457b0dec2df245",
   "core/saveSchema.ts": "c6ac4f2273d60c1c0cfa8c663cf895966d0939c8e2e3aa6118fd3d96f36825cd",
-  "core/types.ts": "e1a97ccc08a42a7f1ed514a904c30f82d5d973c8f47a3072567f4effb8ac264f",
+  "core/types.ts": "230c120fec2175e61b20a6e970c6fe3a1ca1a5ecb21a0dc8699204d9d10424e5",
   "core/validate.ts": "7ae89f0fcd7c6a821c9ed326126024466c3027fb4ce3f5ce397f038756c58708",
-  "editor.html": "10b71cdb7d4da88bcbb1cf114efbad593a1855cb66884da8970c84b073beb65e",
-  "references/EDITOR.md": "f2d678eae773ae79ef7d4c58bafed637e2dada399bb53fdd4550e1b6292d5956",
+  "editor.html": "68ed201f365ed74c836a36babbf5be0b78c2de3d2450769c3b8b0f9b0d12ae48",
+  "references/EDITOR.md": "dd6f06ab61bc00235293bea84c523f244cd72c4337b3f5662951aed47a924f21",
   "references/SCHEME_FORMAT.md": "92c73ec48c0aabdd9c84f080411472e364900a76bd32c0be0dc338a5e6b90104"
 }

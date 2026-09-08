@@ -1,6 +1,6 @@
 # cats (TUI + GIF)
 
-rev: 12 · updated: 2026-09-08T20:44:17.208Z · generator: agent
+rev: 16 · updated: 2026-09-08T22:01:55.189Z · generator: agent
 
 ## Diagram
 
@@ -14,11 +14,15 @@ flowchart TD
   n3["pickNoun()"]
   n4["compose()"]
   n5["render()"]
+  n6["cats.html"]
+  n7["renderUI()"]
   n1 --> n2
   n1 --> n3
   n2 --> n4
   n3 --> n4
   n4 --> n5
+  n1 --> n6
+  n6 --> n7
 ```
 
 ## Nodes
@@ -30,6 +34,8 @@ flowchart TD
 | n3 | rect | pickNoun() | src/cat.ts | random noun |
 | n4 | rect | compose() | src/run.ts | adjective + noun = cat name |
 | n5 | rect | render() | src/cat.ts, src/gif.ts | TUI cat (stdout) or GIF (file) |
+| n6 | rect | cats.html | cats.html | browser UI: generate button + pixel cat |
+| n7 | rect | renderUI() | cats.html | inline JS picks adjective+noun, draws ASCII cat |
 
 ## Edges
 
@@ -40,6 +46,8 @@ flowchart TD
 | e3 | n2 | n4 | solid |  |  |
 | e4 | n3 | n4 | solid |  |  |
 | e5 | n4 | n5 | solid |  |  |
+| e7 | n1 | n6 | solid |  |  |
+| e8 | n6 | n7 | solid |  |  |
 
 ## Zones
 

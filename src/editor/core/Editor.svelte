@@ -599,6 +599,73 @@
 		return baselineCache;
 	}
 
+	// ---------- open / export a local scheme file ----------
+	// The skill editor runs from file:// with no server, so both are plain
+	// browser primitives: <input type=file> to load, <a download> to save.
+	// No network, no File System Access API — the fallback that always works.
+	function openLocalFile() {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = "application/json,.json";
+		input.onchange = () => {
+			const file = input.files?.[0];
+			if (!file) return;
+			void file.text().then((text) => {
+				let parsed: unknown;
+				try {
+					parsed = JSON.parse(text);
+				} catch (e) {
+					saveBox = `bad JSON: ${(e as Error).message}`;
+					return;
+				}
+				if (
+					!parsed ||
+					typeof parsed !== "object" ||
+					(parsed as { format?: unknown }).format !== "block-llm"
+				) {
+					saveBox = "not a block-llm scheme (missing format field)";
+					return;
+				}
+				const s = parsed as Scheme;
+				scheme = {
+					...s,
+					nodes: (s.nodes ?? []).map((n) => ({ ...n })),
+					edges: (s.edges ?? []).map((e) => ({ ...e })),
+					zones: (s.zones ?? []).map((z) => ({ ...z })),
+					meta: { ...(s.meta ?? ({} as Scheme["meta"])) },
+				};
+				loadRev = s.rev;
+				revOnDisk = s.rev;
+				baselineCache = null;
+				dirty = false;
+				undoStack = [];
+				redoStack = [];
+				selectedId = null;
+				multiSel = [];
+				try {
+					localStorage.removeItem(DRAFT_KEY);
+				} catch {
+					/* private mode: ignore */
+				}
+				saveBox = `loaded ${s.name} (rev ${s.rev})`;
+			});
+		};
+		input.click();
+	}
+
+	function exportLocal() {
+		const blob = new Blob([JSON.stringify(scheme, null, 2)], {
+			type: "application/json",
+		});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${(scheme.name || "scheme").replace(/[/\\]/g, "_")}.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+		saveBox = `${t.exportLocal}: ${a.download}`;
+	}
+
 	// ---------- shortcuts ----------
 	function onKey(e: KeyboardEvent) {
 		const mod = e.ctrlKey || e.metaKey;
@@ -732,6 +799,10 @@
 	<button onclick={() => addNodeAt(pendingShape ?? "rect", pan.x + 60, pan.y + 60)} class:on={pendingShape === "rect"}>{t.add}</button>
 	<button onclick={addZoneAt}>+ zone</button>
 	<button onclick={() => (connectFrom ? (connectFrom = null) : (connectFrom = { id: "__arm__", side: "right" }))} class:on={!!connectFrom}>{t.connect}</button>
+	{#if props.canOpenLocal?.()}
+		<button onclick={openLocalFile}>{t.openLocal}</button>
+		<button onclick={exportLocal}>{t.exportLocal}</button>
+	{/if}
 	<span class="spacer"></span>
 	<button class:on={showGrid} onclick={() => (showGrid = !showGrid)}>{t.grid}</button>
 	<button class:on={snap} onclick={() => (snap = !snap)}>{t.snap}</button>

@@ -81,13 +81,13 @@ llmscheme/
 │                                 manifest; v2 ships a working plugin.mjs that
 │                                 uses the same core.
 │
-├── DEMO-PROJECT/               ← A real demo project: TUI cat generator with
+├── DEMO-PROJECT/               ← A real demo project: cat generator (TUI + GIF + browser UI)
 │   ├── src/cat.ts              ← TUI rendering (ANSI colours, no deps)
 │   ├── src/gif.ts              ← GIF output (LZW + global colour table, no deps)
 │   ├── src/run.ts              ← entry point
+│   ├── cats.html               ← browser UI (generate button + pixel cat, no server)
 │   ├── cats.txt                ← word list
-│   ├── .llmscheme/logic_scheme/scheme.json  ← a real scheme (5 nodes, 5 edges, 1 zone)
-│   ├── SCHEME.md               ← generated markdown export
+│   ├── .llmscheme/logic_scheme/scheme.json  ← a real scheme (7 nodes, 6 edges, 1 zone)
 │   ├── AGENTS.md               ← agent section
 │   ├── README.md
 │   └── .gitignore
