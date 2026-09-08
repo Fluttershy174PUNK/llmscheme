@@ -1,83 +1,268 @@
-# LOGIN.md — login + console + admin guide
+# LOGIN.md — the web console (login + admin screens)
 
-The console is `mcp-service/console.html` (served at `/` and `/admin`). It
-is the same single-page app, four hash-routed screens:
+> **Who this is for:** anyone running the llmscheme HTTP service
+> (`node src/service/server.ts`) who needs to understand the web
+> console at `http://localhost:8080/`. If you only use the CLI or
+> the standalone editor, skip this file.
 
-- `#/login` — form
-- `#/projects` — list of your schemes
-- `#/users` — admin only
-- `#/settings` — own password + own api keys
+---
 
-## First start
+## What is the console?
 
-When the data dir is empty, the server bootstraps an admin from the
-`ADMIN_LOGIN` / `ADMIN_PASSWORD` env vars (default `admin` / `admin`).
-**Change the password on the settings screen before opening the port
-to anything public** — the docker-compose example refuses to start without
-`ADMIN_PASSWORD` set.
+The console is a small web app that lives at the root of the HTTP
+service. It lets a team share schemes: admins create user accounts,
+every user logs in and edits their own schemes, and the same JSON
+format is used by the CLI, the editor, and the REST/MCP APIs.
 
-If you are locked out, the only way back is to delete
-`DATA_DIR/lightdb.json` and restart with a fresh `ADMIN_PASSWORD` env.
+The console is **one** single-file HTML page (~77 KB). It runs the
+same Svelte runtime as the editor, just with different components.
 
-## Login form
+---
 
-- login + password
-- Enter submits
-- error renders under the form
-- "reset admin password" is a help text, not a form: see above
+## The four screens
 
-The right-hand panel shows the live README (the project root's
-`README.md`, served at `/api/readme`). The skill spec's UI node `n1`
-"actual gitlab readme and link" maps to this.
+The console has four screens, selected by the URL hash:
 
-## Projects screen
+| URL | Screen | Who sees it |
+|---|---|---|
+| `/#/login` | Login form | Everyone (no auth needed) |
+| `/#/projects` | Project list | After login |
+| `/#/users` | User management | Admins only |
+| `/#/settings` | Your own password + API keys | After login |
 
-- table: `project · scheme · edit · user (admin only) · last edit · del`
-- `?user=all` slider (admin): see every user's schemes
-- `new project` button: prompts for a name, POSTs `/api/schemes`
-- `del` button: requires typing the project name to confirm (B3-style
-  destructive confirmation; not a `confirm()` dialog)
-- `edit` link → opens the server-side editor at `/editor/<name>`
+You can also use `/#/logout` to sign out, but there are buttons
+for that in the top bar.
 
-The server auto-creates a scheme on first open, so the first edit lands
-in rev 1 with no separate POST round-trip.
+---
 
-## Users screen (admin only)
+## First start — what happens when the database is empty
 
-- table: `login · role · api keys · created · actions`
-- actions per row: `pass` (change the user's password — admin can target
-  another user), `mcp` (show the MCP config: URL + hasKey), `rotate`
-  (revoke all + issue a new api key, requires confirmation — R9/B13),
-  `×` (delete user; cannot delete self or last admin)
-- `new user` button: prompts for login + password, POSTs `/api/users`
-- `logout` button: revokes the current session
-- `logout all` button: revokes every session for the current user,
-  including this one — you will be signed out
+The very first time you start the service (with an empty `DATA_DIR`),
+it creates an admin account from environment variables:
 
-## Settings screen
+```bash
+ADMIN_LOGIN=admin
+ADMIN_PASSWORD=admin    # CHANGE THIS
+```
 
-- **change password**: prompts for new password, POSTs `/api/password`,
-  your session is dropped, you sign in again
-- **api keys**: list of your active keys (`hash` + createdAt), with
-  `revoke` per key, and `new key` button. The secret is shown once at
-  creation time, then only the hash.
-- **mcp**: read-only view of `{url, hasKey, activeKeys, hint}` (B13:
-  GET never mutates state)
+If `ADMIN_PASSWORD` is not set, it defaults to `admin` and the
+service prints a warning. **The docker-compose setup refuses to
+start without it set.**
 
-## Lang
+### If you forgot the admin password
 
-A toggle in the top bar. Persists in `localStorage` under `blm-lang`.
-Both the console and the editor share the same dictionary
-(`src/editor/core/i18n.ts`), so EN/RU works the same in both.
+There's no "forgot password" flow (by design — it's a self-hosted
+tool, there's no email server). The only way back is:
 
-## Auth lifecycle
+1. Stop the service.
+2. Delete `DATA_DIR/lightdb.json` (the user database — NOT the
+   `schemes/` directory).
+3. Restart the service. It will create a fresh admin from the env
+   vars.
 
-- Token: 64-hex sha256, stored in the `ls_token` HttpOnly cookie
-  (Set-Cookie on /api/login, cleared on logout / password change /
-  revoke-all).
-- TTL: `TOKEN_TTL_DAYS` (default 30). Closing the browser does not
-  invalidate the cookie.
-- B6 fix: logout reads the cookie's token hash, not just the
-  Authorization header, so a session is always revoked end-to-end.
-- A password change drops every session for the user.
-- `revoke-all` (the button) drops every session for the current user.
+**This wipes all users and sessions.** Your schemes on disk are
+untouched.
+
+---
+
+## The login screen
+
+The login screen has:
+
+- A small pixel-art cat (just decoration)
+- A form with two fields: login and password
+- A "reset admin password" collapsible help section (pointing to
+  the procedure above)
+- A live README panel on the right — the contents of the project
+  root's `README.md`, rendered as Markdown
+
+The form submits when you press Enter. If the credentials are
+wrong, the error message shows under the form. After three failed
+attempts in a row, the server adds a small delay to slow down
+brute-force attacks.
+
+---
+
+## The projects screen
+
+This is the home screen after login. It shows a table of all your
+schemes (or all schemes across all users, if you're an admin and
+toggle the "show all users' projects" switch).
+
+| Column | What it means |
+|---|---|
+| project | The project name (or `—` for a scheme that isn't in a project) |
+| scheme | The scheme name |
+| edit | A link that opens the scheme in the editor |
+| user | (admin only) Which user owns this scheme |
+| last edit | When the scheme was last modified |
+| del | A delete button (asks for confirmation) |
+
+The "edit" link takes you to `/editor/<scheme-name>`, which loads
+the scheme in the browser editor. The first time you open a
+project, the server **auto-creates** the scheme if it doesn't
+exist yet — so you can start editing without a separate "create"
+step.
+
+### Creating a new project
+
+Click the **new project** button in the top-right. A dialog asks
+for the project name. Type it, confirm, and the project appears
+in the table. The first scheme is auto-created when you click
+"edit" on it.
+
+### Deleting a project or scheme
+
+Click the red `×` button. The console asks you to type the project
+or scheme name to confirm. This is intentional — destructive
+actions need a second confirmation that's hard to do by accident.
+
+---
+
+## The users screen (admin only)
+
+If you're logged in as an admin, the **users** tab appears in the
+top nav. It shows a table of all users:
+
+| Column | What it means |
+|---|---|
+| login | The user's login name |
+| role | `admin` or `user` |
+| api keys | How many active API keys this user has |
+| created | When the account was created |
+| actions | Per-user buttons (see below) |
+
+### Per-user actions
+
+- **pass** — change this user's password (admin can do this for
+  any user, including themselves)
+- **mcp** — show the MCP configuration (URL + hasKey) for this
+  user. **Read-only** — clicking it just shows a dialog, nothing
+  changes on the server.
+- **rotate** — revoke all of this user's API keys and issue a new
+  one. Destructive: the old key stops working immediately. The
+  console asks for confirmation, and the new secret is shown
+  **once** — copy it now, you can't see it again.
+- **×** — delete the user. The console won't let you delete
+  yourself or the last remaining admin.
+
+### Creating a new user
+
+The **new user** button asks for a login and a password. The
+account is created with the `user` role by default. You can't
+create admins through the UI (admins are bootstrapped from the
+env vars or upgraded by another admin through the API — by
+design, you can't accidentally make everyone an admin).
+
+---
+
+## The settings screen
+
+The **settings** tab is for managing your own account. It has
+three sections:
+
+### Change your password
+
+Type your new password, click **change**. Your current session
+is dropped — you'll be sent back to the login screen. All your
+other sessions (other browsers, other devices) are dropped too.
+
+### API keys
+
+A table of your active API keys. Each row shows:
+
+- The key's hash (first 12 characters — the full hash is too long
+  to display)
+- When it was created
+- A **revoke** button
+
+Click **new key** to issue a new one. The secret is shown once,
+in a dialog. **Copy it immediately** — the server only stores the
+hash, so it can never show you the full secret again. If you lose
+it, rotate (which revokes all your keys and issues a new one).
+
+### MCP configuration
+
+A read-only panel showing the MCP server's URL and whether you
+have any active keys. This is the same info as the `mcp` button
+on the users screen, but for your own account.
+
+---
+
+## The top bar — what every button does
+
+The bar at the top of every screen has:
+
+- **llmscheme** (logo) — click to go to the projects screen
+- **projects / users / settings** (nav) — switch screens (the
+  **users** tab is admin-only)
+- **{login} ({role})** — your identity; read-only
+- **logout all** — sign out of every device/session at once
+- **logout** — sign out of this browser only
+- **EN/RU** — language toggle (persists in `localStorage`)
+
+---
+
+## Auth lifecycle (for the curious)
+
+- A login creates a session token (a random 64-hex string). The
+  server stores `sha256(token)` in `lightdb.json`.
+- The token is sent to your browser as a cookie named `ls_token`,
+  marked `HttpOnly` and `SameSite=Lax`. JavaScript can't read it
+  (that's the point of `HttpOnly`).
+- For scripts and MCP clients, the same token works as a Bearer
+  header: `Authorization: Bearer <token>`.
+- The token expires after `TOKEN_TTL_DAYS` (default 30 days). The
+  cookie also has a `Max-Age` of the same value.
+- **Logout** drops the token that was used to call it (so the
+  cookie-based logout from the browser works end-to-end, not just
+  the Bearer-based logout from a script).
+- **Logout all** drops every token for your user, across all
+  devices.
+- **Changing your password** drops every token for your user too.
+
+---
+
+## What can an admin do that a regular user can't?
+
+| Action | Regular user | Admin |
+|---|---|---|
+| Edit their own schemes | ✓ | ✓ |
+| Create new projects | ✓ | ✓ |
+| See the users tab | ✗ | ✓ |
+| Create new users | ✗ | ✓ |
+| Change another user's password | ✗ | ✓ (with `?login=`) |
+| Rotate another user's API keys | ✗ | ✓ (with `?login=`) |
+| See another user's schemes | ✗ | ✓ (with `?user=all`) |
+| Delete another user | ✗ | ✓ (but not self, not last admin) |
+
+Everything admin-specific is gated. The console sends a
+`?login=<other-user>` query parameter when an admin acts on
+someone else's behalf, and the server rejects the request if
+the caller isn't an admin.
+
+---
+
+## Troubleshooting
+
+### "I see a blank screen after login"
+
+Your session token may have expired. Click **logout** in the top
+bar, log in again, and the page will reload.
+
+### "The 'new project' button does nothing"
+
+The dialog is open in a popup — check behind the main window or
+look for a new browser tab. Some browsers block the dialog if
+it's a cross-origin frame; click the main window first to make
+sure it has focus.
+
+### "I clicked 'rotate key' and now my MCP client stopped working"
+
+That's the point of rotate. The old key is dead. Paste the new
+key into your MCP client configuration and restart it.
+
+### "The console says 'auth required' even though I just logged in"
+
+Your cookie was cleared (by a browser restart, a privacy
+extension, or by clicking "logout all"). Log in again.
