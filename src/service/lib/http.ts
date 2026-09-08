@@ -38,7 +38,9 @@ export function send(
 ): void {
 	const isText = typeof body === "string";
 	res.writeHead(status, {
-		"content-type": isText ? "text/plain; charset=utf-8" : "application/json; charset=utf-8",
+		"content-type": isText
+			? "text/plain; charset=utf-8"
+			: "application/json; charset=utf-8",
 		// the service runs behind a reverse proxy or on a LAN; same-origin by default
 		"x-content-type-options": "nosniff",
 		...headers,
@@ -46,10 +48,16 @@ export function send(
 	res.end(isText ? body : JSON.stringify(body));
 }
 
-export const fail = (res: http.ServerResponse, status: number, error: string): void =>
-	send(res, status, { error });
+export const fail = (
+	res: http.ServerResponse,
+	status: number,
+	error: string,
+): void => send(res, status, { error });
 
-export function readBody(req: http.IncomingMessage, maxBytes: number): Promise<string> {
+export function readBody(
+	req: http.IncomingMessage,
+	maxBytes: number,
+): Promise<string> {
 	return new Promise((resolve, reject) => {
 		let size = 0;
 		const chunks: Buffer[] = [];
@@ -63,7 +71,9 @@ export function readBody(req: http.IncomingMessage, maxBytes: number): Promise<s
 			chunks.push(c);
 		});
 		req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-		req.on("error", (e: Error) => reject(new HttpError(400, `read error: ${e.message}`)));
+		req.on("error", (e: Error) =>
+			reject(new HttpError(400, `read error: ${e.message}`)),
+		);
 	});
 }
 
@@ -103,8 +113,12 @@ export function decodePathname(url: URL): string {
 // below — never user input — and the transform only emits ([^/]+) and
 // ([^/]+(?:/[^/]+)?), so there is no ReDoS surface.
 export class Router {
-	private routes: { method: string; re: RegExp; keys: string[]; handler: RouteMatch["handler"] }[] =
-		[];
+	private routes: {
+		method: string;
+		re: RegExp;
+		keys: string[];
+		handler: RouteMatch["handler"];
+	}[] = [];
 
 	add(method: string, pattern: string, handler: RouteMatch["handler"]): void {
 		const keys: string[] = [];
@@ -165,5 +179,8 @@ export function logRequest(
 	pathname: string,
 	started: number,
 ): void {
-	log("INFO", `${req.method ?? "?"} ${pathname} -> ${res.statusCode} ${Date.now() - started}ms`);
+	log(
+		"INFO",
+		`${req.method ?? "?"} ${pathname} -> ${res.statusCode} ${Date.now() - started}ms`,
+	);
 }

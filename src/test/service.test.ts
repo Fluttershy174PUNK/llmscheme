@@ -8,7 +8,11 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { test, after, before, beforeEach } from "node:test";
 import { fileURLToPath } from "node:url";
 
-const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const repo = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"..",
+);
 const SERVER = path.join(repo, "src", "service", "server.ts");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "blm-svc-"));
@@ -47,7 +51,8 @@ before(async () => {
 		for (const line of b.toString().split("\n")) if (line) logBuffer.push(line);
 	});
 	proc.stderr?.on("data", (b: Buffer) => {
-		for (const line of b.toString().split("\n")) if (line) logBuffer.push(`STDERR: ${line}`);
+		for (const line of b.toString().split("\n"))
+			if (line) logBuffer.push(`STDERR: ${line}`);
 	});
 	// wait for /health
 	const deadline = Date.now() + 8000;
@@ -93,7 +98,10 @@ async function login(login = "admin", password = "admin"): Promise<Authed> {
 	const j = (await r.json()) as { token: string };
 	return {
 		token: j.token,
-		headers: { Authorization: `Bearer ${j.token}`, "content-type": "application/json" },
+		headers: {
+			Authorization: `Bearer ${j.token}`,
+			"content-type": "application/json",
+		},
 	};
 }
 
@@ -121,7 +129,10 @@ test("B6: logout via Bearer revokes that token; reusing it gives 401", async () 
 	const a = await login();
 	const r1 = await fetch(`${baseUrl}/api/me`, { headers: a.headers });
 	assert.equal(r1.status, 200);
-	const r2 = await fetch(`${baseUrl}/api/logout`, { method: "POST", headers: a.headers });
+	const r2 = await fetch(`${baseUrl}/api/logout`, {
+		method: "POST",
+		headers: a.headers,
+	});
 	assert.equal(r2.status, 200);
 	const r3 = await fetch(`${baseUrl}/api/me`, { headers: a.headers });
 	assert.equal(r3.status, 401);
@@ -139,7 +150,10 @@ test("B6: logout via cookie also revokes (server reads either transport)", async
 	const cookieHeaders = { cookie: `ls_token=${token}` };
 	const r1 = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders });
 	assert.equal(r1.status, 200);
-	await fetch(`${baseUrl}/api/logout`, { method: "POST", headers: cookieHeaders });
+	await fetch(`${baseUrl}/api/logout`, {
+		method: "POST",
+		headers: cookieHeaders,
+	});
 	const r2 = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders });
 	assert.equal(r2.status, 401);
 });
@@ -191,7 +205,9 @@ test("B8: PUT with nodes:null returns 400; the on-disk scheme is still readable"
 test("B9: access log contains the path but never the query string", async () => {
 	const a = await login();
 	logBuffer.length = 0;
-	await fetch(`${baseUrl}/api/me?t=SECRET_LEAKED_TOKEN_AAAA`, { headers: a.headers });
+	await fetch(`${baseUrl}/api/me?t=SECRET_LEAKED_TOKEN_AAAA`, {
+		headers: a.headers,
+	});
 	// one log line per request — the token must not appear in any of them
 	const all = logBuffer.join("\n");
 	assert.ok(!all.includes("SECRET_LEAKED_TOKEN_AAAA"), `token leaked: ${all}`);
@@ -209,25 +225,38 @@ test("B13: GET /api/mcp-config reports state but does NOT revoke or create a key
 
 test("B13: POST /api/keys/rotate revokes the old and issues a new one (explicit, confirmed)", async () => {
 	const a = await login();
-	const r1 = await fetch(`${baseUrl}/api/keys`, { method: "POST", headers: a.headers });
+	const r1 = await fetch(`${baseUrl}/api/keys`, {
+		method: "POST",
+		headers: a.headers,
+	});
 	assert.equal(r1.status, 201);
 	const j1 = (await r1.json()) as { apiKey: string };
-	const r2 = await fetch(`${baseUrl}/api/keys/rotate`, { method: "POST", headers: a.headers });
+	const r2 = await fetch(`${baseUrl}/api/keys/rotate`, {
+		method: "POST",
+		headers: a.headers,
+	});
 	assert.equal(r2.status, 200);
 	const j2 = (await r2.json()) as { apiKey: string };
 	assert.notEqual(j1.apiKey, j2.apiKey, "rotate produced a new secret");
 	// the old key no longer authenticates
-	const r3 = await fetch(`${baseUrl}/api/me`, { headers: { "X-Api-Key": j1.apiKey } });
+	const r3 = await fetch(`${baseUrl}/api/me`, {
+		headers: { "X-Api-Key": j1.apiKey },
+	});
 	assert.equal(r3.status, 401);
 	// the new key does
-	const r4 = await fetch(`${baseUrl}/api/me`, { headers: { "X-Api-Key": j2.apiKey } });
+	const r4 = await fetch(`${baseUrl}/api/me`, {
+		headers: { "X-Api-Key": j2.apiKey },
+	});
 	assert.equal(r4.status, 200);
 });
 
 test("B15: /mcp with foreign Origin returns 403; absent Origin is fine", async () => {
 	const r1 = await fetch(`${baseUrl}/mcp`, {
 		method: "POST",
-		headers: { "content-type": "application/json", Origin: "http://evil.example" },
+		headers: {
+			"content-type": "application/json",
+			Origin: "http://evil.example",
+		},
 		body: "{}",
 	});
 	assert.equal(r1.status, 403);
@@ -243,7 +272,10 @@ test("B16: MCP modern — server/discover lists all supported versions, tools/li
 	const a = await login();
 	const r1 = await fetch(`${baseUrl}/mcp`, {
 		method: "POST",
-		headers: { "content-type": "application/json", "MCP-Protocol-Version": "2026-07-28" },
+		headers: {
+			"content-type": "application/json",
+			"MCP-Protocol-Version": "2026-07-28",
+		},
 		body: '{"jsonrpc":"2.0","id":1,"method":"server/discover"}',
 	});
 	const j1 = (await r1.json()) as {
@@ -253,7 +285,10 @@ test("B16: MCP modern — server/discover lists all supported versions, tools/li
 	assert.ok(j1.result.supportedVersions.includes("2025-11-25"));
 	// tools/list — needs an api key, but we use Bearer here: the endpoint
 	// only checks X-Api-Key. Issue a key, then call as the api client would.
-	const kr = await fetch(`${baseUrl}/api/keys`, { method: "POST", headers: a.headers });
+	const kr = await fetch(`${baseUrl}/api/keys`, {
+		method: "POST",
+		headers: a.headers,
+	});
 	const { apiKey } = (await kr.json()) as { apiKey: string };
 	const r2 = await fetch(`${baseUrl}/mcp`, {
 		method: "POST",
@@ -274,7 +309,10 @@ test("B16: MCP modern — server/discover lists all supported versions, tools/li
 
 test("B16: MCP legacy — initialize echoes the client's protocolVersion", async () => {
 	const a = await login();
-	const kr = await fetch(`${baseUrl}/api/keys`, { method: "POST", headers: a.headers });
+	const kr = await fetch(`${baseUrl}/api/keys`, {
+		method: "POST",
+		headers: a.headers,
+	});
 	const { apiKey } = (await kr.json()) as { apiKey: string };
 	const r = await fetch(`${baseUrl}/mcp`, {
 		method: "POST",
@@ -293,18 +331,26 @@ test("B16: MCP legacy — initialize echoes the client's protocolVersion", async
 test("B16: unknown MCP version returns 400 with supported list", async () => {
 	const r = await fetch(`${baseUrl}/mcp`, {
 		method: "POST",
-		headers: { "content-type": "application/json", "MCP-Protocol-Version": "1999-01-01" },
+		headers: {
+			"content-type": "application/json",
+			"MCP-Protocol-Version": "1999-01-01",
+		},
 		body: '{"jsonrpc":"2.0","id":1,"method":"server/discover"}',
 	});
 	assert.equal(r.status, 400);
-	const j = (await r.json()) as { error: { code: number; data: { supported: string[] } } };
+	const j = (await r.json()) as {
+		error: { code: number; data: { supported: string[] } };
+	};
 	assert.equal(j.error.code, -32025);
 	assert.ok(Array.isArray(j.error.data.supported));
 });
 
 test("B16: Mcp-Method header/body mismatch returns 400 with -32020", async () => {
 	const a = await login();
-	const kr = await fetch(`${baseUrl}/api/keys`, { method: "POST", headers: a.headers });
+	const kr = await fetch(`${baseUrl}/api/keys`, {
+		method: "POST",
+		headers: a.headers,
+	});
 	const { apiKey } = (await kr.json()) as { apiKey: string };
 	const r = await fetch(`${baseUrl}/mcp`, {
 		method: "POST",
@@ -415,13 +461,17 @@ test("admin can scope ?user=all to see every user's schemes", async () => {
 		headers: u3.headers,
 		body: JSON.stringify({ name: "u3-scheme" }),
 	});
-	const list = await fetch(`${baseUrl}/api/schemes?user=all`, { headers: admin.headers });
+	const list = await fetch(`${baseUrl}/api/schemes?user=all`, {
+		headers: admin.headers,
+	});
 	const j = (await list.json()) as { owner: string; name: string }[];
 	const mine = j.find((s) => s.name === "u3-scheme");
 	assert.ok(mine, "admin sees u3's scheme");
 	assert.equal(mine?.owner, "u3");
 	// non-admin cannot pass ?user=all
-	const denied = await fetch(`${baseUrl}/api/schemes?user=all`, { headers: u3.headers });
+	const denied = await fetch(`${baseUrl}/api/schemes?user=all`, {
+		headers: u3.headers,
+	});
 	const j2 = (await denied.json()) as { name: string }[];
 	assert.equal(j2.length, 1, "non-admin sees only their own");
 });
@@ -434,7 +484,9 @@ test("project/scheme via %2F: schemes with a slash in the name are reachable", a
 		body: JSON.stringify({ name: "web/auth" }),
 	});
 	assert.equal(r1.status, 201);
-	const r2 = await fetch(`${baseUrl}/api/scheme/web%2Fauth`, { headers: a.headers });
+	const r2 = await fetch(`${baseUrl}/api/scheme/web%2Fauth`, {
+		headers: a.headers,
+	});
 	assert.equal(r2.status, 200);
 	const j = (await r2.json()) as { name: string };
 	assert.equal(j.name, "web/auth");
@@ -476,11 +528,96 @@ test("body too large returns 413 (or connection refused, either is safe)", async
 	);
 	// and a healthy request still works (the server didn't crash)
 	const a2 = await login();
-	assert.equal((await fetch(`${baseUrl}/api/me`, { headers: a2.headers })).status, 200);
+	assert.equal(
+		(await fetch(`${baseUrl}/api/me`, { headers: a2.headers })).status,
+		200,
+	);
 });
 
 test("unknown route returns 404 (not 500)", async () => {
 	const a = await login();
 	const r = await fetch(`${baseUrl}/api/nosuch`, { headers: a.headers });
 	assert.equal(r.status, 404);
+});
+
+test("scheme rename and duplicate", async () => {
+	const a = await login("admin", "admin");
+	const mk = (name: string) =>
+		fetch(`${baseUrl}/api/schemes`, {
+			method: "POST",
+			headers: a.headers,
+			body: JSON.stringify({ name }),
+		});
+	assert.equal((await mk("ren/proj")).status, 201);
+
+	// rename ren/proj -> ren/proj2
+	const rn = await fetch(`${baseUrl}/api/scheme/ren%2Fproj/rename`, {
+		method: "POST",
+		headers: a.headers,
+		body: JSON.stringify({ to: "ren/proj2" }),
+	});
+	assert.equal(rn.status, 200);
+	const list1 = (await (await fetch(`${baseUrl}/api/schemes`, { headers: a.headers })).json()) as {
+		project: string;
+		name: string;
+	}[];
+	assert.ok(list1.some((s) => s.project === "ren" && s.name === "proj2"));
+	assert.ok(!list1.some((s) => s.project === "ren" && s.name === "proj"));
+
+	// duplicate ren/proj2 -> ren/proj3
+	const dup = await fetch(`${baseUrl}/api/scheme/ren%2Fproj2/duplicate`, {
+		method: "POST",
+		headers: a.headers,
+		body: JSON.stringify({ to: "ren/proj3" }),
+	});
+	assert.equal(dup.status, 201);
+	const list2 = (await (await fetch(`${baseUrl}/api/schemes`, { headers: a.headers })).json()) as {
+		project: string;
+		name: string;
+	}[];
+	assert.ok(list2.some((s) => s.project === "ren" && s.name === "proj3"));
+	assert.ok(list2.some((s) => s.project === "ren" && s.name === "proj2"));
+
+	// duplicate onto an existing name -> 409
+	const clash = await fetch(`${baseUrl}/api/scheme/ren%2Fproj3/duplicate`, {
+		method: "POST",
+		headers: a.headers,
+		body: JSON.stringify({ to: "ren/proj2" }),
+	});
+	assert.equal(clash.status, 409);
+});
+
+test("own password change requires current; admin sets others without it", async () => {
+	const a = await login("admin", "admin");
+	// create a regular user
+	await fetch(`${baseUrl}/api/users`, {
+		method: "POST",
+		headers: a.headers,
+		body: JSON.stringify({ login: "pwuser", password: "pwuser1" }),
+	});
+	const u = await login("pwuser", "pwuser1");
+
+	// own change without current -> 400
+	const bad = await fetch(`${baseUrl}/api/password`, {
+		method: "POST",
+		headers: u.headers,
+		body: JSON.stringify({ password: "pwuser2" }),
+	});
+	assert.equal(bad.status, 400);
+
+	// own change with wrong current -> 403
+	const wrong = await fetch(`${baseUrl}/api/password`, {
+		method: "POST",
+		headers: u.headers,
+		body: JSON.stringify({ current: "nope", password: "pwuser2" }),
+	});
+	assert.equal(wrong.status, 403);
+
+	// admin sets pwuser's password without current -> 200
+	const byAdmin = await fetch(`${baseUrl}/api/password`, {
+		method: "POST",
+		headers: a.headers,
+		body: JSON.stringify({ login: "pwuser", password: "pwuser3" }),
+	});
+	assert.equal(byAdmin.status, 200);
 });

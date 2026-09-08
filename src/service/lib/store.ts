@@ -36,16 +36,23 @@ export interface StoreOptions {
 	dbQuotaBytes: number;
 }
 
-const sha256 = (s: string): string => crypto.createHash("sha256").update(s).digest("hex");
+const sha256 = (s: string): string =>
+	crypto.createHash("sha256").update(s).digest("hex");
 const genApiKey = (): string => `llm_${crypto.randomBytes(24).toString("hex")}`;
 
-function hashPassword(pw: string, salt = crypto.randomBytes(16).toString("hex")) {
+function hashPassword(
+	pw: string,
+	salt = crypto.randomBytes(16).toString("hex"),
+) {
 	return { salt, hash: crypto.scryptSync(pw, salt, 32).toString("hex") };
 }
 
 function verifyPassword(pw: string, u: User): boolean {
 	try {
-		return crypto.timingSafeEqual(Buffer.from(u.hash, "hex"), crypto.scryptSync(pw, u.salt, 32));
+		return crypto.timingSafeEqual(
+			Buffer.from(u.hash, "hex"),
+			crypto.scryptSync(pw, u.salt, 32),
+		);
 	} catch {
 		return false;
 	}
@@ -116,10 +123,15 @@ export class Store {
 		return this.data.users.some((u) => u.role === "admin");
 	}
 
-	createUser(login: string, password: string, role: "admin" | "user" = "user"): User {
+	createUser(
+		login: string,
+		password: string,
+		role: "admin" | "user" = "user",
+	): User {
 		if (!/^[a-z0-9_.-]{1,32}$/.test(login))
 			throw new DataError("login must match [a-z0-9_.-]{1,32}");
-		if (!password || password.length < 4) throw new DataError("password must be ≥ 4 chars");
+		if (!password || password.length < 4)
+			throw new DataError("password must be ≥ 4 chars");
 		if (this.userByLogin(login)) throw new HttpError(409, "login taken");
 		const { salt, hash } = hashPassword(password);
 		const u: User = {
@@ -153,14 +165,16 @@ export class Store {
 	deleteUser(id: number): void {
 		const before = this.data.users.length;
 		this.data.users = this.data.users.filter((u) => u.id !== id);
-		if (this.data.users.length === before) throw new HttpError(404, "no such user");
+		if (this.data.users.length === before)
+			throw new HttpError(404, "no such user");
 		// their schemes go too (data/schemes/<id>)
 		fs.rmSync(this.userRoot(id), { recursive: true, force: true });
 		this.save();
 	}
 
 	setPassword(u: User, newPassword: string): void {
-		if (!newPassword || newPassword.length < 4) throw new DataError("password must be ≥ 4 chars");
+		if (!newPassword || newPassword.length < 4)
+			throw new DataError("password must be ≥ 4 chars");
 		const { salt, hash } = hashPassword(newPassword);
 		u.salt = salt;
 		u.hash = hash;
@@ -227,7 +241,10 @@ export class Store {
 	// ---------- api keys ----------
 	issueApiKey(u: User): string {
 		const key = genApiKey();
-		u.apiKeys = [...(u.apiKeys ?? []), { key: sha256(key), createdAt: new Date().toISOString() }];
+		u.apiKeys = [
+			...(u.apiKeys ?? []),
+			{ key: sha256(key), createdAt: new Date().toISOString() },
+		];
 		this.save();
 		return key; // shown once
 	}
@@ -244,7 +261,10 @@ export class Store {
 	rotateApiKeys(u: User): string {
 		for (const k of u.apiKeys ?? []) k.revoked = true;
 		const key = genApiKey();
-		u.apiKeys = [...(u.apiKeys ?? []), { key: sha256(key), createdAt: new Date().toISOString() }];
+		u.apiKeys = [
+			...(u.apiKeys ?? []),
+			{ key: sha256(key), createdAt: new Date().toISOString() },
+		];
 		this.save();
 		return key;
 	}
@@ -252,7 +272,9 @@ export class Store {
 	userByApiKey(raw: string): User | undefined {
 		if (!raw) return undefined;
 		const hash = sha256(raw);
-		return this.data.users.find((u) => (u.apiKeys ?? []).some((k) => !k.revoked && k.key === hash));
+		return this.data.users.find((u) =>
+			(u.apiKeys ?? []).some((k) => !k.revoked && k.key === hash),
+		);
 	}
 
 	activeKeys(): { user: string; hash: string; createdAt: string }[] {
@@ -270,8 +292,14 @@ export class Store {
 
 	// scheme name = "project/scheme" (one level) or bare "scheme"
 	schemeRoot(u: User, name: string): string {
-		if (!name || !/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)?$/.test(name) || name.includes(".."))
-			throw new DataError('bad scheme name (use "project/scheme" or "scheme", a-z 0-9 . _ -)');
+		if (
+			!name ||
+			!/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)?$/.test(name) ||
+			name.includes("..")
+		)
+			throw new DataError(
+				'bad scheme name (use "project/scheme" or "scheme", a-z 0-9 . _ -)',
+			);
 		const root = path.resolve(this.userRoot(u.id));
 		const dir = path.resolve(path.join(root, name));
 		// belt and braces: the regex already blocks traversal, this proves it

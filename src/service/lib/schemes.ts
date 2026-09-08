@@ -154,6 +154,34 @@ export class Schemes {
 		fs.rmSync(root, { recursive: true, force: true });
 	}
 
+	// rename moves the directory (preserving cache/journal) and then re-saves
+	// under the new name so scheme.json's embedded name matches the path.
+	rename(u: User, from: string, to: string): void {
+		if (from === to) throw new HttpError(400, "same name");
+		const { root } = this.mustRead(u, from);
+		const toRoot = this.root(u, to); // validates the new name
+		if (fs.existsSync(path.join(toRoot, "scheme.json")))
+			throw new HttpError(409, "scheme exists");
+		fs.mkdirSync(path.dirname(toRoot), { recursive: true });
+		fs.renameSync(root, toRoot);
+		const scheme = readRaw(toRoot);
+		scheme.name = to;
+		this.save(u, to, scheme, "rename");
+	}
+
+	// duplicate deep-copies the scheme under a fresh name and a fresh history.
+	duplicate(u: User, from: string, to: string): void {
+		const { scheme } = this.mustRead(u, from);
+		const toRoot = this.root(u, to);
+		if (fs.existsSync(path.join(toRoot, "scheme.json")))
+			throw new HttpError(409, "scheme exists");
+		const copy = structuredClone(scheme);
+		copy.name = to;
+		copy.rev = 0;
+		copy.meta = { ...copy.meta, updatedAt: new Date().toISOString() };
+		this.save(u, to, copy, "duplicate");
+	}
+
 	diff(u: User, name: string, rev?: number): { from: number; to: number; changes: string[] } {
 		const { root, scheme: cur } = this.mustRead(u, name);
 		const base = rev ?? cur.rev - 1;

@@ -18,7 +18,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { authenticate } from "./lib/auth.ts";
 import { loadConfig } from "./lib/config.ts";
-import { CasError, DataError, ValidationError, renderHtml } from "../core/index.ts";
+import {
+	CasError,
+	DataError,
+	ValidationError,
+	renderHtml,
+} from "../core/index.ts";
 import {
 	decodePathname,
 	fail,
@@ -28,14 +33,22 @@ import {
 	readBody,
 	type Context,
 } from "./lib/http.ts";
-import { resolveArtifactPaths, serveConsole, serveEditor, serveNotFound } from "./lib/pages.ts";
+import {
+	resolveArtifactPaths,
+	serveConsole,
+	serveEditor,
+	serveNotFound,
+} from "./lib/pages.ts";
 import { buildRoutes } from "./lib/routes.ts";
 import { Schemes } from "./lib/schemes.ts";
 import { Store, type User } from "./lib/store.ts";
 import { handleMcpHttp } from "./lib/mcp.ts";
 
 const config = loadConfig();
-const store = new Store({ dataDir: config.dataDir, dbQuotaBytes: config.dbQuotaBytes });
+const store = new Store({
+	dataDir: config.dataDir,
+	dbQuotaBytes: config.dbQuotaBytes,
+});
 store.ensureAdmin(config.adminLogin, config.adminPassword);
 
 const ASSET_EXT: Record<string, string> = {
@@ -47,7 +60,11 @@ const ASSET_EXT: Record<string, string> = {
 
 // public static files (font, css, the console/editor bundle) — no auth, no
 // traversal (path.basename), immutable cache for fonts.
-function serveAsset(assetsDir: string, name: string, res: http.ServerResponse): void {
+function serveAsset(
+	assetsDir: string,
+	name: string,
+	res: http.ServerResponse,
+): void {
 	const safe = path.basename(name);
 	const file = path.join(assetsDir, safe);
 	if (!fs.existsSync(file)) {
@@ -107,26 +124,38 @@ const makeCtx = (
 
 const server = http.createServer(async (req, res) => {
 	const started = Date.now();
-	const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+	const url = new URL(
+		req.url ?? "/",
+		`http://${req.headers.host ?? "localhost"}`,
+	);
 	const pathname = decodePathname(url);
 	const scope: AuthScope = { auth: null };
 
 	try {
 		scope.auth = authenticate(store, req);
 
-		const body = needsBody(req.method, pathname) ? await readBody(req, config.maxBodyBytes) : "";
+		const body = needsBody(req.method, pathname)
+			? await readBody(req, config.maxBodyBytes)
+			: "";
 		const ctx = makeCtx(req, res, body, scope, url);
 
 		// 1. /mcp — own auth (X-Api-Key only) and origin check
 		if (pathname === "/mcp") {
-			handleMcpHttp({ store, schemes, allowedOrigins: config.allowedOrigins }, req, res, body);
+			handleMcpHttp(
+				{ store, schemes, allowedOrigins: config.allowedOrigins },
+				req,
+				res,
+				body,
+			);
 			logRequest(req, res, pathname, started);
 			return;
 		}
 
 		// 2. /health
 		if (pathname === "/health" && req.method === "GET") {
-			res.writeHead(200, { "content-type": "application/json" }).end('{"ok":true}');
+			res
+				.writeHead(200, { "content-type": "application/json" })
+				.end('{"ok":true}');
 			logRequest(req, res, pathname, started);
 			return;
 		}
@@ -143,7 +172,11 @@ const server = http.createServer(async (req, res) => {
 		// 3. pages — own auth gate (login form vs. app)
 		if (pathname === "/" || pathname === "/admin") {
 			serveConsole(
-				{ schemes, consolePath: artifacts.consolePath, editorTemplatePath: editorTpl },
+				{
+					schemes,
+					consolePath: artifacts.consolePath,
+					editorTemplatePath: editorTpl,
+				},
 				ctx,
 			);
 			logRequest(req, res, pathname, started);
@@ -152,7 +185,11 @@ const server = http.createServer(async (req, res) => {
 		if (pathname === "/editor" || pathname.startsWith("/editor/")) {
 			const name = pathname === "/editor" ? "" : pathname.slice("/editor/".length);
 			serveEditor(
-				{ schemes, consolePath: artifacts.consolePath, editorTemplatePath: editorTpl },
+				{
+					schemes,
+					consolePath: artifacts.consolePath,
+					editorTemplatePath: editorTpl,
+				},
 				ctx,
 				name,
 			);
@@ -188,10 +225,19 @@ const server = http.createServer(async (req, res) => {
 // an empty body and avoids an unnecessary stream.
 function needsBody(method: string | undefined, pathname: string): boolean {
 	if (pathname === "/mcp") return true;
-	return method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+	return (
+		method === "POST" ||
+		method === "PUT" ||
+		method === "PATCH" ||
+		method === "DELETE"
+	);
 }
 
-function handleError(res: http.ServerResponse, e: unknown, pathname: string): void {
+function handleError(
+	res: http.ServerResponse,
+	e: unknown,
+	pathname: string,
+): void {
 	if (e instanceof HttpError) {
 		fail(res, e.status, e.message);
 		return;
@@ -229,5 +275,9 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 // safety net: v1 crashed the process when an MCP auth 401 escaped
-process.on("unhandledRejection", (r) => log("ERROR", `unhandledRejection: ${r}`));
-process.on("uncaughtException", (e) => log("ERROR", `uncaughtException: ${e?.stack ?? e}`));
+process.on("unhandledRejection", (r) =>
+	log("ERROR", `unhandledRejection: ${r}`),
+);
+process.on("uncaughtException", (e) =>
+	log("ERROR", `uncaughtException: ${e?.stack ?? e}`),
+);

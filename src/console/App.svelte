@@ -2,10 +2,40 @@
 	// console — single Svelte 5 runes component, hash-routed.
 	// four screens: #/login, #/projects, #/users, #/settings
 	import { onMount } from "svelte";
-	import { api, getToken, setToken, confirmDialog, promptDialog } from "./api.ts";
+	import {
+		api,
+		getToken,
+		setToken,
+		confirmDialog,
+		promptDialog,
+		chooseDialog,
+		infoDialog,
+	} from "./api.ts";
 	import { DICT, loadLang, saveLang, type Lang } from "../editor/core/i18n.ts";
 
 	type Screen = "login" | "projects" | "users" | "settings";
+	interface SchemeSummary {
+		owner?: string;
+		project: string;
+		name: string;
+		rev: number;
+		nodes: number;
+		edges: number;
+		updatedAt: string;
+	}
+	interface UserRow {
+		id: number;
+		login: string;
+		role: "admin" | "user";
+		apiKeys: number;
+		createdAt: string;
+	}
+	interface KeyRow {
+		user: string;
+		hash: string;
+		createdAt: string;
+	}
+
 	let route: Screen = $state(parseHash());
 	let lang: Lang = $state(loadLang());
 	const t = $derived(DICT[lang]);
@@ -23,20 +53,19 @@
 	let loginBusy = $state(false);
 
 	// --- projects state ---
-	let schemes: { project: string; name: string; owner?: string; rev: number; updatedAt: string }[] =
-		$state([]);
+	let schemes: SchemeSummary[] = $state([]);
 	let allUsers = $state(false); // admin toggle, lives in the top bar
 	let projectsErr = $state("");
 
 	// --- users state (admin) ---
-	let users: { id: number; login: string; role: "admin" | "user"; apiKeys: number; createdAt: string }[] =
-		$state([]);
+	let users: UserRow[] = $state([]);
 	let usersErr = $state("");
 
 	// --- settings (own password + keys) ---
+	let curPass = $state("");
 	let newPass = $state("");
 	let myKeys: { hash: string; createdAt: string }[] = $state([]);
-	let allKeys: { user: string; hash: string; createdAt: string }[] = $state([]);
+	let allKeys: KeyRow[] = $state([]);
 	let mcpConfig: { url: string; hasKey: boolean; activeKeys: number; hint: string } | null =
 		$state(null);
 
@@ -125,7 +154,7 @@
 		if (!me) return;
 		try {
 			const url = me.role === "admin" && allUsers ? "/api/schemes?user=all" : "/api/schemes";
-			schemes = (await api(url)) as typeof schemes;
+			schemes = (await api(url)) as SchemeSummary[];
 			projectsErr = "";
 		} catch (e) {
 			projectsErr = (e as Error).message;
@@ -135,7 +164,7 @@
 	async function loadUsers() {
 		if (!me || me.role !== "admin") return;
 		try {
-			users = (await api("/api/users")) as typeof users;
+			users = (await api("/api/users")) as UserRow[];
 			usersErr = "";
 		} catch (e) {
 			usersErr = (e as Error).message;
@@ -146,8 +175,8 @@
 		if (!me) return;
 		try {
 			if (me.role === "admin") {
-				allKeys = (await api("/api/admin/keys")) as typeof allKeys;
-				users = (await api("/api/users")) as typeof users;
+				allKeys = (await api("/api/admin/keys")) as KeyRow[];
+				users = (await api("/api/users")) as UserRow[];
 			} else {
 				myKeys = (await api("/api/keys")) as typeof myKeys;
 			}
@@ -169,14 +198,75 @@
 		else if (route === "settings") loadSettings();
 	}
 
+	const fullName = (s: SchemeSummary): string => (s.project ? `${s.project}/${s.name}` : s.name);
+
+	// groups: one entry per project ("" = schemes without a project, shown last)
+	const projectGroups = $derived.by(() => {
+		const map = new Map<string, SchemeSummary[]>();
+		for (const s of schemes) {
+			const key = s.project || "";
+			if (!map.has(key)) map.set(key, []);
+			map.get(key)!.push(s);
+		}
+		const groups = [...map.entries()].map(([project, items]) => ({ project, items }));
+		groups.sort((a, b) =>
+			a.project === "" ? 1 : b.project === "" ? -1 : a.project.localeCompare(b.project),
+		);
+		return groups;
+	});
+
 	// ---------- projects ----------
-	async function createScheme() {
-		const name = await promptDialog(t.newScheme + " (project/scheme или scheme):");
+	async function createProject() {
+		const name = await promptDialog(`${t.newName} (${t.projectWord}):`);
 		if (!name) return;
+		try {
+			// a project is a name prefix; give it a conventional first scheme
+			await api("/api/schemes", {
+				method: "POST",
+				body: JSON.stringify({ name: `${name}/main` }),
+			});
+			await loadProjects();
+		} catch (e) {
+			projectsErr = (e as Error).message;
+		}
+	}
+
+	async function createScheme(project: string) {
+		const name = await promptDialog(`${t.newName} (${t.schemeWord}):`);
+		if (!name) return;
+		const full = project ? `${project}/${name}` : name;
 		try {
 			await api("/api/schemes", {
 				method: "POST",
-				body: JSON.stringify({ name }),
+				body: JSON.stringify({ name: full }),
+			});
+			await loadProjects();
+		} catch (e) {
+			projectsErr = (e as Error).message;
+		}
+	}
+
+	async function renameScheme(from: string) {
+		const to = await promptDialog(`${t.newName}:`, from);
+		if (!to || to === from) return;
+		try {
+			await api(`/api/scheme/${encodeURIComponent(from)}/rename`, {
+				method: "POST",
+				body: JSON.stringify({ to }),
+			});
+			await loadProjects();
+		} catch (e) {
+			projectsErr = (e as Error).message;
+		}
+	}
+
+	async function duplicateScheme(from: string) {
+		const to = await promptDialog(`${t.newName}:`, `${from}-copy`);
+		if (!to) return;
+		try {
+			await api(`/api/scheme/${encodeURIComponent(from)}/duplicate`, {
+				method: "POST",
+				body: JSON.stringify({ to }),
 			});
 			await loadProjects();
 		} catch (e) {
@@ -195,17 +285,46 @@
 		}
 	}
 
-	// a "project" is a group of schemes sharing the same prefix. Deleting it
-	// deletes every scheme in the group (one DELETE per scheme — the store has
-	// no bulk endpoint).
+	async function renameProject(from: string) {
+		const to = await promptDialog(`${t.newName} (${t.projectWord}):`, from);
+		if (!to || to === from) return;
+		try {
+			for (const s of schemes.filter((x) => x.project === from)) {
+				await api(`/api/scheme/${encodeURIComponent(`${from}/${s.name}`)}/rename`, {
+					method: "POST",
+					body: JSON.stringify({ to: `${to}/${s.name}` }),
+				});
+			}
+			await loadProjects();
+		} catch (e) {
+			projectsErr = (e as Error).message;
+		}
+	}
+
+	async function duplicateProject(from: string) {
+		const to = await promptDialog(`${t.newName} (${t.projectWord}):`, `${from}-copy`);
+		if (!to) return;
+		try {
+			for (const s of schemes.filter((x) => x.project === from)) {
+				await api(`/api/scheme/${encodeURIComponent(`${from}/${s.name}`)}/duplicate`, {
+					method: "POST",
+					body: JSON.stringify({ to: `${to}/${s.name}` }),
+				});
+			}
+			await loadProjects();
+		} catch (e) {
+			projectsErr = (e as Error).message;
+		}
+	}
+
 	async function deleteProject(project: string) {
 		const members = schemes.filter((s) => s.project === project);
 		if (!members.length) return;
-		const ok = await confirmDialog(`${t.delProject} "${project}" (${members.length} ${t.allProjects})?`);
+		const ok = await confirmDialog(`${t.delProject} "${project}" (${members.length})?`);
 		if (!ok) return;
 		try {
 			for (const s of members) {
-				await api(`/api/scheme/${encodeURIComponent(s.project ? `${s.project}/${s.name}` : s.name)}`, {
+				await api(`/api/scheme/${encodeURIComponent(`${project}/${s.name}`)}`, {
 					method: "DELETE",
 				});
 			}
@@ -217,13 +336,15 @@
 
 	// ---------- users ----------
 	async function createUser() {
-		const login = await promptDialog(t.login + ":");
+		const login = await promptDialog(`${t.login}:`);
 		if (!login) return;
-		const password = await promptDialog(t.password + ":");
+		const password = await promptDialog(`${t.password}:`);
 		if (!password) return;
-		const role = (await promptDialog(`${t.role} (${t.admin}/${t.userRole}):`, "user")) === "admin"
-			? "admin"
-			: "user";
+		const role = await chooseDialog(t.role, [
+			{ value: "user", label: t.userRole },
+			{ value: "admin", label: t.admin },
+		]);
+		if (!role) return;
 		try {
 			await api("/api/users", {
 				method: "POST",
@@ -279,7 +400,7 @@
 		try {
 			await api("/api/password", {
 				method: "POST",
-				body: JSON.stringify({ password: newPass }),
+				body: JSON.stringify({ current: curPass, password: newPass }),
 			});
 			setToken("");
 			me = null;
@@ -289,17 +410,39 @@
 		}
 	}
 
-	async function createOwnKey() {
+	// issue a key for `login` (admin) or for self (no login). The secret + the
+	// mcp schema are shown exactly once here — the store hashes keys at rest.
+	async function generateKey(login?: string) {
 		try {
-			const r = (await api("/api/keys", { method: "POST" })) as {
-				apiKey: string;
-				mcpConfig: unknown;
-			};
-			alert(`${t.shownOnce}\n\n${r.apiKey}\n\n${JSON.stringify(r.mcpConfig, null, 2)}`);
+			const r = (await api("/api/keys", {
+				method: "POST",
+				body: login ? JSON.stringify({ login }) : undefined,
+			})) as { apiKey: string; mcpConfig: unknown };
+			await infoDialog(t.shownOnce, `${r.apiKey}\n\n${JSON.stringify(r.mcpConfig, null, 2)}`);
 			await loadSettings();
 		} catch (e) {
 			meErr = (e as Error).message;
 		}
+	}
+
+	// the raw secret cannot be re-shown (hashed at rest) — only the schema shape.
+	function showMcpSchema(login: string) {
+		const url = mcpConfig?.url ?? "/mcp";
+		void infoDialog(
+			`${t.showMcpSchema} — ${login}`,
+			JSON.stringify(
+				{
+					mcpServers: {
+						llmscheme: {
+							url,
+							headers: { "X-Api-Key": `(${t.keySecretNote})` },
+						},
+					},
+				},
+				null,
+				2,
+			),
+		);
 	}
 
 	async function revokeKey(hash: string, login?: string) {
@@ -307,13 +450,15 @@
 		try {
 			await api(`/api/keys/${hash}/revoke`, {
 				method: "POST",
-				body: JSON.stringify(login ? { login } : {}),
+				body: login ? JSON.stringify({ login }) : undefined,
 			});
 			await loadSettings();
 		} catch (e) {
 			meErr = (e as Error).message;
 		}
 	}
+
+	const keysFor = (login: string): KeyRow[] => allKeys.filter((k) => k.user === login);
 
 	function renderReadme(md: string): string {
 		return md
@@ -332,9 +477,6 @@
 			})
 			.join("\n");
 	}
-
-	// unique project names (non-empty) for the "del project" section
-	const projectNames = $derived([...new Set(schemes.map((s) => s.project).filter(Boolean))]);
 </script>
 
 <header class="topbar">
@@ -395,51 +537,53 @@
 	{:else if route === "projects"}
 		<section>
 			<h2>{t.projects}</h2>
-			<button onclick={createScheme}>{t.newScheme}</button>
+			<button onclick={createProject}>{t.newProject}</button>
 			{#if projectsErr}<p class="err">{projectsErr}</p>{/if}
-
-			{#if projectNames.length}
-				<h3>{t.delProject}</h3>
-				{#each projectNames as p}
-					<span class="project-chip">
-						{p}
-						<button class="warn mini" onclick={() => deleteProject(p)}>×</button>
-					</span>
-				{/each}
-			{/if}
 
 			{#if schemes.length === 0}
 				<p class="hint">{t.noSchemes}</p>
-			{:else}
-				<table>
-					<thead>
-						<tr>
-							<th>{t.projects}</th>
-							<th>scheme</th>
-							<th>{t.edit}</th>
-							{#if me?.role === "admin" && allUsers}<th>{t.ownedBy}</th>{/if}
-							<th>{t.lastEdit}</th>
-							<th>{t.delScheme}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each schemes as s}
-							<tr>
-								<td>{s.project || "—"}</td>
-								<td>{s.name}</td>
-								<td>
-									<a href={`/editor/${encodeURIComponent(s.project ? `${s.project}/${s.name}` : s.name)}`}>{t.edit}</a>
-								</td>
-								{#if me?.role === "admin" && allUsers}<td>{s.owner}</td>{/if}
-								<td>{new Date(s.updatedAt).toLocaleString()}</td>
-								<td>
-									<button class="warn mini" onclick={() => deleteScheme(s.project ? `${s.project}/${s.name}` : s.name)}>×</button>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
 			{/if}
+
+			{#each projectGroups as g (g.project || "__bare__")}
+				<div class="project-block">
+					<div class="project-head">
+						<span class="project-name">{g.project || t.noProject}</span>
+						<button class="mini" onclick={() => createScheme(g.project)}>{t.newScheme}</button>
+						{#if g.project}
+							<button class="mini" onclick={() => renameProject(g.project)}>{t.rename}</button>
+							<button class="mini" onclick={() => duplicateProject(g.project)}>{t.duplicate}</button>
+							<button class="mini warn" onclick={() => deleteProject(g.project)}>{t.delProject}</button>
+						{/if}
+					</div>
+					<table>
+						<thead>
+							<tr>
+								<th>{t.schemeWord}</th>
+								<th>rev</th>
+								<th>{t.lastEdit}</th>
+								{#if me?.role === "admin" && allUsers}<th>{t.ownedBy}</th>{/if}
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each g.items as s (fullName(s))}
+								<tr>
+									<td>{s.name}</td>
+									<td>{s.rev}</td>
+									<td>{new Date(s.updatedAt).toLocaleString()}</td>
+									{#if me?.role === "admin" && allUsers}<td>{s.owner}</td>{/if}
+									<td class="row-actions">
+										<a class="mini-link" href={`/editor/${encodeURIComponent(fullName(s))}`}>{t.edit}</a>
+										<button class="mini" onclick={() => renameScheme(fullName(s))}>{t.rename}</button>
+										<button class="mini" onclick={() => duplicateScheme(fullName(s))}>{t.duplicate}</button>
+										<button class="mini warn" onclick={() => deleteScheme(fullName(s))}>{t.delScheme}</button>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/each}
 		</section>
 	{:else if route === "users" && me?.role === "admin"}
 		<section>
@@ -451,18 +595,15 @@
 					<tr><th>{t.login}</th><th>{t.password}</th><th>{t.role}</th><th></th></tr>
 				</thead>
 				<tbody>
-					{#each users as u}
+					{#each users as u (u.id)}
 						<tr>
 							<td>{u.login}</td>
 							<td><button class="mini" onclick={() => changePassForUser(u.login)}>{t.changePassword}</button></td>
 							<td>
-								<select
-									value={u.role}
-									onchange={(e) => changeRole(u.id, (e.currentTarget as HTMLSelectElement).value as "admin" | "user")}
-								>
-									<option value="user">{t.userRole}</option>
-									<option value="admin">{t.admin}</option>
-								</select>
+								<span class="seg">
+									<button class:on={u.role === "user"} onclick={() => changeRole(u.id, "user")}>{t.userRole}</button>
+									<button class:on={u.role === "admin"} onclick={() => changeRole(u.id, "admin")}>{t.admin}</button>
+								</span>
 							</td>
 							<td><button class="warn mini" onclick={() => deleteUser(u.id, u.login)}>×</button></td>
 						</tr>
@@ -481,6 +622,7 @@
 					changeOwnPassword();
 				}}
 			>
+				<label>{t.currentPassword} <input type="password" bind:value={curPass} /></label>
 				<label>{t.newPassword} <input type="password" bind:value={newPass} /></label>
 				<button type="submit">{t.change}</button>
 			</form>
@@ -488,41 +630,51 @@
 
 			<h3>{t.keys}</h3>
 			{#if me.role === "admin"}
-				<!-- admin: every user's keys, each with its MCP target -->
-				{#if allKeys.length === 0}
-					<p class="hint">{t.noKeys}</p>
-				{:else}
-					<table>
-						<thead>
-							<tr><th>{t.login}</th><th>key</th><th>{t.created}</th><th>mcp</th><th></th></tr>
-						</thead>
-						<tbody>
-							{#each allKeys as k}
-								<tr>
-									<td>{k.user}</td>
-									<td><code>{k.hash.slice(0, 12)}…</code></td>
-									<td>{new Date(k.createdAt).toLocaleString()}</td>
-									<td>{mcpConfig?.url ?? "/mcp"}</td>
-									<td><button class="warn mini" onclick={() => revokeKey(k.hash, k.user)}>{t.revoke}</button></td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				{/if}
+				<!-- admin: every user, their keys, and per-key mcp/revoke -->
+				{#each users as u (u.id)}
+					<div class="keys-block">
+						<div class="project-head">
+							<span class="project-name">{u.login}</span>
+							<button class="mini" onclick={() => generateKey(u.login)}>{t.generateKey}</button>
+						</div>
+						{#if keysFor(u.login).length === 0}
+							<p class="hint">{t.noKeys}</p>
+						{:else}
+							<table>
+								<thead><tr><th>key</th><th>{t.created}</th><th></th></tr></thead>
+								<tbody>
+									{#each keysFor(u.login) as k (k.hash)}
+										<tr>
+											<td><code>{k.hash.slice(0, 12)}…</code></td>
+											<td>{new Date(k.createdAt).toLocaleString()}</td>
+											<td class="row-actions">
+												<button class="mini" onclick={() => showMcpSchema(u.login)}>{t.showMcpSchema}</button>
+												<button class="mini warn" onclick={() => revokeKey(k.hash, u.login)}>{t.revoke}</button>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						{/if}
+					</div>
+				{/each}
 			{:else}
 				<!-- regular user: only their own keys -->
-				<button onclick={createOwnKey}>{t.newKey}</button>
+				<button onclick={() => generateKey()}>{t.newKey}</button>
 				{#if myKeys.length === 0}
 					<p class="hint">{t.noKeys}</p>
 				{:else}
 					<table>
 						<thead><tr><th>key</th><th>{t.created}</th><th></th></tr></thead>
 						<tbody>
-							{#each myKeys as k}
+							{#each myKeys as k (k.hash)}
 								<tr>
 									<td><code>{k.hash.slice(0, 12)}…</code></td>
 									<td>{new Date(k.createdAt).toLocaleString()}</td>
-									<td><button class="warn mini" onclick={() => revokeKey(k.hash)}>{t.revoke}</button></td>
+									<td class="row-actions">
+										<button class="mini" onclick={() => showMcpSchema(me?.login ?? "")}>{t.showMcpSchema}</button>
+										<button class="mini warn" onclick={() => revokeKey(k.hash)}>{t.revoke}</button>
+									</td>
 								</tr>
 							{/each}
 						</tbody>

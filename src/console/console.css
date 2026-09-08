@@ -42,9 +42,52 @@ main {
 	align-items: center;
 	gap: 6px;
 	background: var(--panel2);
-	box-shadow: inset -2px -2px 0 var(--dark), inset 2px 2px 0 var(--accent);
+	box-shadow:
+		inset -2px -2px 0 var(--dark),
+		inset 2px 2px 0 var(--accent);
 	padding: 4px 8px;
 	margin: 4px 6px 4px 0;
+}
+
+.project-block,
+.keys-block {
+	margin: 16px 0;
+}
+.project-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+	background: var(--panel);
+	box-shadow:
+		inset -2px -2px 0 var(--dark),
+		inset 2px 2px 0 var(--accent);
+	padding: 6px 8px;
+}
+.project-name {
+	color: var(--accent);
+	font-size: 10px;
+	margin-right: 6px;
+}
+.row-actions {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+a.mini-link {
+	display: inline-block;
+	background: var(--panel2);
+	color: var(--ink);
+	padding: 2px 7px;
+	font-size: 9px;
+	box-shadow:
+		inset -2px -2px 0 var(--dark),
+		inset 2px 2px 0 var(--accent);
+}
+a.mini-link:hover {
+	color: var(--ink);
+	filter: brightness(1.15);
 }
 
 h2,

@@ -1,7 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DataError, type Scheme } from "../../core/index.ts";
-import { COOKIE, clearCookieHeader, cookieHeader, currentTokenHash, isAdmin } from "./auth.ts";
+import {
+	COOKIE,
+	clearCookieHeader,
+	cookieHeader,
+	currentTokenHash,
+	isAdmin,
+} from "./auth.ts";
 import type { Config } from "./config.ts";
 import { HttpError, Router, send, type Context } from "./http.ts";
 import type { Schemes } from "./schemes.ts";
@@ -55,7 +61,8 @@ const num = (v: unknown, field: string): number | undefined => {
 // admin-targeting: ?login=x / {"login":x} lets an admin act for another user
 function targetUser(deps: RoutesDeps, ctx: Context, fromBody?: unknown): User {
 	const me = ctx.auth as User;
-	const login = typeof fromBody === "string" && fromBody ? fromBody : ctx.query.login;
+	const login =
+		typeof fromBody === "string" && fromBody ? fromBody : ctx.query.login;
 	if (!login || login === me.login) return me;
 	if (!isAdmin(me)) throw new HttpError(403, "admin only");
 	const u = deps.store.userByLogin(login);
@@ -99,7 +106,9 @@ export function buildRoutes(deps: RoutesDeps): Router {
 				role: u.role,
 				login: u.login,
 			},
-			{ "set-cookie": cookieHeader(t.token, Math.floor(config.tokenTtlMs / 1000)) },
+			{
+				"set-cookie": cookieHeader(t.token, Math.floor(config.tokenTtlMs / 1000)),
+			},
 		);
 	});
 
@@ -134,7 +143,11 @@ export function buildRoutes(deps: RoutesDeps): Router {
 		requireAdmin(ctx);
 		const b = parseJson(ctx.body);
 		const role = b.role === "admin" ? "admin" : "user";
-		const u = store.createUser(str(b.login, "login"), str(b.password, "password"), role);
+		const u = store.createUser(
+			str(b.login, "login"),
+			str(b.password, "password"),
+			role,
+		);
 		send(ctx.res, 201, publicUser(u));
 	});
 
@@ -145,7 +158,10 @@ export function buildRoutes(deps: RoutesDeps): Router {
 		const u = store.userById(id);
 		if (!u) throw new HttpError(404, "no such user");
 		if (u.id === me.id) throw new HttpError(400, "cannot delete yourself");
-		if (u.role === "admin" && store.users().filter((x) => x.role === "admin").length === 1)
+		if (
+			u.role === "admin" &&
+			store.users().filter((x) => x.role === "admin").length === 1
+		)
 			throw new HttpError(400, "cannot delete the last admin");
 		store.deleteUser(id);
 		send(ctx.res, 200, { ok: true });
@@ -179,7 +195,12 @@ export function buildRoutes(deps: RoutesDeps): Router {
 		}
 		store.setPassword(target, next);
 		// sessions were dropped, so the caller must sign in again
-		send(ctx.res, 200, { ok: true, sessionsRevoked: true }, { "set-cookie": clearCookieHeader() });
+		send(
+			ctx.res,
+			200,
+			{ ok: true, sessionsRevoked: true },
+			{ "set-cookie": clearCookieHeader() },
+		);
 	});
 
 	// ---------- sessions ----------
@@ -247,7 +268,9 @@ export function buildRoutes(deps: RoutesDeps): Router {
 			hasKey: active > 0,
 			activeKeys: active,
 			// the secret is hashed at rest, so it can never be re-shown here
-			hint: active ? "POST /api/keys/rotate to issue a new secret" : "POST /api/keys to create one",
+			hint: active
+				? "POST /api/keys/rotate to issue a new secret"
+				: "POST /api/keys to create one",
 		});
 	});
 
@@ -288,13 +311,19 @@ export function buildRoutes(deps: RoutesDeps): Router {
 
 	r.get("/api/scheme/:name!/diff", (ctx) => {
 		const me = ctx.auth as User;
-		send(ctx.res, 200, schemes.diff(me, ctx.params.name as string, num(ctx.query.rev, "rev")));
+		send(
+			ctx.res,
+			200,
+			schemes.diff(me, ctx.params.name as string, num(ctx.query.rev, "rev")),
+		);
 	});
 
 	r.get("/api/scheme/:name!/log", (ctx) => {
 		const me = ctx.auth as User;
 		const limit = num(ctx.query.limit, "limit") ?? 50;
-		send(ctx.res, 200, { entries: schemes.log(me, ctx.params.name as string, limit) });
+		send(ctx.res, 200, {
+			entries: schemes.log(me, ctx.params.name as string, limit),
+		});
 	});
 
 	r.get("/api/scheme/:name!", (ctx) => {
@@ -321,6 +350,26 @@ export function buildRoutes(deps: RoutesDeps): Router {
 		send(ctx.res, 200, { ok: true });
 	});
 
+	// rename / duplicate a whole scheme (the console's project view drives both;
+	// a project-level op just loops these per scheme)
+	r.post("/api/scheme/:name!/rename", (ctx) => {
+		const me = ctx.auth as User;
+		const b = parseJson(ctx.body);
+		const to = str(b.to, "to");
+		assertSchemeName(to);
+		schemes.rename(me, ctx.params.name as string, to);
+		send(ctx.res, 200, { ok: true, name: to });
+	});
+
+	r.post("/api/scheme/:name!/duplicate", (ctx) => {
+		const me = ctx.auth as User;
+		const b = parseJson(ctx.body);
+		const to = str(b.to, "to");
+		assertSchemeName(to);
+		schemes.duplicate(me, ctx.params.name as string, to);
+		send(ctx.res, 201, { ok: true, name: to });
+	});
+
 	// ---------- granular ops (shared with MCP through schemes.ts) ----------
 	r.post("/api/scheme/:name!/node", (ctx) => {
 		const me = ctx.auth as User;
@@ -343,23 +392,32 @@ export function buildRoutes(deps: RoutesDeps): Router {
 	r.put("/api/scheme/:name!/node/:id", (ctx) => {
 		const me = ctx.auth as User;
 		const b = parseJson(ctx.body);
-		const out = schemes.nodeUpdate(me, ctx.params.name as string, ctx.params.id as string, {
-			label: b.label as string | undefined,
-			shape: b.shape as never,
-			description: b.description as string | undefined,
-			refs: b.refs as string[] | undefined,
-			table: b.table as never,
-			x: num(b.x, "x"),
-			y: num(b.y, "y"),
-			w: num(b.w, "w"),
-			h: num(b.h, "h"),
-		});
+		const out = schemes.nodeUpdate(
+			me,
+			ctx.params.name as string,
+			ctx.params.id as string,
+			{
+				label: b.label as string | undefined,
+				shape: b.shape as never,
+				description: b.description as string | undefined,
+				refs: b.refs as string[] | undefined,
+				table: b.table as never,
+				x: num(b.x, "x"),
+				y: num(b.y, "y"),
+				w: num(b.w, "w"),
+				h: num(b.h, "h"),
+			},
+		);
 		send(ctx.res, 200, { ok: true, rev: out.rev, id: out.result });
 	});
 
 	r.delete("/api/scheme/:name!/node/:id", (ctx) => {
 		const me = ctx.auth as User;
-		const out = schemes.nodeRemove(me, ctx.params.name as string, ctx.params.id as string);
+		const out = schemes.nodeRemove(
+			me,
+			ctx.params.name as string,
+			ctx.params.id as string,
+		);
 		send(ctx.res, 200, { ok: true, rev: out.rev });
 	});
 
@@ -382,21 +440,30 @@ export function buildRoutes(deps: RoutesDeps): Router {
 	r.put("/api/scheme/:name!/edge/:id", (ctx) => {
 		const me = ctx.auth as User;
 		const b = parseJson(ctx.body);
-		const out = schemes.edgeUpdate(me, ctx.params.name as string, ctx.params.id as string, {
-			from: b.from as string | undefined,
-			to: b.to as string | undefined,
-			style: b.style as never,
-			label: b.label as string | undefined,
-			description: b.description as string | undefined,
-			fromSide: b.fromSide as never,
-			toSide: b.toSide as never,
-		});
+		const out = schemes.edgeUpdate(
+			me,
+			ctx.params.name as string,
+			ctx.params.id as string,
+			{
+				from: b.from as string | undefined,
+				to: b.to as string | undefined,
+				style: b.style as never,
+				label: b.label as string | undefined,
+				description: b.description as string | undefined,
+				fromSide: b.fromSide as never,
+				toSide: b.toSide as never,
+			},
+		);
 		send(ctx.res, 200, { ok: true, rev: out.rev, id: out.result });
 	});
 
 	r.delete("/api/scheme/:name!/edge/:id", (ctx) => {
 		const me = ctx.auth as User;
-		const out = schemes.edgeRemove(me, ctx.params.name as string, ctx.params.id as string);
+		const out = schemes.edgeRemove(
+			me,
+			ctx.params.name as string,
+			ctx.params.id as string,
+		);
 		send(ctx.res, 200, { ok: true, rev: out.rev });
 	});
 
@@ -418,7 +485,11 @@ export function buildRoutes(deps: RoutesDeps): Router {
 
 	r.delete("/api/scheme/:name!/zone/:id", (ctx) => {
 		const me = ctx.auth as User;
-		const out = schemes.zoneRemove(me, ctx.params.name as string, ctx.params.id as string);
+		const out = schemes.zoneRemove(
+			me,
+			ctx.params.name as string,
+			ctx.params.id as string,
+		);
 		send(ctx.res, 200, { ok: true, rev: out.rev });
 	});
 
