@@ -633,7 +633,10 @@ async function main(): Promise<number> {
 			const autosaveDir = path.join(root, DIR, "cache", "autosave");
 			// names are ts-prefixed with a fixed width, so code-unit order is age order
 			const autosaves = fs.existsSync(autosaveDir)
-				? fs.readdirSync(autosaveDir).sort((a, b) => a.localeCompare(b)).slice(-limit)
+				? fs
+						.readdirSync(autosaveDir)
+						.sort((a, b) => a.localeCompare(b))
+						.slice(-limit)
 				: [];
 			out(
 				{ ok: true, entries, autosaves },
