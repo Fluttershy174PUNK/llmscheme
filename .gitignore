@@ -2,7 +2,11 @@ node_modules/
 dist/
 data/
 .env
+.env.local
 *.log
 .block_llm/cache/
 .DS_Store
 *.svelte.css
+# test artifacts
+/coverage/
+/.nyc_output/

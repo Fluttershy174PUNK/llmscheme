@@ -1,10 +1,11 @@
 // pi-lens-ignore-file: no-console-except-error — a build script's console output IS the product
-// sync-skill — make skill/ a self-contained copy of src/.
+// sync-skill — make SKILL/llmscheme/ a self-contained copy of src/.
 //
-// skill/ mirrors src/ exactly (skill/core/*.ts, skill/cli/block.ts) so the
-// relative imports inside the copied files keep resolving without a rewrite:
-// skill/cli/block.ts imports ../core/index.ts just like src/cli/block.ts does.
-// Nothing is bundled and nothing is transformed — Node 22.18+ strips the types.
+// SKILL/llmscheme/ mirrors src/ exactly (SKILL/llmscheme/core/*.ts,
+// SKILL/llmscheme/cli/block.ts) so the relative imports inside the copied
+// files keep resolving without a rewrite: SKILL/llmscheme/cli/block.ts imports
+// ../core/index.ts just like src/cli/block.ts does. Nothing is bundled
+// and nothing is transformed — Node 22.18+ strips the types.
 //
 // A .manifest.json records sha256 of every copied file plus the built
 // editor.html, so check.ts can prove the artifact still matches its sources.
@@ -15,12 +16,17 @@ import { fileURLToPath } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const src = path.join(repo, "src");
-const skill = path.join(repo, "skill");
+// the skill artifact lives at SKILL/llmscheme/
+const skill = path.join(repo, "SKILL", "llmscheme");
 
 // source -> destination, copied verbatim
 const COPIES = [
 	["core", "core"],
 	["cli/block.ts", "cli/block.ts"],
+	// src/skill/SKILL.md and src/skill/references are the editor-side source
+	// that the skill ships to agents. They live under src/skill/ on purpose
+	// (separate from the service-side editor) so future changes to the
+	// editor don't accidentally break the skill's user-facing docs.
 	["skill/SKILL.md", "SKILL.md"],
 	["skill/references", "references"],
 ] as const;
@@ -71,7 +77,7 @@ export function syncSkill(): { files: number; manifest: Record<string, string> }
 }
 
 const { files, manifest } = syncSkill();
-console.log(`skill/ synced: ${files} files`);
+console.log(`SKILL/llmscheme/ synced: ${files} files`);
 console.log(
 	`  editor.html: ${manifest["editor.html"] ? "present" : "MISSING (run npm run build first)"}`,
 );

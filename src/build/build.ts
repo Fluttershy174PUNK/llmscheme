@@ -1,9 +1,9 @@
 // pi-lens-ignore-file: no-console-except-error — a build script's console output IS the product
 // build — three single-file HTML artifacts from one set of sources.
 //
-//   editor-skill    skill/editor.html         font inlined (file:// has no network)
-//   editor-service  mcp-service/editor.html   font as /assets/*.woff2 (http cache)
-//   console         mcp-service/console.html  same, no scheme marker
+//   editor-skill    dist/editor.html                       font inlined (file:// has no network)
+//   editor-service  SERVICE-MCP/llmscheme/editor.html      font as /assets/*.woff2 (http cache)
+//   console         SERVICE-MCP/llmscheme/console.html     same, no scheme marker
 //
 // svelte/compiler turns .svelte into JS+CSS, esbuild bundles and minifies.
 // No vite, no rolldown, no lightningcss: 2 dev dependencies instead of 8.
@@ -38,7 +38,7 @@ const ENTRIES: Entry[] = [
 	{
 		name: "editor-service",
 		entry: "src/editor/service/main.ts",
-		out: "mcp-service/editor.html",
+		out: "SERVICE-MCP/llmscheme/editor.html",
 		title: "llmscheme editor",
 		font: "file",
 		schemeMarker: true,
@@ -46,7 +46,7 @@ const ENTRIES: Entry[] = [
 	{
 		name: "console",
 		entry: "src/console/main.ts",
-		out: "mcp-service/console.html",
+		out: "SERVICE-MCP/llmscheme/console.html",
 		title: "llmscheme",
 		font: "file",
 		schemeMarker: false,
@@ -55,10 +55,7 @@ const ENTRIES: Entry[] = [
 
 // Svelte component CSS is emitted next to the component and imported back, so
 // esbuild can order it after the global sheets.
-function sveltePlugin(cssDir: string): {
-	name: string;
-	setup: (b: import("esbuild").PluginBuild) => void;
-} {
+function sveltePlugin(cssDir: string): { name: string; setup: (b: import("esbuild").PluginBuild) => void } {
 	return {
 		name: "svelte",
 		setup(b) {

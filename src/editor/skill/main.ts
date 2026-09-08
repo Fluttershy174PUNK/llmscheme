@@ -2,7 +2,14 @@
 // (A=clipboard, B=FSA, C=download). The script grabs the embedded scheme
 // from <script id="scheme-data"> and mounts the shared Editor.svelte.
 import { mount } from "svelte";
-import { extractSchemeJson, type Scheme } from "../../core/browser.ts";
+import {
+	extractSchemeJson,
+	emptyScheme,
+	consumeNodeId,
+	consumeEdgeId,
+	autoLayout,
+	type Scheme,
+} from "../../core/browser.ts";
 import Editor from "../core/Editor.svelte";
 
 const target = document.querySelector("#app");
@@ -11,12 +18,36 @@ if (!target) throw new Error("missing #app");
 const raw = extractSchemeJson(document.documentElement.outerHTML);
 if (!raw) throw new Error("missing scheme-data marker");
 
-// The current build path. Build order (build.ts): the editor template lives
-// at skill/editor.html with an empty {} marker, and every save in the CLI
-// writes a fresh copy with the actual JSON. The browser reads it from there.
+// The build writes a default welcome scheme into the marker, and the CLI's
+// `init` overwrites it with the project's real scheme on first run. When
+// the editor is opened from file:// with the default (or an empty scheme),
+// we replace it with a "getting started" demo so the canvas isn't blank.
+// The user can hit SAVE to commit, or DELETE all nodes to start clean.
 // SAFETY: extractSchemeJson returns unknown; the embedded JSON IS a Scheme
-// because the CLI writes the same type and no other path produces the marker.
-const initial = raw as Scheme;
+// because the build and CLI both write that exact type.
+let initial = raw as Scheme;
+
+// detect "empty" (no nodes AND no edges AND no zones) and seed a welcome
+const isEmpty =
+	(!initial.nodes || initial.nodes.length === 0) &&
+	(!initial.edges || initial.edges.length === 0) &&
+	(!initial.zones || initial.zones.length === 0);
+if (isEmpty) {
+	const seed = emptyScheme(initial.name || "my-scheme");
+	// three labelled nodes so the editor isn't a void
+	const a = { id: consumeNodeId(seed), shape: "rect" as const, label: "start here", x: 80, y: 100 };
+	const b = { id: consumeNodeId(seed), shape: "rect" as const, label: "middle", x: 300, y: 100 };
+	const c = { id: consumeNodeId(seed), shape: "rect" as const, label: "end", x: 520, y: 100 };
+	seed.nodes.push(a, b, c);
+	// edge ids are minted via consumeEdgeId, but to keep the type narrow we
+	// splice them in after the fact
+	seed.edges.push(
+		{ id: consumeEdgeId(seed), from: a.id, to: b.id, style: "solid" as const },
+		{ id: consumeEdgeId(seed), from: b.id, to: c.id, style: "solid" as const },
+	);
+	autoLayout(seed);
+	initial = seed;
+}
 
 interface SkillSave {
 	save(scheme: Scheme, baseRev: number): Promise<{ rev: number }>;

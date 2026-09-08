@@ -1,6 +1,12 @@
 # Built artifacts: never hand-edit, never diff, never format.
 # Regenerate: npm run build   Verify: npm run check
-skill/editor.html linguist-generated -diff
-mcp-service/editor.html linguist-generated -diff
-mcp-service/console.html linguist-generated -diff
-skill/core/** linguist-vendored
+#
+# v2 layout: artifacts live at:
+#   dist/editor.html                       (intermediate, gitignored)
+#   SKILL/llmscheme/editor.html             (skill artifact, committed)
+#   SERVICE-MCP/llmscheme/editor.html       (service editor, committed)
+#   SERVICE-MCP/llmscheme/console.html      (service console, committed)
+SKILL/llmscheme/editor.html linguist-generated -diff
+SERVICE-MCP/llmscheme/editor.html linguist-generated -diff
+SERVICE-MCP/llmscheme/console.html linguist-generated -diff
+SKILL/llmscheme/core/** linguist-vendored

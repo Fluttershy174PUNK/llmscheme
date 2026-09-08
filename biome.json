@@ -5,9 +5,10 @@
 			"**",
 			"!**/node_modules",
 			"!**/dist",
-			"!skill",
-			"!mcp-service/editor.html",
-			"!mcp-service/console.html",
+			"!SKILL/llmscheme",
+			"!SERVICE-MCP/llmscheme/editor.html",
+			"!SERVICE-MCP/llmscheme/console.html",
+			"!SERVICE-MCP/llmscheme/assets",
 			"!**/.block_llm",
 			"!data"
 		]

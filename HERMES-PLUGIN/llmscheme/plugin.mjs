@@ -26,6 +26,10 @@ const SKILL_CORE = path.join(HERE, "..", "skill", "core", "index.ts");
 // The plugin runs in the host process; the imports above are the SAME
 // functions the CLI uses, so a write through the plugin and a write
 // through the CLI produce the same on-disk format (rev+1, atomic, CAS).
+//
+// v2 layout: the skill lives at SKILL/llmscheme/ (not skill/).
+// The core files are a verbatim copy of src/core/ synced by
+// `npm run sync-skill`, so the relative import path is unchanged.
 
 function resolveProject() {
 	const hits = findProjectDir(process.cwd());

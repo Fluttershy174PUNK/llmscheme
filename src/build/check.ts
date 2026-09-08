@@ -11,8 +11,10 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const skill = path.join(repo, "skill");
 const src = path.join(repo, "src");
+// v2 layout: SKILL/llmscheme/, SERVICE-MCP/llmscheme/
+const skill = path.join(repo, "SKILL", "llmscheme");
+const mcp = path.join(repo, "SERVICE-MCP", "llmscheme");
 
 // editor.html budgets (bytes). The editor is a single file a human opens from
 // disk, so it stays small; the font subsets alone are ~26K.
@@ -25,9 +27,9 @@ const sha256 = (file: string) =>
 const problems: string[] = [];
 const note = (msg: string) => problems.push(msg);
 
-// ---- 1. skill/core and skill/cli are verbatim copies of src/ ----
-// skill/cli/block.ts keeps importing ../core/index.ts, so the tree must mirror
-// src/ exactly — a rename here would break the copied import.
+// ---- 1. SKILL/llmscheme/{core,cli} are verbatim copies of src/ ----
+// SKILL/llmscheme/cli/block.ts keeps importing ../core/index.ts, so the tree
+// must mirror src/ exactly — a rename here would break the copied import.
 const PAIRS = [
 	["core", "core"],
 	["cli/block.ts", "cli/block.ts"],
@@ -57,13 +59,13 @@ for (const [rel, dest] of PAIRS) {
 	);
 
 	for (const f of srcFiles)
-		if (!skillFiles.includes(f)) note(`skill/${dest}/${f} is missing (run npm run sync-skill)`);
+		if (!skillFiles.includes(f)) note(`SKILL/llmscheme/${dest}/${f} is missing (run npm run sync-skill)`);
 	for (const f of skillFiles)
-		if (!srcFiles.includes(f)) note(`skill/${dest}/${f} is stale: no longer in src/${rel}/`);
+		if (!srcFiles.includes(f)) note(`SKILL/llmscheme/${dest}/${f} is stale: no longer in src/${rel}/`);
 	for (const f of srcFiles.filter((x) => skillFiles.includes(x))) {
 		const a = path.join(srcRoot, f);
 		const b = path.join(skillRoot, f);
-		if (sha256(a) !== sha256(b)) note(`skill/${dest}/${f} differs from src/${rel}/${f}`);
+		if (sha256(a) !== sha256(b)) note(`SKILL/llmscheme/${dest}/${f} differs from src/${rel}/${f}`);
 	}
 }
 
@@ -71,14 +73,14 @@ for (const [rel, dest] of PAIRS) {
 const manifestFile = path.join(skill, ".manifest.json");
 let manifest: Record<string, string> | null = null;
 if (!fs.existsSync(manifestFile)) {
-	note("skill/.manifest.json missing (run npm run sync-skill)");
+	note("SKILL/llmscheme/.manifest.json missing (run npm run sync-skill)");
 } else {
 	// a corrupt manifest is itself a finding — report it like every other problem
 	// instead of throwing a stacktrace out of a check script
 	try {
 		manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8")) as Record<string, string>;
 	} catch (e) {
-		note(`skill/.manifest.json is not valid JSON: ${(e as Error).message}`);
+		note(`SKILL/llmscheme/.manifest.json is not valid JSON: ${(e as Error).message}`);
 	}
 }
 if (manifest) {
@@ -96,19 +98,18 @@ if (manifest) {
 
 // ---- 3. VERSION and SKILL.md exist; editor.html is present and within budget ----
 for (const f of ["VERSION", "SKILL.md"])
-	if (!fs.existsSync(path.join(skill, f))) note(`skill/${f} missing`);
+	if (!fs.existsSync(path.join(skill, f))) note(`SKILL/llmscheme/${f} missing`);
 
 // The editor is built from src/editor/skill/main.ts. Until that entry exists
 // there is nothing to build, so a missing editor.html is not a finding yet —
-// but once it does, the artifact must be present and up to date. (src/editor/
-// core/ holds shared pieces that may land earlier; they are not an entry.)
+// but once it does, the artifact must be present and up to date.
 const editorSourcesExist = fs.existsSync(path.join(repo, "src", "editor", "skill", "main.ts"));
 const editor = path.join(skill, "editor.html");
 if (!fs.existsSync(editor)) {
-	if (editorSourcesExist) note("skill/editor.html missing (run npm run build)");
+	if (editorSourcesExist) note("SKILL/llmscheme/editor.html missing (run npm run build)");
 } else {
 	const size = fs.statSync(editor).size;
-	if (size > BUDGET_EDITOR) note(`skill/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
+	if (size > BUDGET_EDITOR) note(`SKILL/llmscheme/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
 
 	// single-file invariants: it is opened from file:// with no network
 	const html = fs.readFileSync(editor, "utf8");
@@ -127,15 +128,15 @@ if (!fs.existsSync(editor)) {
 }
 
 // ---- 4. the service artifact: thin HTML, font served separately ----
-const serviceEditor = path.join(repo, "mcp-service", "editor.html");
+const serviceEditor = path.join(mcp, "editor.html");
 if (fs.existsSync(serviceEditor)) {
 	const size = fs.statSync(serviceEditor).size;
-	if (size > BUDGET_EDITOR) note(`mcp-service/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
+	if (size > BUDGET_EDITOR) note(`SERVICE-MCP/llmscheme/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
 }
-const serviceConsole = path.join(repo, "mcp-service", "console.html");
+const serviceConsole = path.join(mcp, "console.html");
 if (fs.existsSync(serviceConsole)) {
 	const size = fs.statSync(serviceConsole).size;
-	if (size > BUDGET_CONSOLE) note(`mcp-service/console.html ${size}B > budget ${BUDGET_CONSOLE}B`);
+	if (size > BUDGET_CONSOLE) note(`SERVICE-MCP/llmscheme/console.html ${size}B > budget ${BUDGET_CONSOLE}B`);
 	const html = fs.readFileSync(serviceConsole, "utf8");
 	// served over http: the font is a cacheable file, not 26K of base64 per page
 	if (/data:font\/woff2;base64/.test(html))

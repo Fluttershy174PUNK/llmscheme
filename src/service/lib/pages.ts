@@ -100,7 +100,8 @@ export function resolveArtifactPaths(env = process.env): {
 	consolePath: string;
 	editorTemplatePath: string;
 } {
-	const root = path.resolve(env.ASSETS_DIR ?? "mcp-service");
+	// v2 layout: the built artifacts live at SERVICE-MCP/llmscheme/{console,editor}.html
+	const root = path.resolve(env.ASSETS_DIR ?? "SERVICE-MCP/llmscheme");
 	return {
 		consolePath: path.join(root, "console.html"),
 		editorTemplatePath: path.join(root, "editor.html"),
