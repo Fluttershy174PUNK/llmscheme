@@ -106,6 +106,8 @@ llmscheme-service-mcp/         — 🐳 артефакт №2: docker-серви
 
 llmscheme-hermes-plugin/       — заглушка: plugin.json манифест, реализации нет
 demo-example-skill/            — демо-проект «генератор котиков» со живой схемой
+schemes-backup/                — офлайн-копии схем сервиса (UI/page и др.),
+                                 заливаются обратно: POST /api/schemes {name, scheme}
 ```
 
 ## Золотые правила
