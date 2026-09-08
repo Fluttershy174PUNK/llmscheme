@@ -1,0 +1,28 @@
+services:
+  llmscheme:
+    build: .
+    image: llmscheme-service:2.0.0
+    container_name: llmscheme
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      DATA_DIR: /data
+      TOKEN_TTL_DAYS: 30
+      DB_QUOTA_MB: 64
+      MAX_BODY_MB: 8
+      MCP_ENABLED: "true"
+      ORIGIN_ALLOWLIST: ${ORIGIN_ALLOWLIST:-}
+    volumes:
+      - llm-data:/data
+      - ./:/app/mcp-service:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  llm-data:
