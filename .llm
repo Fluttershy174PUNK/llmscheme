@@ -1,0 +1,211 @@
+# .llm — current structure + plan
+
+> **For LLM agents:** this file is the authoritative snapshot of the
+> repo's actual state. If you need to know "what exists right now",
+> read this first. `README.md` is the user-facing intro; `PROJECT.md`
+> is the contributor's manual; `.llm` is the live truth.
+
+Last regenerated: 2026-09-08
+
+---
+
+## What this project is
+
+**llmscheme** — a tool that keeps a "living logic scheme" of a
+project's modules and data flow in a single JSON file, readable by
+humans, AI agents, and a visual editor. Three entry points over one
+shared core.
+
+---
+
+## Current actual structure (v2 layout)
+
+```
+llmscheme/
+├── SKILL/llmscheme/                [artifact] drop-in skill for AI agents
+│   ├── cli/block.ts                       the 16-command CLI
+│   ├── core/                              verbatim copy of src/core/
+│   │   ├── index.ts                       public surface (server-side)
+│   │   ├── browser.ts                     public surface (browser-side, no node:fs)
+│   │   ├── types.ts                       Scheme, SchemeNode, SchemeEdge, SchemeZone
+│   │   ├── validate.ts                    error/warn rules
+│   │   ├── layout.ts                      auto-place
+│   │   ├── diff.ts                        what changed
+│   │   ├── exportMd.ts                    Markdown output
+│   │   ├── saveSchema.ts                  atomic disk write
+│   │   ├── renderHtml.ts                  bake data into HTML
+│   │   ├── ops.ts                         node/edge/zone mutations
+│   │   ├── pathjail.ts                    path safety
+│   │   ├── gitmd.ts                       .gitignore + AGENTS.md helpers
+│   │   ├── ids.ts                         watermark id minting
+│   │   ├── errors.ts                      DataError, CasError, ValidationError
+│   │   └── geometry.ts                    nodeW/nodeH (single source of truth)
+│   ├── editor.html                [generated] file:// editor (self-contained)
+│   ├── SKILL.md                   [generated] agent-facing manual
+│   ├── references/                [generated] deeper docs
+│   ├── VERSION
+│   └── .manifest.json             [generated] sha256 pin
+│
+├── SERVICE-MCP/llmscheme/         [artifact] Docker-deployable service
+│   ├── editor.html                [generated] service editor
+│   ├── console.html               [generated] admin console
+│   ├── assets/                    [generated] woff2 fonts
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── .env.example
+│   ├── VERSION
+│   └── README.md
+│
+├── HERMES-PLUGIN/llmscheme/       [artifact] hermes plugin (placeholder)
+│   ├── plugin.json                       manifest (name, entry, permissions)
+│   ├── plugin.mjs                        working entry: get/nodeAdd/...
+│   └── README.md
+│
+├── DEMO-PROJECT/                  [artifact] demo: test the skill here
+│   ├── src/run.ts                          1-file cat generator
+│   ├── cats.txt                            word list
+│   ├── .block_llm/scheme.json              demo scheme (2 nodes, 1 edge)
+│   ├── SCHEME.md                           generated markdown export
+│   ├── AGENTS.md                           agent section
+│   ├── README.md
+│   ├── .gitignore
+│   └── .block_llm/VERSION
+│
+├── src/                           [source] edit here, only here
+│   ├── core/                               shared data model (see SKILL/llmscheme/core)
+│   ├── cli/block.ts                        the CLI
+│   ├── service/                            HTTP service
+│   │   ├── server.ts                       entry point
+│   │   └── lib/                            http, auth, store, schemes, routes, mcp, pages, config
+│   ├── console/                            web admin console (Svelte 5)
+│   │   ├── App.svelte                      hash-routed 4-screen UI
+│   │   ├── api.ts                          fetch wrapper
+│   │   └── console.css
+│   ├── editor/                             browser editor (Svelte 5)
+│   │   ├── core/                           shared Svelte component
+│   │   │   ├── Editor.svelte                canvas + inspector + status bar
+│   │   │   ├── editor.css
+│   │   │   └── i18n.ts                     EN/RU dictionary
+│   │   ├── skill/                          file:// entry
+│   │   │   ├── main.ts                      tier A/B/C save
+│   │   │   └── pristine.ts                  HTML snapshot
+│   │   └── service/                        http entry
+│   │       └── main.ts                      tier S save (PUT /api/scheme)
+│   ├── ui/pixel.css                        palette + font (one place)
+│   ├── build/                              build scripts
+│   │   ├── build.ts                        esbuild + svelte/compiler → 3 HTML
+│   │   ├── sync-skill.ts                   SKILL/llmscheme/ sync
+│   │   └── check.ts                        byte-compare check
+│   └── test/                               node:test, no frameworks
+│       ├── core.test.ts                     33 tests
+│       ├── cli.test.ts                      21 tests
+│       └── service.test.ts                  19 tests
+│
+├── .test_on_local_proxmox/        [deploy] LXC 999 test sandbox
+│   └── test_dev.md                         hermes skill for the sandbox
+│
+├── docs/                          [source] in-depth guides
+│   ├── SCHEME_FORMAT.md                    JSON format reference
+│   ├── EDITOR.md                           editor tiers + file:// facts
+│   ├── LOGIN.md                            console + admin guide
+│   └── MIGRATION.md                        v1 → v2 changes
+│
+├── schemes/                       [source] UI requirements
+│   └── UI-page.json                        35 nodes, 8 zones (UI spec)
+│
+├── .github/workflows/ci.yml      [source] CI: typecheck → test → build → check
+│
+├── README.md                      [source] user-facing intro
+├── PROJECT.md                     [source] contributor's manual
+├── INTRO.md                       [source] service start page
+├── PLAN.md                        [history] v2 plan from v1 audit
+├── TODO.md                        [history] what was left to do
+├── LICENSE                        [source] MIT
+│
+├── .llm                           [this file] live snapshot
+├── .gitignore                     [source]
+├── .gitattributes                  [source] linguist-generated markers
+├── .astgrep.yml                    [linter] ast-grep config
+├── biome.json                     [formatter] excludes generated artifacts
+├── svelte.config.js               [linter] svelte-check config
+│
+├── package.json                   [source] devDeps: esbuild, svelte, typescript
+├── tsconfig.json                  [source] strict, erasableSyntaxOnly
+├── package-lock.json
+├── VERSION                        skill: 2.0.0 / format: 1
+│
+├── dist/                          [gitignored] build intermediate
+│
+├── node_modules/                  [gitignored]
+└── .git/                          [git]
+```
+
+---
+
+## Plan (what's next, what's done)
+
+| phase | description | status |
+|---|---|---|
+| 0 | archive v1, reset root to clean v2 | ✅ done |
+| 1 | core runs from .ts, 33 tests, CI | ✅ done |
+| 2 | CLI + skill + sync/check, 54 tests | ✅ done |
+| 3 | service: server.ts + pages.ts + 19 service tests | ✅ done |
+| 3.4 | SERVICE-MCP deploy wrapper (Dockerfile, compose) | ✅ done |
+| 4 | editor + console (Svelte 5) + 3 single-file HTML artifacts | ✅ done |
+| 5 | demo/ + plugin/ | ✅ done |
+| 6 | docs (README, PROJECT, INTRO, docs/, .llm) | ✅ done |
+| 7 | acceptance — all green | ✅ done |
+
+### Open items (not blocking)
+
+- **e2e tests** — the puppeteer harness from v1 is not ported yet. Not
+  blocking acceptance; the 73 unit + service tests cover the same
+  surface. Port when a browser test rig is available.
+- **DEMO-PROJECT** is the cat generator (v1 leftover). The user asked
+  for a GIF TUI cat demo. See "next" below.
+
+---
+
+## Next (suggested)
+
+The user asked for:
+1. **restructure** to `SKILL/llmscheme`, `SERVICE-MCP/llmscheme`,
+   `HERMES-PLUGIN/llmscheme`, `DEMO-PROJECT` — ✅ done
+2. **fix blank offline editor** — ✅ done (welcome seed in
+   `src/editor/skill/main.ts`)
+3. **real `.test_on_local_proxmox` deploy** — partial: `test_dev.md`
+   is a hermes skill reference, not a deploy script. Need a real
+   `deploy.sh` that SSHes to LXC 999 and runs the service.
+4. **GIF TUI cats demo** — replace the v1 cat generator with a
+   TUI-style cat generator that produces animated GIFs. New
+   `DEMO-PROJECT/src/`.
+
+### Suggested concrete next steps
+
+1. Create `DEMO-PROJECT/src/cat.ts` (TUI cat) and `DEMO-PROJECT/src/gif.ts`
+   (GIF output). Keep the scheme describing the data flow.
+2. Create `.test_on_local_proxmox/deploy.sh` that SSHes to LXC 999
+   and runs `docker compose up -d` for the service.
+3. Create `.test_on_local_proxmox/test.sh` that runs a smoke test
+   against the deployed service.
+4. Update `DEMO-PROJECT/README.md` to describe the new TUI cat demo.
+
+---
+
+## Conventions
+
+- **Edit `src/`.** Everything else is generated or deployed.
+- **`SKILL/llmscheme/` mirrors `src/{core,cli}` exactly.** A rename
+  in `src/core/` breaks the copied import.
+- **The on-disk format is v1-compatible.** A live v1 service
+  upgrades in place by replacing the container.
+- **CAS by `rev` on every write.** The CLI enforces this via
+  `--rev N`.
+- **One core, three entry points.** Browser-safe subset lives at
+  `src/core/browser.ts` (re-exports from `core/index.ts` minus
+  `node:fs`).
+- **Svelte 5 runes mode.** `compilerOptions.runes: true` in
+  `svelte.config.js`. Don't use legacy Svelte 4 syntax.
+- **No new dependencies without a reason.** v2 has 2 devDeps
+  (esbuild, svelte). The runtime is Node 22.18+ native type-
+  stripping.

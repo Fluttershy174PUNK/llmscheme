@@ -14,96 +14,108 @@ how to add a feature.
 ## The one-sentence version
 
 **Edit files in `src/`. Run `npm run verify`. Commit. The artifacts
-in `skill/`, `mcp-service/`, and `dist/` regenerate from `src/`
-and `npm run check` proves they match.**
+in `SKILL/llmscheme/`, `SERVICE-MCP/llmscheme/`, and `dist/` regenerate
+from `src/` and `npm run check` proves they match.**
 
 ---
 
-## Map of the repo
+## Map of the repo (v2 layout)
 
 ```
 llmscheme/
 │
-├── src/                ← THE source of truth. Edit here.
+├── src/                        ← THE source of truth. Edit here.
 │   │
-│   ├── core/           ← The data model. Pure TypeScript, zero deps.
-│   │                     Used by every other piece.
-│   │                     • types.ts        — Scheme, SchemeNode, etc.
-│   │                     • validate.ts     — error/warn rules
-│   │                     • layout.ts       — auto-place nodes
-│   │                     • diff.ts         — what changed
-│   │                     • exportMd.ts     — Markdown output
-│   │                     • saveSchema.ts   — atomic disk write
-│   │                     • renderHtml.ts   — bake data into HTML
-│   │                     • browser.ts      — same as index.ts, no node:fs
-│   │                     • (10 files total, ~1300 lines)
+│   ├── core/                   ← The data model. Pure TypeScript, zero deps.
+│   │                             Used by every other piece.
+│   │                             • types.ts        — Scheme, SchemeNode, etc.
+│   │                             • validate.ts     — error/warn rules
+│   │                             • layout.ts       — auto-place nodes
+│   │                             • diff.ts         — what changed
+│   │                             • exportMd.ts     — Markdown output
+│   │                             • saveSchema.ts   — atomic disk write
+│   │                             • renderHtml.ts   — bake data into HTML
+│   │                             • browser.ts      — same as index.ts, no node:fs
+│   │                             • (10 files total, ~1300 lines)
 │   │
-│   ├── cli/            ← The `block` command-line tool.
-│   │                     One file, 16 subcommands, no bundler.
+│   ├── cli/                    ← The `block` command-line tool.
+│   │                             One file, 16 subcommands, no bundler.
 │   │
-│   ├── service/        ← The HTTP service (REST + MCP).
-│   │   ├── server.ts   ← Entry point
-│   │   └── lib/        ← Routing, auth, store, schemes, pages, config
+│   ├── service/                ← The HTTP service (REST + MCP).
+│   │   ├── server.ts           ← Entry point
+│   │   └── lib/                ← Routing, auth, store, schemes, pages, config
 │   │
-│   ├── editor/         ← The browser-based visual editor.
-│   │   ├── core/       ← Shared Svelte 5 component (canvas + inspector)
-│   │   ├── skill/      ← Entry point for opening scheme.html from disk
-│   │   └── service/    ← Entry point for opening editor in the service
+│   ├── editor/                 ← The browser-based visual editor.
+│   │   ├── core/               ← Shared Svelte 5 component (canvas + inspector)
+│   │   ├── skill/              ← file:// entry (tier A/B/C saves)
+│   │   └── service/            ← http entry (tier S — PUT /api/scheme)
 │   │
-│   ├── console/        ← The web admin console (login, projects, users).
-│   │                     Single Svelte 5 component, hash-routed.
+│   ├── console/                ← The web admin console (login, projects, users).
+│   │                             Single Svelte 5 component, hash-routed.
 │   │
-│   ├── ui/             ← Shared CSS — the pixel font and colour palette.
-│   │                     One file. Imported by the editor and the console.
+│   ├── ui/                     ← Shared CSS — the pixel font and colour palette.
+│   │                             One file. Imported by the editor and the console.
 │   │
-│   ├── build/          ← Build scripts.
-│   │   ├── build.ts    ← esbuild + svelte/compiler → 3 single-file HTML
-│   │   ├── sync-skill.ts  ← Mirror src/ → skill/ with a sha256 manifest
-│   │   └── check.ts    ← Verify the artifacts match the source
+│   ├── build/                  ← Build scripts.
+│   │   ├── build.ts            ← esbuild + svelte/compiler → 3 single-file HTML
+│   │   ├── sync-skill.ts       ← SKILL/llmscheme/ sync (sha256-pinned)
+│   │   └── check.ts            ← Verify the artifacts match the source
 │   │
-│   └── test/           ← Tests (node:test, no frameworks).
-│                         73 tests: 33 core, 21 CLI, 19 service.
+│   └── test/                   ← Tests (node:test, no frameworks).
+│                                 73 tests: 33 core, 21 CLI, 19 service.
 │
-├── skill/              ← GENERATED. A verbatim copy of src/core + src/cli.
-│                         Drop this directory into your AI agent's skills
-│                         folder and the agent gains the `block` command.
-│                         SHA256-pinned by .manifest.json.
+├── SKILL/llmscheme/            ← GENERATED. A verbatim copy of src/{core,cli}.
+│                                 Drop this directory into your AI agent's skills
+│                                 folder and the agent gains the `block` command.
 │
-├── mcp-service/        ← GENERATED. The deploy image's filesystem.
-│   ├── editor.html     ← Self-contained editor (one file, ~110 KB)
-│   ├── console.html    ← Self-contained console (one file, ~77 KB)
-│   ├── assets/         ← woff2 font files
-│   ├── Dockerfile      ← Builds on node:22, no compile step
+├── SERVICE-MCP/llmscheme/      ← GENERATED + deploy config. The deploy image's
+│   ├── editor.html             ← Self-contained editor (one file, ~110 KB)
+│   ├── console.html            ← Self-contained console (one file, ~77 KB)
+│   ├── assets/                 ← woff2 font files
+│   ├── Dockerfile              ← Builds on node:22, no compile step
 │   ├── docker-compose.yml
 │   ├── .env.example
-│   └── README.md       ← Operator's guide
+│   └── README.md               ← Operator's guide
 │
-├── demo/               ← A tiny demo project ("cat generator") with
-│                         a real scheme, ready to open in the editor.
+├── HERMES-PLUGIN/llmscheme/    ← Hermes plugin (placeholder). v1 had only the
+│                                 manifest; v2 ships a working plugin.mjs that
+│                                 uses the same core.
 │
-├── plugin/             ← A minimal hermes plugin manifest + entry.
-│                         v1 had only the manifest; v2 ships a working
-│                         plugin.mjs that uses the same core.
+├── DEMO-PROJECT/               ← A real demo project: TUI cat generator with
+│   ├── src/cat.ts              ← TUI rendering (ANSI colours, no deps)
+│   ├── src/gif.ts              ← GIF output (LZW + global colour table, no deps)
+│   ├── src/run.ts              ← entry point
+│   ├── cats.txt                ← word list
+│   ├── .block_llm/scheme.json  ← a real scheme (5 nodes, 5 edges, 1 zone)
+│   ├── SCHEME.md               ← generated markdown export
+│   ├── AGENTS.md               ← agent section
+│   ├── README.md
+│   └── .gitignore
 │
-├── docs/               ← User-facing guides:
-│   ├── SCHEME_FORMAT.md   — JSON format, every field, validation rules
-│   ├── EDITOR.md          — Editor tiers + browser quirks
-│   ├── LOGIN.md           — Console + admin screens
-│   └── MIGRATION.md       — v1 → v2 changes
+├── .test_on_local_proxmox/     ← Real deploy + test for the dev sandbox.
+│   ├── deploy.sh               ← build + rsync + docker compose up
+│   ├── test.sh                 ← smoke test the deployed service
+│   ├── test_dev.md             ← hermes skill reference for the sandbox
+│   └── README.md
 │
-├── schemes/            ← UI requirements (the source of truth for
-│   └── UI-page.json      the editor's feature set: 35 nodes, 8 zones)
+├── docs/                       ← User-facing guides:
+│   ├── SCHEME_FORMAT.md        ← JSON format, every field, validation rules
+│   ├── EDITOR.md               ← Editor tiers + browser quirks
+│   ├── LOGIN.md                ← Console + admin guide
+│   └── MIGRATION.md            ← v1 → v2 changes
+│
+├── schemes/                    ← UI requirements (35 nodes, 8 zones)
+│   └── UI-page.json
 │
 ├── .github/workflows/
-│   └── ci.yml          ← Runs typecheck → test → build → check on push
+│   └── ci.yml                  ← Runs typecheck → test → build → check on push
 │
-├── package.json        ← Node ≥ 22.18, devDeps: esbuild + svelte
-├── tsconfig.json       ← strict, erasableSyntaxOnly
-├── biome.json          ← Formatter config (excludes generated artifacts)
-├── svelte.config.js    ← svelte-check config (suppresses 4 known a11y
-│                         warnings inherent to a mouse-driven pixel editor)
+├── package.json                ← Node ≥ 22.18, devDeps: esbuild + svelte
+├── tsconfig.json               ← strict, erasableSyntaxOnly
+├── biome.json                  ← Formatter config (excludes generated artifacts)
+├── svelte.config.js            ← svelte-check config (4 known a11y suppressions)
 │
-└── README.md           ← The user-facing introduction
+└── README.md  PROJECT.md  INTRO.md  LICENSE  PLAN.md  TODO.md  .llm
 ```
 
 ---
@@ -120,7 +132,7 @@ npm run typecheck
 # run all tests (73 of them)
 npm test
 
-# build the three HTML artifacts + regenerate skill/
+# build the three HTML artifacts + regenerate SKILL/
 npm run build
 npm run sync-skill
 
@@ -131,6 +143,10 @@ npm run verify
 PORT=8080 DATA_DIR=./data \
     ADMIN_PASSWORD=changeme \
     node src/service/server.ts
+
+# deploy to the dev sandbox
+./.test_on_local_proxmox/deploy.sh
+./.test_on_local_proxmox/test.sh
 ```
 
 ---
@@ -155,8 +171,10 @@ PORT=8080 DATA_DIR=./data \
 | ...EN/RU translations | `src/editor/core/i18n.ts` |
 | ...the build (which entries, what bundles) | `src/build/build.ts` |
 | ...the on-disk format that the agent sees | `src/core/*` (then re-run `npm run sync-skill`) |
-| ...the skill's user manual for the agent | `skill/SKILL.md` (it's a verbatim copy of `src/skill/SKILL.md` after sync) |
-| ...the operator's guide for the docker image | `mcp-service/README.md` |
+| ...the skill's user manual for the agent | `src/skill/SKILL.md` (it's a verbatim copy of `SKILL/llmscheme/SKILL.md` after sync) |
+| ...the operator's guide for the docker image | `SERVICE-MCP/llmscheme/README.md` |
+| ...the deploy script for the dev sandbox | `.test_on_local_proxmox/deploy.sh` |
+| ...the current live snapshot for LLMs | `.llm` |
 | ...the CI pipeline | `.github/workflows/ci.yml` |
 
 ---
@@ -171,8 +189,8 @@ src/console/main.ts       ──┘                                       │
                                               ┌────────────────────┴────────────────────┐
                                               │                                         │
                                               ▼                                         ▼
-                              mcp-service/editor.html                      skill/editor.html
-                              mcp-service/console.html                     dist/editor.html
+                              SERVICE-MCP/llmscheme/editor.html             SKILL/llmscheme/editor.html
+                              SERVICE-MCP/llmscheme/console.html           dist/editor.html
                               (served by the HTTP service)                  (opened from file://)
 ```
 
@@ -186,14 +204,15 @@ The build script (`src/build/build.ts`) does:
    `<script type="application/json" id="scheme-data">` tag
 
 `npm run sync-skill` then copies `src/core/*` and `src/cli/block.ts`
-into `skill/`, and copies `dist/editor.html` into `skill/editor.html`.
-The sha256 of every file is recorded in `skill/.manifest.json`.
+into `SKILL/llmscheme/`, and copies `dist/editor.html` into
+`SKILL/llmscheme/editor.html`. The sha256 of every file is recorded in
+`SKILL/llmscheme/.manifest.json`.
 
 `npm run check` then verifies:
 
-- `skill/core/*.ts` and `src/core/*.ts` are byte-identical
-- `skill/editor.html` is byte-identical to what `npm run build` just
-  produced
+- `SKILL/llmscheme/core/*.ts` and `src/core/*.ts` are byte-identical
+- `SKILL/llmscheme/editor.html` is byte-identical to what `npm run
+  build` just produced
 - `editor.html` is within the 200 KB budget
 - `console.html` is within the 80 KB budget
 - `editor.html` has no external `src=` or `href=` (file:// invariant)
@@ -211,10 +230,10 @@ If any of these checks fail, the build is broken — don't ship it.
 | 0 | archive v1, reset root | ✅ 916 KB archive, root = clean v2 |
 | 1 | core runs from .ts, 33 tests, CI | ✅ commit `e1745a8` |
 | 2 | CLI + skill + sync/check, 54 tests | ✅ commit `527c438` |
-| 3 | service: server.ts + pages.ts + 19 service tests + mcp-service/ | ✅ 73/73 tests |
+| 3 | service: server.ts + pages.ts + 19 service tests + SERVICE-MCP/ | ✅ 73/73 tests |
 | 4 | editor + console (Svelte 5) + 3 single-file HTML artifacts | ✅ within budget |
-| 5 | demo/ + plugin/ | ✅ |
-| 6 | docs + CI | ✅ (this file) |
+| 5 | DEMO-PROJECT/ + HERMES-PLUGIN/ | ✅ |
+| 6 | docs (README, PROJECT, INTRO, .llm) | ✅ (this file) |
 | 7 | acceptance | ✅ see below |
 
 ---
@@ -235,13 +254,13 @@ The v1 audit catalogued 18 bugs. All closed and tested in v2:
 | B8 | `nodes: null` corrupted the scheme on disk | Strict validation rejects the write, the on-disk scheme stays healthy |
 | B9 | `?t=<token>` in the access log | `logRequest` strips the query string |
 | B10 | `SCHEME.md` wasn't idempotent (different `updatedAt` every render) | `exportMd` reads `meta.updatedAt` from the scheme |
-| B11 | Autosave rotation was a no-op (`autosaveForce ?? true` always won) | `AUTOSAVE_MIN_MS` + `AUTOSAVE_KEEP` actually enforce the cap |
+| B11 | Autosave rotation was a no-op | `AUTOSAVE_MIN_MS` + `AUTOSAVE_KEEP` actually enforce the cap |
 | B12 | `nodeW` / `nodeH` existed in two copies (editor vs core) that drifted | One source of truth in `src/core/geometry.ts` |
 | B13 | A `GET` to `/api/mcp-config` revoked every key and issued a new one | `GET` is read-only; rotate is an explicit `POST` with confirmation |
 | B14 | Dead exports (`jailReal`, `dirSizeLimitExceeded`, etc.) | `src/core/index.ts` is the curated public surface |
 | B15 | No Origin check on the MCP endpoint | `checkOrigin` returns 403 on a foreign browser Origin |
 | B16 | MCP spoke only the 2025-era protocol | Dual-era: modern (`2026-07-28`, `server/discover`, `_meta`) and legacy (`initialize`) |
-| B17 | No redo, no autosave, no dirty flag, no `beforeunload` warning | All four in `Editor.svelte` |
+| B17 | No redo, no autosave, no dirty flag, no `beforeunload` | All four in `Editor.svelte` |
 | B18 | The console was hardcoded Russian, no password change, no user column | `App.svelte` i18n + settings page + users screen |
 
 ---
@@ -251,10 +270,14 @@ The v1 audit catalogued 18 bugs. All closed and tested in v2:
 - [x] `npm run verify` green (typecheck + test + build + check)
 - [x] 73/73 unit tests + 19/19 service tests
 - [x] Three HTML artifacts within budget (137 K / 111 K / 77 K)
-- [x] `check` proves `skill/` matches `src/`
+- [x] `check` proves `SKILL/llmscheme/` matches `src/`
 - [x] No external `src/href` in `editor.html` (file:// invariant)
 - [x] No IP/secret in code
 - [x] All 18 v1 bugs (B1–B18) closed and covered by a test
+- [x] v2 layout: `SKILL/llmscheme/`, `SERVICE-MCP/llmscheme/`, `HERMES-PLUGIN/llmscheme/`, `DEMO-PROJECT/`
+- [x] Offline editor no longer blank (welcome seed in `src/editor/skill/main.ts`)
+- [x] `INTRO.md` (service start page) and `.llm` (live snapshot) exist
+- [x] `.test_on_local_proxmox/deploy.sh` and `test.sh` are real deploy scripts
 
 ---
 

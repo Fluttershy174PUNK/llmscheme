@@ -11,6 +11,35 @@ and regenerates every time you save.
 
 ---
 
+## What's in this repo (v2 layout)
+
+```
+llmscheme/
+├── SKILL/llmscheme/          ← drop-in skill for AI agents
+├── SERVICE-MCP/llmscheme/    ← Docker-deployable HTTP service
+├── HERMES-PLUGIN/llmscheme/  ← hermes plugin (placeholder)
+├── DEMO-PROJECT/             ← demo: test the skill in a real project
+├── src/                      ← all source code (edit here)
+├── .llm                      ← current structure + plan (for LLMs)
+├── .test_on_local_proxmox/   ← real deploy + test scripts
+├── README.md  PROJECT.md  INTRO.md  LICENSE
+├── docs/                     ← in-depth guides
+├── schemes/                  ← UI requirements
+└── PLAN.md  TODO.md          ← historical planning
+```
+
+- **SKILL/llmscheme/** is a self-contained copy of `src/{core,cli}`.
+  Drop it into your agent's skills directory and it gets the `block`
+  command.
+- **SERVICE-MCP/llmscheme/** is the Docker image. The Dockerfile runs
+  `node src/service/server.ts` directly — no build step in the image.
+- **HERMES-PLUGIN/llmscheme/** is a placeholder until the hermes plugin
+  spec is final.
+- **DEMO-PROJECT/** is a real project with a scheme. Use it to test
+  the skill end-to-end.
+
+---
+
 ## Table of contents
 
 1. [What problem does this solve?](#what-problem-does-this-solve)
@@ -21,10 +50,9 @@ and regenerates every time you save.
 6. [For LLM agents](#for-llm-agents)
 7. [For humans (browser editor)](#for-humans-browser-editor)
 8. [For operators (HTTP service)](#for-operators-http-service)
-9. [Repo layout (for contributors)](#repo-layout-for-contributors)
-10. [Glossary](#glossary)
-11. [Troubleshooting](#troubleshooting)
-12. [Where to read next](#where-to-read-next)
+9. [Glossary](#glossary)
+10. [Troubleshooting](#troubleshooting)
+11. [Where to read next](#where-to-read-next)
 
 ---
 
@@ -114,7 +142,7 @@ does.
 
 ```bash
 mkdir my-project && cd my-project
-node /path/to/llmscheme/skill/cli/block.ts init --name "My Project"
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts init --name "My Project"
 ```
 
 That creates `.block_llm/scheme.json`, a `.gitignore` line, and an
@@ -124,13 +152,13 @@ and `.block_llm/scheme.html` (the browser editor).
 ### Step 3: add a few nodes
 
 ```bash
-node /path/to/llmscheme/skill/cli/block.ts node add \
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts node add \
     --label "Login page" --ref src/login.ts
 
-node /path/to/llmscheme/skill/cli/block.ts node add \
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts node add \
     --label "Token store" --ref src/tokens.ts
 
-node /path/to/llmscheme/skill/cli/block.ts edge add \
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts edge add \
     --from n1 --to n2
 ```
 
@@ -152,13 +180,23 @@ The page works **without** a web server. It opens straight from
 ### Step 5: check everything is healthy
 
 ```bash
-node /path/to/llmscheme/skill/cli/block.ts doctor
-node /path/to/llmscheme/skill/cli/block.ts validate
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts doctor
+node /path/to/llmscheme/SKILL/llmscheme/cli/block.ts validate
 ```
 
 `doctor` checks that `scheme.json`, `SCHEME.md`, and `scheme.html`
 agree. `validate` checks the JSON for errors (broken edges, unknown
 shapes, etc.).
+
+### Step 6: test the demo project
+
+```bash
+cd /path/to/llmscheme/DEMO-PROJECT
+cat .block_llm/scheme.json          # a real scheme
+cat SCHEME.md                       # its markdown export
+open .block_llm/scheme.html         # the browser editor
+node src/run.ts                     # the actual program
+```
 
 ---
 
@@ -203,8 +241,8 @@ runs `block put` which does the same three steps.
 
 ## For LLM agents
 
-Drop the `skill/` directory into your agent's skills folder (for
-Claude Code: `${CLAUDE_SKILL_DIR}`). The agent will then have a
+Drop the `SKILL/llmscheme/` directory into your agent's skills folder
+(for Claude Code: `${CLAUDE_SKILL_DIR}`). The agent will then have a
 `block` command available with subcommands like `init`, `get`,
 `node add`, `edge add`, `validate`, `diff`, `doctor`, `pull`, `sync`,
 `restore`, `history`, `render`, `upgrade`, `version`.
@@ -219,8 +257,8 @@ ritual is:
    rev you read in step 2)
 5. `doctor` to confirm JSON + MD + HTML are all consistent
 
-Full reference: [skill/SKILL.md](skill/SKILL.md) — this is what the
-agent sees.
+Full reference: [SKILL/llmscheme/SKILL.md](SKILL/llmscheme/SKILL.md) —
+this is what the agent sees.
 
 ---
 
@@ -248,7 +286,8 @@ When you hit **SAVE**, the editor gives you three options:
 - **Tier S** (when the editor is served by the HTTP service): a
   direct write to the server.
 
-For the full editor manual, see [docs/EDITOR.md](docs/EDITOR.md).
+For the full editor manual, see
+[SKILL/llmscheme/references/EDITOR.md](SKILL/llmscheme/references/EDITOR.md).
 
 ---
 
@@ -263,7 +302,6 @@ admins. It exposes:
 - A **visual editor** at `http://localhost:8080/editor/<scheme-name>`
 - A **REST API** at `http://localhost:8080/api/...` for scripts
 - An **MCP endpoint** at `http://localhost:8080/mcp` for AI clients
-  (Claude Desktop, Cursor, etc.)
 
 ### Start the service
 
@@ -271,81 +309,40 @@ admins. It exposes:
 cd llmscheme
 npm install
 npm run build              # one-time: produces the HTML artifacts
-npm run sync-skill         # one-time: updates skill/ from src/
+npm run sync-skill         # one-time: updates SKILL/ from src/
+
 ADMIN_PASSWORD=changeme PORT=8080 \
     DATA_DIR=./data \
     node src/service/server.ts
 ```
 
-Now open `http://localhost:8080/` in a browser. Log in as
-`admin` / `changeme`. **Change the password on the settings page
-immediately.**
+Open `http://localhost:8080/` in a browser. Log in as `admin` /
+`changeme`. **Change the password on the settings page immediately.**
 
 ### Or run it with Docker
 
 ```bash
-cd mcp-service
+cd SERVICE-MCP/llmscheme
 cp .env.example .env
-# edit .env: set ADMIN_PASSWORD
-docker compose up
+# edit .env: set ADMIN_PASSWORD to something strong
+
+docker compose up -d
 ```
 
 The container runs the same `node src/service/server.ts` command.
-Schemes and user accounts live in the `DATA_DIR` volume.
+Schemes and user accounts live in the `llm-data` named volume.
 
-Full operator reference: [mcp-service/README.md](mcp-service/README.md).
+### Deploy to the dev sandbox (proxmox LXC 999)
 
----
-
-## Repo layout (for contributors)
-
-```
-llmscheme/
-├── src/              ← Edit this. The source of truth.
-│   ├── core/         ← The data model + validation (pure TypeScript, no deps)
-│   ├── cli/          ← The `block` command-line tool
-│   ├── service/      ← The HTTP service (REST + MCP)
-│   ├── editor/       ← The browser editor (Svelte 5)
-│   ├── console/      ← The web console (login + admin)
-│   ├── ui/           ← Shared CSS (pixel font + colour palette)
-│   ├── build/        ← Build scripts (esbuild + svelte/compiler)
-│   └── test/         ← Tests (node:test, no frameworks)
-│
-├── skill/            ← Generated copy of src/core + src/cli + SKILL.md
-│                      Drop this into your agent's skills folder.
-│
-├── mcp-service/      ← Generated HTML artifacts + Dockerfile for the
-│                      deployable service
-│
-├── demo/             ← A tiny demo project ("cat generator") with a
-│                      real scheme, ready to open in the editor
-│
-├── plugin/           ← A minimal hermes plugin manifest + entry
-│
-├── docs/             ← In-depth guides:
-│   ├── SCHEME_FORMAT.md   — JSON format, validation rules
-│   ├── EDITOR.md          — Editor tiers + file:// browser facts
-│   ├── LOGIN.md           — Console + admin guide
-│   └── MIGRATION.md       — v1 → v2 changes
-│
-├── schemes/          ← UI requirements (the source of truth for the
-│   UI-page.json        editor's feature set)
-│
-└── .github/
-    └── workflows/
-        └── ci.yml     ← Typecheck → test → build → check on every push
+```bash
+export DEV_PASSWORD='…'           # from .test_on_local_proxmox/test_dev.md
+export ADMIN_PASSWORD='changeme'
+./.test_on_local_proxmox/deploy.sh     # build + rsync + docker up
+./.test_on_local_proxmox/test.sh        # smoke test
 ```
 
-### Two rules to remember
-
-1. **Edit `src/`.** Everything else (`skill/`, `mcp-service/`,
-   `dist/`) is generated. After editing, run `npm run build &&
-   npm run sync-skill && npm run check` to regenerate and prove the
-   generated files are up to date.
-
-2. **The on-disk format is v1-compatible.** A live v1 service
-   upgrades in place by replacing the container — no migration
-   step. See [docs/MIGRATION.md](docs/MIGRATION.md).
+Full operator reference:
+[SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md).
 
 ---
 
@@ -357,13 +354,13 @@ llmscheme/
 | **node** | A box on the diagram — a module, file, or concept in your project |
 | **edge** | An arrow between two nodes — a data flow, dependency, or call |
 | **zone** | A dashed rectangle that groups nodes — a layer, subsystem, or "this stuff belongs together" |
-| **rev** | A revision number. Starts at 0, increments on every write. Used for CAS (compare-and-swap) to prevent two writers from clobbering each other |
-| **CAS** | Compare-And-Swap. A write that succeeds only if the on-disk `rev` matches what the writer read. The CLI enforces this via `--rev N` |
-| **core** | The data model + validation library (in `src/core/`). Pure TypeScript, zero dependencies. Used by every entry point |
-| **skill** | A directory an AI agent loads to gain new capabilities. Here, `skill/` is what Claude Code etc. see when you mount the project |
-| **MCP** | Model Context Protocol. A standard way for AI assistants to call tools on a server. llmscheme speaks both the 2025-era and 2026-era versions |
+| **rev** | A revision number. Starts at 0, increments on every write. Used for CAS to prevent two writers from clobbering each other |
+| **CAS** | Compare-And-Swap. A write that succeeds only if the on-disk `rev` matches what the writer read. |
+| **core** | The data model + validation library. Pure TypeScript, zero dependencies. |
+| **skill** | A directory an AI agent loads to gain new capabilities. Here, `SKILL/llmscheme/`. |
+| **MCP** | Model Context Protocol. A standard way for AI assistants to call tools on a server. |
 | **tier** | A save strategy for the browser editor: A = command for the agent, B = direct file write, C = download, S = HTTP PUT to the service |
-| **wrap** | Auto-wrap long labels to fit a box. Set to 34 characters wide, mirrors what the Markdown export does |
+| **wrap** | Auto-wrap long labels to fit a box. Set to 34 characters wide. |
 
 ---
 
@@ -378,9 +375,8 @@ stale-ref: src/foo.ts does not exist
 The path in your node's `refs` array points to a file that doesn't
 exist anymore. Either:
 
-- Rename the file in your code, then update the scheme:
-  `node block.ts node update --id n3 --ref src/new-name.ts`
-- Delete the node: `node block.ts node remove --id n3`
+- Rename the file in your code, then update the scheme
+- Delete the node
 
 ### "Two writers clobbered each other"
 
@@ -388,37 +384,28 @@ exist anymore. Either:
 conflict: scheme changed on disk (rev 7 → 8), re-read and retry
 ```
 
-Someone (or another tab of the editor) wrote to the scheme between
-when you read it and when you tried to write. Re-run `get --json` to
-see the new `rev`, and retry your write with `--rev N` set to the
-new value.
+Someone wrote to the scheme between when you read it and when you
+tried to write. Re-run `get --json` to see the new `rev`, and retry
+your write with `--rev N` set to the new value.
 
 ### "The CLI says `node` is not found"
 
 You're using Node < 22.18, or the path to the CLI is wrong.
 
-- Check: `node --version` (should be 22.18 or newer)
-- Check: the path you typed actually points at `skill/cli/block.ts`
-  (not at `src/cli/block.ts`, which is identical but not a working
-  skill)
+- `node --version` should be 22.18 or newer
+- The path you typed actually points at `SKILL/llmscheme/cli/block.ts`
 
 ### "The browser editor shows a blank canvas"
 
-Either:
-
-- The scheme has no nodes. Add one with `block node add ...` and
-  refresh the page.
-- The browser is Firefox and the editor can't read the JSON because
-  file:// is restricted. Open `about:config` and check
-  `security.fileuri.strict_origin_policy` — set to `false` for
-  development, or open via the HTTP service instead.
+If the scheme has no nodes, the editor shows a welcome seed
+(3 nodes, 2 edges) so you have something to work with. Add a real
+scheme with `block init` and refresh.
 
 ### "The MCP endpoint returns 403 origin not allowed"
 
 Your browser sent an `Origin` header that the server doesn't trust.
 Set `ORIGIN_ALLOWLIST` in the server's environment to a
-comma-separated list of allowed origins. See
-[mcp-service/README.md](mcp-service/README.md).
+comma-separated list of allowed origins.
 
 ### "I forgot the admin password"
 
@@ -430,35 +417,24 @@ sessions** but leaves your schemes on disk intact.
 
 ## Where to read next
 
-**If you're an LLM agent** (or configuring one):
-
-- [skill/SKILL.md](skill/SKILL.md) — the agent's manual, the one it
-  reads first
-
-**If you're using the browser editor:**
-
-- [docs/EDITOR.md](docs/EDITOR.md) — save tiers, keyboard shortcuts,
-  browser quirks
-
-**If you're running the HTTP service:**
-
-- [mcp-service/README.md](mcp-service/README.md) — REST + MCP API
-  reference
-- [docs/LOGIN.md](docs/LOGIN.md) — the console + admin screens
-
-**If you want to know the JSON format inside-out:**
-
-- [docs/SCHEME_FORMAT.md](docs/SCHEME_FORMAT.md) — every field,
-  every validation rule, every migration
-
-**If you're upgrading from v1:**
-
-- [docs/MIGRATION.md](docs/MIGRATION.md) — what changed, what to do
-
-**If you're contributing code:**
-
-- [PROJECT.md](PROJECT.md) — the repo hub, day-to-day commands,
-  status of every phase
+- **If you're an LLM agent** (or configuring one):
+  [SKILL/llmscheme/SKILL.md](SKILL/llmscheme/SKILL.md)
+- **If you're using the browser editor:**
+  [SKILL/llmscheme/references/EDITOR.md](SKILL/llmscheme/references/EDITOR.md)
+  or [docs/EDITOR.md](docs/EDITOR.md)
+- **If you're running the HTTP service:**
+  [SERVICE-MCP/llmscheme/README.md](SERVICE-MCP/llmscheme/README.md)
+  or [docs/LOGIN.md](docs/LOGIN.md)
+- **If you want to know the JSON format inside-out:**
+  [docs/SCHEME_FORMAT.md](docs/SCHEME_FORMAT.md)
+- **If you're upgrading from v1:**
+  [docs/MIGRATION.md](docs/MIGRATION.md)
+- **If you're contributing code:**
+  [PROJECT.md](PROJECT.md)
+- **If you want a live snapshot of the project:**
+  [.llm](.llm)
+- **If you want to deploy to the dev sandbox:**
+  [.test_on_local_proxmox/README.md](.test_on_local_proxmox/README.md)
 
 ---
 

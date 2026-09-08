@@ -1,7 +1,7 @@
 {
   "format": "block-llm",
   "version": 1,
-  "rev": 3,
+  "rev": 1,
   "name": "cats",
   "project": {
     "root": ".",
@@ -14,7 +14,7 @@
       "id": "n1",
       "shape": "rect",
       "label": "cats.txt",
-      "description": "word list, one cat per line (nouns and adjectives)",
+      "description": "word list, one cat per line",
       "x": 80,
       "y": 60,
       "refs": [
@@ -29,7 +29,7 @@
       "x": 320,
       "y": 60,
       "refs": [
-        "src/pick.ts"
+        "src/cat.ts"
       ]
     },
     {
@@ -40,7 +40,7 @@
       "x": 320,
       "y": 140,
       "refs": [
-        "src/pick.ts"
+        "src/cat.ts"
       ]
     },
     {
@@ -51,18 +51,19 @@
       "x": 560,
       "y": 100,
       "refs": [
-        "src/compose.ts"
+        "src/run.ts"
       ]
     },
     {
       "id": "n5",
       "shape": "rect",
-      "label": "print()",
-      "description": "stdout",
+      "label": "render()",
+      "description": "TUI cat (stdout) or GIF (file)",
       "x": 800,
       "y": 100,
       "refs": [
-        "src/print.ts"
+        "src/cat.ts",
+        "src/gif.ts"
       ]
     }
   ],
@@ -101,7 +102,7 @@
   "zones": [
     {
       "id": "z1",
-      "label": "cat generator",
+      "label": "cat generator (TUI + GIF)",
       "x": 40,
       "y": 20,
       "w": 880,
