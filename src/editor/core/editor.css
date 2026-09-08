@@ -1,0 +1,299 @@
+/* editor.css — the editor's own styles on top of src/ui/pixel.css.
+ * Kept separate from pixel.css so the console does not pay for editor bits. */
+.topbar {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 8px;
+	background: var(--panel);
+	box-shadow: inset 0 -2px 0 var(--dark);
+	flex-wrap: wrap;
+}
+.topbar .spacer {
+	flex: 1;
+}
+.title {
+	color: var(--accent);
+	font-size: 12px;
+}
+.rev {
+	color: var(--dim);
+}
+.path {
+	color: var(--dim);
+	font-size: 9px;
+	max-width: 40vw;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.statusbar {
+	display: flex;
+	gap: 14px;
+	align-items: center;
+	padding: 6px 8px;
+	background: var(--panel);
+	box-shadow: inset 0 2px 0 var(--dark);
+	color: var(--dim);
+	flex-wrap: wrap;
+}
+.statusbar .tier {
+	color: var(--accent);
+}
+.statusbar .conflict {
+	color: var(--err);
+}
+
+.palette {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 8px 6px;
+	background: var(--panel);
+	box-shadow: inset -2px 0 0 var(--dark);
+	flex-shrink: 0;
+}
+.palette button {
+	padding: 6px;
+	line-height: 0;
+}
+.palette svg {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: 2;
+}
+.palette button.on svg {
+	stroke: var(--dark);
+}
+.palette button.on {
+	background: var(--accent);
+}
+
+.canvas-wrap svg.placing {
+	cursor: copy;
+}
+.main {
+	flex: 1;
+	display: flex;
+	min-height: 0;
+}
+.canvas-wrap {
+	flex: 1;
+	position: relative;
+	overflow: hidden;
+	background: var(--bg);
+}
+.canvas-wrap svg {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	cursor: grab;
+}
+.canvas-wrap svg.dragging {
+	cursor: grabbing;
+}
+
+.inspector {
+	width: 280px;
+	background: var(--panel);
+	box-shadow: inset 2px 0 0 var(--dark);
+	padding: 10px;
+	overflow-y: auto;
+	flex-shrink: 0;
+}
+.inspector h3 {
+	margin: 0 0 8px;
+	font-size: 10px;
+	color: var(--accent);
+}
+.inspector label {
+	display: block;
+	margin: 8px 0 2px;
+	color: var(--dim);
+}
+.inspector .row {
+	display: flex;
+	gap: 6px;
+}
+.inspector .row > * {
+	flex: 1;
+}
+.inspector .danger {
+	background: #ab5236;
+	margin-top: 10px;
+}
+
+.tbl-editor {
+	margin: 8px 0;
+}
+.tbl-toolbar {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+	color: var(--dim);
+	margin-bottom: 4px;
+}
+.tbl-toolbar button.mini {
+	padding: 2px 7px;
+	font-size: 9px;
+}
+.tbl-grid {
+	border-collapse: collapse;
+	width: 100%;
+}
+.tbl-grid th,
+.tbl-grid td {
+	padding: 0;
+	border: 1px solid var(--panel2);
+}
+.tbl-grid input {
+	border: 0;
+	box-shadow: none;
+	padding: 3px 4px;
+	font-size: 8px;
+}
+.tbl-grid th input {
+	color: var(--accent);
+}
+
+.warnlist {
+	margin: 6px 0 0;
+	padding: 0;
+	list-style: none;
+	color: var(--warn);
+}
+.warnlist li {
+	margin: 4px 0;
+	word-break: break-word;
+}
+
+.hint {
+	color: var(--dim);
+	margin: 8px 0 0;
+}
+.savebox {
+	margin-top: 10px;
+	padding: 8px;
+	background: var(--dark);
+	max-height: 260px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--accent);
+}
+
+.node-shape {
+	fill: var(--panel);
+	stroke: var(--edge);
+	stroke-width: 2;
+}
+.node.selected .node-shape {
+	stroke: var(--accent);
+}
+.node.orphan .node-shape {
+	stroke: var(--warn);
+}
+.node text {
+	fill: var(--ink);
+	font-family: inherit;
+	font-size: 9px;
+	pointer-events: none;
+}
+.node .tbl-head {
+	fill: var(--accent);
+	font-size: 8px;
+}
+.node .tbl-col {
+	fill: var(--dim);
+	font-size: 7px;
+}
+.node .tbl-cell {
+	fill: var(--ink);
+	font-size: 7px;
+}
+.edge-path {
+	fill: none;
+	stroke: var(--edge);
+	stroke-width: 2;
+}
+.edge-path.dashed {
+	stroke-dasharray: 6 4;
+}
+.edge-label {
+	fill: var(--dim);
+	font-family: inherit;
+	font-size: 8px;
+}
+.stale-badge {
+	fill: var(--err);
+	font-size: 8px;
+	font-family: inherit;
+}
+
+.zone rect {
+	fill: rgba(148, 176, 194, 0.06);
+	stroke: var(--dim);
+	stroke-width: 2;
+	stroke-dasharray: 8 5;
+}
+.zone.selected rect {
+	stroke: var(--accent);
+	fill: rgba(255, 205, 117, 0.07);
+}
+.zone-label {
+	fill: var(--dim);
+	font-size: 9px;
+	font-family: inherit;
+}
+.zone.selected .zone-label {
+	fill: var(--accent);
+}
+.zone .resize-handle {
+	fill: var(--accent);
+	stroke: var(--dark);
+	stroke-width: 2;
+	cursor: nwse-resize;
+}
+
+.port {
+	cursor: crosshair;
+}
+.port .port-bg {
+	fill: var(--ok);
+	stroke: var(--dark);
+	stroke-width: 2;
+}
+.port.armed .port-bg {
+	fill: var(--accent);
+}
+.port text {
+	fill: var(--dark);
+	font-size: 12px;
+	font-family: inherit;
+	pointer-events: none;
+}
+
+.edge-hit {
+	fill: none;
+	stroke: transparent;
+	stroke-width: 14;
+	cursor: pointer;
+}
+.edge-path.sel {
+	stroke: var(--accent);
+}
+.edge-path.dashed {
+	animation: dashmove 1.2s linear infinite;
+}
+@keyframes dashmove {
+	to {
+		stroke-dashoffset: -20;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.edge-path.dashed {
+		animation: none;
+	}
+}

@@ -2,6 +2,7 @@
   "SKILL.md": "b354579fdef4575ffa169e2f4ae8fdf655b3ee3f1da25928ed9fc31c7b29bc0e",
   "VERSION": "99b8c9653f7efa8126f7da3ac3d1738fc927e2f35456ba9953d16c6cd00c4d2e",
   "cli/block.ts": "0f998b4c837242b99491ad72e6b31a99ea63a5bf4f6211485cb55baf1200e3bf",
+  "core/browser.ts": "1371da619ee9e53b668ae8fe2543ed2e2a8e4702928908b9f04ddbb13e7e91b0",
   "core/diff.ts": "3eb354b1ffd1e5d235f044e886430ed4d66410b505df983573d5623ea4ce4243",
   "core/errors.ts": "45b446b4019af49fc6639e0d9d188874d72ec1ee794c14e4162d0889d6a5dc9f",
   "core/exportMd.ts": "4de27db6b221df54173d0f966546f018c524c510a9e25341c46cf305aa2d2f98",
@@ -16,6 +17,7 @@
   "core/saveSchema.ts": "3125910f80c0900bd5e493e54e48d1fb5592715d2e02cd935940e6f9b25c1024",
   "core/types.ts": "b325275b988ba4c872af30cfab963e68b17482f8db3f777b86228ced99ecfbf8",
   "core/validate.ts": "7ae89f0fcd7c6a821c9ed326126024466c3027fb4ce3f5ce397f038756c58708",
+  "editor.html": "c69757caae906b98fc4f21a8f337c9783cbeaa7b2b4521e8b5da70653d60f10b",
   "references/EDITOR.md": "f2d678eae773ae79ef7d4c58bafed637e2dada399bb53fdd4550e1b6292d5956",
   "references/SCHEME_FORMAT.md": "60a379b11b48bbcf61273ad5754b3fe107738ea4b77e91e420b2803f129f7f17"
 }

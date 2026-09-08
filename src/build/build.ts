@@ -55,7 +55,7 @@ const ENTRIES: Entry[] = [
 
 // Svelte component CSS is emitted next to the component and imported back, so
 // esbuild can order it after the global sheets.
-function sveltePlugin(): { name: string; setup: (b: import("esbuild").PluginBuild) => void } {
+function sveltePlugin(cssDir: string): { name: string; setup: (b: import("esbuild").PluginBuild) => void } {
 	return {
 		name: "svelte",
 		setup(b) {
@@ -74,9 +74,11 @@ function sveltePlugin(): { name: string; setup: (b: import("esbuild").PluginBuil
 				for (const w of r.warnings)
 					if (!w.code.startsWith("a11y"))
 						console.warn(`  ${w.filename}:${w.start?.line} ${w.message}`);
-				const cssFile = `${a.path}.css`;
+				// emit component CSS to a scratch dir next to the bundle, not
+				// next to the .svelte source (which would pollute src/)
+				const name = path.basename(a.path, ".svelte") + ".css";
+				const cssFile = path.join(cssDir, name);
 				if (r.css?.code) fs.writeFileSync(cssFile, r.css.code);
-				else if (fs.existsSync(cssFile)) fs.rmSync(cssFile);
 				const js = r.css?.code ? `${r.js.code}\nimport ${JSON.stringify(cssFile)};\n` : r.js.code;
 				return { contents: js, loader: "js", resolveDir: path.dirname(a.path) };
 			});
@@ -88,6 +90,9 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 	const tmpDir = path.join(repo, "dist", ".tmp", e.name);
 	fs.rmSync(tmpDir, { recursive: true, force: true });
 	fs.mkdirSync(tmpDir, { recursive: true });
+	// component CSS lives here, separate from the JS bundle output dir
+	const cssDir = path.join(tmpDir, "css");
+	fs.mkdirSync(cssDir, { recursive: true });
 
 	const jsOut = path.join(tmpDir, "app.js");
 	await build({
@@ -96,17 +101,23 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 		format: "iife",
 		target: "es2022",
 		minify: true,
+		// the editor is browser-only; node:* imports in the core (e.g. fs)
+		// are reachable paths that should be tree-shaken away by Svelte
+		platform: "browser",
 		// Svelte's dev branches are gated on NODE_ENV; without this the bundle
 		// carries ~24K of error-message code that can never run
 		define: { "process.env.NODE_ENV": '"production"' },
-		plugins: [sveltePlugin()],
+		plugins: [sveltePlugin(cssDir)],
 		outfile: jsOut,
 		logLevel: "warning",
 		loader: { ".woff2": "dataurl", ".woff": "dataurl", ".png": "dataurl", ".svg": "text" },
 	});
 
 	// CSS is bundled separately so the font loader can differ per artifact.
-	const cssEntry = path.join(tmpDir, "styles.css");
+	// The input lives in tmpIn so it never collides with the outdir/outfile.
+	const tmpIn = path.join(tmpDir, "in");
+	fs.mkdirSync(tmpIn, { recursive: true });
+	const cssEntry = path.join(tmpIn, "entry.css");
 	fs.writeFileSync(
 		cssEntry,
 		[
@@ -116,12 +127,13 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 				: `@import "${path.join(repo, "src/editor/core/editor.css")}";`,
 		].join("\n"),
 	);
-	const cssOut = path.join(tmpDir, e.font === "file" ? "css" : "styles.css");
+	const cssOut = path.join(tmpDir, e.font === "file" ? "css" : "out.css");
 	await build({
 		entryPoints: [cssEntry],
 		bundle: true,
 		minify: true,
 		logLevel: "warning",
+		platform: "browser",
 		loader: { ".woff2": e.font, ".woff": e.font },
 		...(e.font === "file"
 			? { outdir: cssOut, assetNames: "assets/[name][ext]", publicPath: "/" }
@@ -129,7 +141,7 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 	});
 
 	const js = fs.readFileSync(jsOut, "utf8");
-	const cssFile = e.font === "file" ? path.join(cssOut, "styles.css") : cssOut;
+	const cssFile = e.font === "file" ? path.join(cssOut, "entry.css") : cssOut;
 	const css = fs.readFileSync(cssFile, "utf8");
 
 	// component-scoped CSS from Svelte rides inside the JS bundle's imports, so

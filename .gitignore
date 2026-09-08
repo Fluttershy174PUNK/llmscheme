@@ -5,3 +5,4 @@ data/
 *.log
 .block_llm/cache/
 .DS_Store
+*.svelte.css
