@@ -5,10 +5,9 @@
 			"**",
 			"!**/node_modules",
 			"!**/dist",
-			"!skill/editor.html",
+			"!skill",
 			"!mcp-service/editor.html",
 			"!mcp-service/console.html",
-			"!skill/core",
 			"!**/.block_llm",
 			"!data"
 		]
