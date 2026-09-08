@@ -9,6 +9,7 @@ import {
 	type EdgePatch,
 	DataError,
 	CasError,
+	ValidationError,
 	diffSchemes,
 	emptyScheme,
 	exportMd,
@@ -137,11 +138,16 @@ export class Schemes {
 		return this.save(u, name, emptyScheme(name), "init");
 	}
 
-	// CAS: the payload must carry the rev the caller read
+	// CAS: the payload must carry the rev the caller read. Validation runs
+	// FIRST so a malformed body (no meta, nodes:null) is a 400, not a 409
+	// against a stale CAS — a 409 tells the caller "retry", which is wrong
+	// when the body itself is broken.
 	put(u: User, name: string, next: Scheme): { rev: number } {
-		const { scheme: current } = this.mustRead(u, name);
 		if (!next || typeof next !== "object" || Array.isArray(next))
 			throw new DataError("scheme must be an object");
+		const v = validate(next);
+		if (v.errors.length) throw new ValidationError(v);
+		const { scheme: current } = this.mustRead(u, name);
 		if (next.rev !== current.rev) throw new CasError(next.rev, current.rev);
 		next.meta = { ...(next.meta ?? current.meta), generator: "human-editor" };
 		return this.save(u, name, next, "put");
