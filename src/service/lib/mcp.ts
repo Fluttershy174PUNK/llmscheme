@@ -454,8 +454,7 @@ export function handleMcpMessage(
 	// Spec MUST: the mirrored headers have to agree with the body, otherwise a
 	// proxy routing on headers and this server executing the body would disagree.
 	const mismatch = headerMismatch(req, msg);
-	if (mismatch)
-		return { status: 400, body: rpcError(id ?? null, HEADER_MISMATCH, mismatch) };
+	if (mismatch) return { status: 400, body: rpcError(id ?? null, HEADER_MISMATCH, mismatch) };
 
 	// a declared version we do not speak must be refused with the list we do
 	const declared =
