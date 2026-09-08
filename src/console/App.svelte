@@ -10,6 +10,7 @@
 		promptDialog,
 		chooseDialog,
 		infoDialog,
+		keyDialog,
 	} from "./api.ts";
 	import { DICT, loadLang, saveLang, type Lang } from "../editor/core/i18n.ts";
 
@@ -410,15 +411,21 @@
 		}
 	}
 
-	// issue a key for `login` (admin) or for self (no login). The secret + the
-	// mcp schema are shown exactly once here — the store hashes keys at rest.
+	// issue a key for `login` (admin) or for self (no login). The secret and the
+	// mcp schema are shown once, each in its own field — keys are hashed at rest.
 	async function generateKey(login?: string) {
 		try {
 			const r = (await api("/api/keys", {
 				method: "POST",
 				body: login ? JSON.stringify({ login }) : undefined,
 			})) as { apiKey: string; mcpConfig: unknown };
-			await infoDialog(t.shownOnce, `${r.apiKey}\n\n${JSON.stringify(r.mcpConfig, null, 2)}`);
+			await keyDialog(
+				t.shownOnce,
+				t.apiKey,
+				r.apiKey,
+				t.mcpSchema,
+				JSON.stringify(r.mcpConfig, null, 2),
+			);
 			await loadSettings();
 		} catch (e) {
 			meErr = (e as Error).message;
@@ -428,21 +435,16 @@
 	// the raw secret cannot be re-shown (hashed at rest) — only the schema shape.
 	function showMcpSchema(login: string) {
 		const url = mcpConfig?.url ?? "/mcp";
-		void infoDialog(
-			`${t.showMcpSchema} — ${login}`,
-			JSON.stringify(
-				{
-					mcpServers: {
-						llmscheme: {
-							url,
-							headers: { "X-Api-Key": `(${t.keySecretNote})` },
-						},
-					},
+		const schema = JSON.stringify(
+			{
+				mcpServers: {
+					llmscheme: { url, headers: { "X-Api-Key": `(${t.keySecretNote})` } },
 				},
-				null,
-				2,
-			),
+			},
+			null,
+			2,
 		);
+		void infoDialog(`${t.showMcpSchema} — ${login}`, schema);
 	}
 
 	async function revokeKey(hash: string, login?: string) {

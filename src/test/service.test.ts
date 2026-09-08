@@ -621,3 +621,27 @@ test("own password change requires current; admin sets others without it", async
 	});
 	assert.equal(byAdmin.status, 200);
 });
+
+test("MCP tools/call round-trip: create_scheme then list_schemes", async () => {
+	const a = await login();
+	const kr = await fetch(`${baseUrl}/api/keys`, {
+		method: "POST",
+		headers: a.headers,
+	});
+	const { apiKey } = (await kr.json()) as { apiKey: string };
+	const call = (method: string, params: Record<string, unknown>) =>
+		fetch(`${baseUrl}/mcp`, {
+			method: "POST",
+			headers: { "content-type": "application/json", "X-Api-Key": apiKey },
+			body: JSON.stringify({ jsonrpc: "2.0", id: 7, method, params }),
+		});
+
+	const created = await call("tools/call", { name: "create_scheme", arguments: { name: "mcp-made" } });
+	const cj = (await created.json()) as { result: { content: { text: string }[] } };
+	assert.equal(created.status, 200);
+	assert.match(cj.result.content[0]!.text, /"rev":\s*1/);
+
+	const listed = await call("tools/call", { name: "list_schemes", arguments: {} });
+	const lj = (await listed.json()) as { result: { content: { text: string }[] } };
+	assert.match(lj.result.content[0]!.text, /mcp-made/);
+});

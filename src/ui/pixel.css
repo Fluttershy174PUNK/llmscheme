@@ -196,6 +196,26 @@ dialog pre {
 	margin: 0 0 12px;
 	font-size: 8px;
 }
+.keyfield {
+	margin: 0 0 10px;
+}
+.keyfield-label {
+	color: var(--dim);
+	font-size: 9px;
+	margin-bottom: 4px;
+}
+.keyfield-row {
+	display: flex;
+	gap: 6px;
+	align-items: stretch;
+}
+.keyfield-value {
+	flex: 1;
+	min-width: 0;
+	font-size: 8px;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
 
 /* segmented control: a row of equal buttons, the active one highlighted */
 .seg {

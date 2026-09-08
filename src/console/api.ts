@@ -14,6 +14,8 @@ const labels = () => {
 		confirm: ru ? "подтверждение" : "confirm",
 		input: ru ? "ввод" : "input",
 		choose: ru ? "выбор" : "choose",
+		copy: ru ? "копировать" : "copy",
+		copied: ru ? "скопировано" : "copied",
 	};
 };
 
@@ -189,6 +191,71 @@ export function infoDialog(title: string, message: string): Promise<void> {
 		ok.autofocus = true;
 		menu.append(ok);
 		form.append(h3, pre, menu);
+		dlg.append(form);
+		document.body.appendChild(dlg);
+		dlg.addEventListener("close", () => {
+			dlg.remove();
+			resolve();
+		});
+		dlg.showModal();
+	});
+}
+
+// a new api key is shown in its OWN field, the generated mcp schema in another.
+// Each field gets a copy button so the secret can be grabbed without selecting.
+export function keyDialog(
+	title: string,
+	keyLabel: string,
+	apiKey: string,
+	mcpLabel: string,
+	mcpJson: string,
+): Promise<void> {
+	return new Promise((resolve) => {
+		const L = labels();
+		const dlg = document.createElement("dialog");
+		const form = document.createElement("form");
+		form.method = "dialog";
+		const h3 = document.createElement("h3");
+		h3.textContent = title;
+
+		const field = (label: string, value: string, mono: boolean) => {
+			const wrap = document.createElement("div");
+			wrap.className = "keyfield";
+			const lbl = document.createElement("div");
+			lbl.className = "keyfield-label";
+			lbl.textContent = label;
+			const row = document.createElement("div");
+			row.className = "keyfield-row";
+			const box = document.createElement(mono ? "pre" : "input");
+			if (mono) {
+				box.textContent = value;
+				(box as HTMLPreElement).className = "keyfield-value";
+			} else {
+				(box as HTMLInputElement).value = value;
+				(box as HTMLInputElement).readOnly = true;
+				(box as HTMLInputElement).className = "keyfield-value";
+			}
+			const copy = document.createElement("button");
+			copy.type = "button";
+			copy.textContent = L.copy;
+			copy.className = "mini";
+			copy.onclick = () => {
+				void navigator.clipboard?.writeText(value).catch(() => {});
+				copy.textContent = L.copied;
+			};
+			row.append(box, copy);
+			wrap.append(lbl, row);
+			return wrap;
+		};
+
+		form.append(h3, field(keyLabel, apiKey, false), field(mcpLabel, mcpJson, true));
+		const menu = document.createElement("menu");
+		const ok = document.createElement("button");
+		ok.value = "ok";
+		ok.textContent = L.ok;
+		ok.autofocus = true;
+		menu.append(ok);
+		form.append(menu);
 		dlg.append(form);
 		document.body.appendChild(dlg);
 		dlg.addEventListener("close", () => {

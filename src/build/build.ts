@@ -24,6 +24,10 @@ interface Entry {
 	font: "dataurl" | "file";
 	// the editor boots from an embedded scheme; the console does not
 	schemeMarker: boolean;
+	// service-mode bundles must NOT share one asset name: the console build
+	// previously overwrote the editor's app.js, so /editor/<name> loaded the
+	// console bundle and silently re-mounted the console ("edit does nothing").
+	jsFile?: string;
 }
 
 const ENTRIES: Entry[] = [
@@ -42,6 +46,7 @@ const ENTRIES: Entry[] = [
 		title: "llmscheme editor",
 		font: "file",
 		schemeMarker: true,
+		jsFile: "editor.js",
 	},
 	{
 		name: "console",
@@ -50,6 +55,7 @@ const ENTRIES: Entry[] = [
 		title: "llmscheme",
 		font: "file",
 		schemeMarker: false,
+		jsFile: "console.js",
 	},
 ];
 
@@ -184,8 +190,11 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 		const dest = path.dirname(path.join(repo, e.out));
 		const assetsDir = path.join(dest, "assets");
 		fs.mkdirSync(assetsDir, { recursive: true });
-		fs.writeFileSync(path.join(assetsDir, "app.js"), js);
-		scriptTag = `\t\t<script src="/assets/app.js"></script>`;
+		// each service artifact gets its own bundle so editor.html and
+		// console.html can never load each other's entry point
+		const jsFile = e.jsFile ?? "app.js";
+		fs.writeFileSync(path.join(assetsDir, jsFile), js);
+		scriptTag = `\t\t<script src="/assets/${jsFile}"></script>`;
 	}
 
 	const html = `<!doctype html>

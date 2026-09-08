@@ -146,6 +146,17 @@ if (fs.existsSync(serviceConsole)) {
 	if (/data:font\/woff2;base64/.test(html))
 		note("console.html inlines the font — serve /assets/*.woff2 instead");
 }
+// The console and editor must load DIFFERENT bundles: they both emitted
+// assets/app.js, so the console build clobbered the editor's bundle and
+// /editor/<name> silently re-mounted the console ("edit does nothing").
+if (fs.existsSync(serviceEditor) && fs.existsSync(serviceConsole)) {
+	const srcOf = (html: string) =>
+		html.match(/<script src="([^"]+)">/)?.[1] ?? "";
+	const edJs = srcOf(fs.readFileSync(serviceEditor, "utf8"));
+	const coJs = srcOf(fs.readFileSync(serviceConsole, "utf8"));
+	if (edJs === coJs)
+		note(`editor.html and console.html share one bundle (${edJs}) — give each its own`);
+}
 
 // ---- 5. generated files must never carry a formatter's hand ----
 // v1 bug B1: a formatter rewrote editor-template.gen.html, the minified module
