@@ -665,6 +665,12 @@ test("MCP tools/call round-trip: create_scheme then list_schemes", async () => {
 	// strict clients (Hermes/pydantic expects a dict). list_schemes wraps the
 	// names: { schemes: [...] }.
 	const sc = lj.result.structuredContent;
-	assert.ok(sc && typeof sc === "object" && !Array.isArray(sc), "structuredContent is an object");
-	assert.ok(Array.isArray((sc as { schemes: string[] }).schemes), "has a schemes array");
+	assert.ok(
+		sc && typeof sc === "object" && !Array.isArray(sc),
+		"structuredContent is an object",
+	);
+	assert.ok(
+		Array.isArray((sc as { schemes: string[] }).schemes),
+		"has a schemes array",
+	);
 });
