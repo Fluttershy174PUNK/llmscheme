@@ -383,14 +383,15 @@
 			// corner encoding: bit 0 (1) = right edge, bit 1 (2) = bottom edge.
 			// 0=top-left 1=top-right 2=bottom-left 3=bottom-right. Dragging a
 			// handle moves ITS edge and keeps the opposite edge pinned, so every
-			// corner resizes in its own direction.
+			// corner resizes in its own direction. The moving edge snaps to the
+			// grid when snap is on, so size (w/h) aligns to the grid too.
 			const MIN = 40;
 			const right = (drag.corner & 1) === 1;
 			const bottom = (drag.corner & 2) === 2;
-			const L = right ? drag.ox : Math.min(drag.ox + dx, drag.ox + drag.ow - MIN);
-			const R = right ? Math.max(drag.ox + drag.ow + dx, drag.ox + MIN) : drag.ox + drag.ow;
-			const T = bottom ? drag.oy : Math.min(drag.oy + dy, drag.oy + drag.oh - MIN);
-			const B = bottom ? Math.max(drag.oy + drag.oh + dy, drag.oy + MIN) : drag.oy + drag.oh;
+			const L = right ? drag.ox : Math.min(snapVal(drag.ox + dx), drag.ox + drag.ow - MIN);
+			const R = right ? Math.max(snapVal(drag.ox + drag.ow + dx), drag.ox + MIN) : drag.ox + drag.ow;
+			const T = bottom ? drag.oy : Math.min(snapVal(drag.oy + dy), drag.oy + drag.oh - MIN);
+			const B = bottom ? Math.max(snapVal(drag.oy + drag.oh + dy), drag.oy + MIN) : drag.oy + drag.oh;
 			const nw = R - L;
 			const nh = B - T;
 			if (drag.kind === "zone") {

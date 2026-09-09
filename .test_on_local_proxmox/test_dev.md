@@ -25,7 +25,7 @@ metadata:
 | Ресурсы | 2 vCPU / 1 GB RAM / 8 GB rootfs (local-btrfs), unprivileged, nesting=1, onboot=1 |
 | ОС | Ubuntu 26.04, docker.io + docker-compose-v2 (compose plugin) |
 | Пользователь | `dev` (в группе `docker` — контейнеры без sudo), пароль см. ниже |
-| Root | пароль `gUxhTKYqK02MPEyUbzHx`; 
+| Root | пароль `<ROOT_PASSWORD>` (запроси у владельца среды) |
 
 **IP:** 10.0.20.250 (DHCP; если изменится — `gh`/PVE API `/nodes/m79/lxc/999/interfaces`).
 
@@ -37,7 +37,7 @@ ssh dev@10.0.20.250       # пароль спросит интерактивно
 sshpass -p '<DEV_PASSWORD>' ssh -o StrictHostKeyChecking=no dev@10.0.20.242 '<команда>'
 ```
 
-`<DEV_PASSWORD>`: `LwHFEKWXlaj8iKRYDt0t` — запроси у владельца, если ротирован.
+`<DEV_PASSWORD>`: `<DEV_PASSWORD>` — запроси у владельца, если ротирован.
 
 ## Рабочий цикл деплоя тестового проекта
 
