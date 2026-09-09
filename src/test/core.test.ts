@@ -39,7 +39,8 @@ function fixture(nodes = 1): core.Scheme {
 
 // validate() is what these tests attack, so the payloads deliberately do NOT
 // satisfy Scheme. Two helpers keep that at one cast each instead of six.
-const bad = (patch: Loose): core.Scheme => ({ ...fixture(1), ...patch }) as core.Scheme;
+const bad = (patch: Loose): core.Scheme =>
+	({ ...fixture(1), ...patch }) as core.Scheme;
 const badNode = (patch: Loose): core.Scheme => {
 	const s = fixture(1);
 	s.nodes[0] = { ...at(s.nodes), ...patch } as core.SchemeNode;
@@ -67,8 +68,14 @@ test("validate: orphan = warn, broken edge = error, dup id = error", () => {
 });
 
 test("validate: unknown shape/style and future version are errors", () => {
-	assert.ok(core.validate(badNode({ shape: "hexagon" })).errors.some((e) => e.code === "shape"));
-	assert.ok(core.validate(bad({ version: 99 })).errors.some((e) => e.code === "version"));
+	assert.ok(
+		core
+			.validate(badNode({ shape: "hexagon" }))
+			.errors.some((e) => e.code === "shape"),
+	);
+	assert.ok(
+		core.validate(bad({ version: 99 })).errors.some((e) => e.code === "version"),
+	);
 	assert.ok(
 		core
 			.validate(
@@ -102,7 +109,9 @@ test("B8 validate: nodes/edges/zones must be arrays, null is an error", () => {
 // B7: v1 assigned next.meta.generator before validating, so a PUT body without
 // meta threw a TypeError -> HTTP 500 instead of a 400 the caller can act on.
 test("B7 validate: missing/partial meta is an error, not a crash", () => {
-	assert.ok(core.validate(bad({ meta: undefined })).errors.some((e) => e.code === "meta"));
+	assert.ok(
+		core.validate(bad({ meta: undefined })).errors.some((e) => e.code === "meta"),
+	);
 	for (const meta of [
 		{},
 		{ updatedAt: "x", generator: "agent" }, // no nextId
@@ -120,14 +129,24 @@ test("B7 validate: missing/partial meta is an error, not a crash", () => {
 });
 
 test("validate: node/edge/zone entries must be objects", () => {
-	assert.ok(core.validate(bad({ nodes: ["nope"] })).errors.some((e) => e.code === "node"));
-	assert.ok(core.validate(bad({ edges: [null] })).errors.some((e) => e.code === "edge"));
-	assert.ok(core.validate(bad({ zones: [null] })).errors.some((e) => e.code === "zone"));
-	assert.ok(core.validate(bad({ nodes: 7 })).errors.some((e) => e.code === "nodes"));
+	assert.ok(
+		core.validate(bad({ nodes: ["nope"] })).errors.some((e) => e.code === "node"),
+	);
+	assert.ok(
+		core.validate(bad({ edges: [null] })).errors.some((e) => e.code === "edge"),
+	);
+	assert.ok(
+		core.validate(bad({ zones: [null] })).errors.some((e) => e.code === "zone"),
+	);
+	assert.ok(
+		core.validate(bad({ nodes: 7 })).errors.some((e) => e.code === "nodes"),
+	);
 });
 
 test("validate: w/h override must be finite and >= 20", () => {
-	assert.ok(core.validate(badNode({ w: 5 })).errors.some((e) => e.code === "size"));
+	assert.ok(
+		core.validate(badNode({ w: 5 })).errors.some((e) => e.code === "size"),
+	);
 	const v = core.validate(badNode({ w: -3, h: Number.NaN }));
 	assert.equal(v.errors.filter((e) => e.code === "size").length, 2);
 	assert.equal(core.validate(badNode({ w: 300, h: 200 })).errors.length, 0);
@@ -140,7 +159,9 @@ test("validate: project is optional, but must be well-formed when present", () =
 			.validate(bad({ project: { root: ".", codePaths: "src/" } }))
 			.errors.some((e) => e.code === "project"),
 	);
-	assert.ok(core.validate(bad({ project: 7 })).errors.some((e) => e.code === "project"));
+	assert.ok(
+		core.validate(bad({ project: 7 })).errors.some((e) => e.code === "project"),
+	);
 });
 
 test("watermark: freed ids are never reused; hand-edited json self-heals", () => {
@@ -220,7 +241,8 @@ test("layout: cyclic graph still places every node; empty scheme is a no-op", ()
 		["b", "c"],
 		["c", "a"],
 	];
-	for (const [from, to] of cycle) s.edges.push({ id: `e${from}${to}`, from, to, style: "solid" });
+	for (const [from, to] of cycle)
+		s.edges.push({ id: `e${from}${to}`, from, to, style: "solid" });
 	const { placed } = core.autoLayout(s);
 	assert.equal(placed.length, 4);
 	assert.deepEqual(core.autoLayout(core.emptyScheme("E")), { placed: [] });
@@ -228,7 +250,9 @@ test("layout: cyclic graph still places every node; empty scheme is a no-op", ()
 
 test("layout: dangling edges do not crash and do not place ghosts", () => {
 	const s = core.emptyScheme("D");
-	s.nodes.push(malformed<core.SchemeNode>({ id: "a", shape: "rect", label: "a" }));
+	s.nodes.push(
+		malformed<core.SchemeNode>({ id: "a", shape: "rect", label: "a" }),
+	);
 	s.edges.push({ id: "e1", from: "a", to: "ghost", style: "solid" });
 	const { placed } = core.autoLayout(s);
 	assert.deepEqual(placed, ["a"]);
@@ -251,10 +275,15 @@ test("saveSchema: rev+1, CAS rejection on stale payload, backup written", () => 
 	core.saveSchema(dir, core.readRaw(dir));
 	assert.equal(core.readRaw(dir).rev, 2);
 	assert.ok(
-		fs.readdirSync(path.join(dir, core.DIR, "cache", "backup")).some((f) => f.startsWith("rev1-")),
+		fs
+			.readdirSync(path.join(dir, core.DIR, "cache", "backup"))
+			.some((f) => f.startsWith("rev1-")),
 		"pre-write backup of rev1",
 	);
-	const journal = fs.readFileSync(path.join(dir, core.DIR, "cache", "journal.jsonl"), "utf8");
+	const journal = fs.readFileSync(
+		path.join(dir, core.DIR, "cache", "journal.jsonl"),
+		"utf8",
+	);
 	assert.match(journal, /"op":"init"/);
 });
 
@@ -262,7 +291,10 @@ test("saveSchema: errors forbid the write (validation gate)", () => {
 	const dir = tmp();
 	core.saveSchema(dir, fixture(1));
 	const bad2 = structuredClone(core.readRaw(dir));
-	bad2.nodes[0] = malformed<core.SchemeNode>({ ...at(bad2.nodes), shape: "hexagon" });
+	bad2.nodes[0] = malformed<core.SchemeNode>({
+		...at(bad2.nodes),
+		shape: "hexagon",
+	});
 	assert.throws(() => core.saveSchema(dir, bad2), core.ValidationError);
 	assert.equal(at(core.readRaw(dir).nodes).shape, "rect", "nothing landed");
 });
@@ -270,7 +302,10 @@ test("saveSchema: errors forbid the write (validation gate)", () => {
 test("B8 saveSchema: nodes:null is refused, scheme on disk stays healthy", () => {
 	const dir = tmp();
 	core.saveSchema(dir, fixture(1));
-	const broken = malformed<core.Scheme>({ ...structuredClone(core.readRaw(dir)), nodes: null });
+	const broken = malformed<core.Scheme>({
+		...structuredClone(core.readRaw(dir)),
+		nodes: null,
+	});
 	assert.throws(() => core.saveSchema(dir, broken), core.ValidationError);
 	const after = core.readRaw(dir);
 	assert.equal(after.nodes.length, 1, "still readable");
@@ -302,7 +337,9 @@ test("B10 saving the same scheme twice writes identical SCHEME.md", () => {
 	again.meta.updatedAt = s.meta.updatedAt;
 	core.saveSchema(dir, again);
 	assert.ok(
-		fs.readFileSync(path.join(dir, "SCHEME.md"), "utf8").includes(`rev: ${again.rev}`),
+		fs
+			.readFileSync(path.join(dir, "SCHEME.md"), "utf8")
+			.includes(`rev: ${again.rev}`),
 		"md tracks the written rev",
 	);
 	assert.ok(first.includes("rev: 1"));
@@ -322,7 +359,10 @@ test("B12 geometry is the single source: wrap-aware, explicit w/h wins", () => {
 	);
 	assert.equal(
 		core.nodeW(n),
-		Math.max(core.MIN_W, 20 + Math.max(...lines.map((l) => l.length)) * core.CHAR_W),
+		Math.max(
+			core.MIN_W,
+			20 + Math.max(...lines.map((l) => l.length)) * core.CHAR_W,
+		),
 	);
 	assert.equal(core.nodeW({ ...n, w: 300 }), 300, "explicit w wins");
 	assert.equal(core.nodeH({ ...n, h: 90 }), 90, "explicit h wins");
@@ -336,15 +376,26 @@ test("B12 geometry is the single source: wrap-aware, explicit w/h wins", () => {
 		y: 0,
 		table: { cols: ["a", "b"], rows: [["1", "2"]] },
 	};
-	assert.equal(core.nodeW(t), Math.max(core.TABLE_MIN_W, 26 + 2 * core.TABLE_COL_W));
+	assert.equal(
+		core.nodeW(t),
+		Math.max(core.TABLE_MIN_W, 26 + 2 * core.TABLE_COL_W),
+	);
 	assert.equal(core.nodeH(t), core.TABLE_HEAD_H + 2 * core.TABLE_ROW_H);
 
 	// circle stays round; multiline grows downward; empty label does not collapse
 	const c = { id: "c", shape: "circle" as const, label: "x", x: 0, y: 0 };
 	assert.equal(core.nodeH(c), core.nodeW(c));
-	const multi = { id: "m", shape: "rect" as const, label: "a\nb\nc", x: 0, y: 0 };
+	const multi = {
+		id: "m",
+		shape: "rect" as const,
+		label: "a\nb\nc",
+		x: 0,
+		y: 0,
+	};
 	assert.ok(core.nodeH(multi) > core.nodeH({ ...multi, label: "a" }));
-	assert.ok(core.nodeW({ id: "e", shape: "rect", label: "", x: 0, y: 0 }) >= core.MIN_W);
+	assert.ok(
+		core.nodeW({ id: "e", shape: "rect", label: "", x: 0, y: 0 }) >= core.MIN_W,
+	);
 	assert.deepEqual(core.wrapLines(""), [""]);
 });
 
@@ -375,14 +426,18 @@ test("backup rotation keeps the numerically newest revs, not lexicographic ones"
 	core.saveSchema(dir, fixture(1)); // a real scheme first: rotation only runs on writes
 	fs.mkdirSync(backupDir, { recursive: true });
 	for (const rev of [1, 9, 10, 24, 100])
-		fs.writeFileSync(path.join(backupDir, `rev${rev}-2026-01-01T00-00-00-000Z.json`), "{}");
+		fs.writeFileSync(
+			path.join(backupDir, `rev${rev}-2026-01-01T00-00-00-000Z.json`),
+			"{}",
+		);
 	assert.ok(
 		fs.readdirSync(backupDir).sort().at(-1)?.startsWith("rev9-"),
 		"lexicographic name order is wrong by design",
 	);
 
 	// write enough revisions to force rotation, then check who survived
-	for (let i = 0; i < core.BACKUP_KEEP + 5; i++) core.saveSchema(dir, core.readRaw(dir));
+	for (let i = 0; i < core.BACKUP_KEEP + 5; i++)
+		core.saveSchema(dir, core.readRaw(dir));
 	const kept = fs
 		.readdirSync(backupDir)
 		.map((f) => Number(f.match(/^rev(\d+)-/)?.[1]))
@@ -392,7 +447,14 @@ test("backup rotation keeps the numerically newest revs, not lexicographic ones"
 	// Backups are one per save after the first, so the multiset is 1..25 plus
 	// the seeded fakes; lexicographic order would keep a different set
 	// (rev9 survives, rev100 and rev10..13 are dropped instead).
-	const all = [...Array.from({ length: core.BACKUP_KEEP + 5 }, (_, i) => i + 1), 1, 9, 10, 24, 100];
+	const all = [
+		...Array.from({ length: core.BACKUP_KEEP + 5 }, (_, i) => i + 1),
+		1,
+		9,
+		10,
+		24,
+		100,
+	];
 	const expected = all
 		.sort((a, b) => b - a)
 		.slice(0, core.BACKUP_KEEP)
@@ -404,10 +466,16 @@ test("backup rotation keeps the numerically newest revs, not lexicographic ones"
 test("table: 10x50 limits are errors, table on non-table node warns, md renders rows", () => {
 	const s = fixture(1);
 	at(s.nodes).shape = "table";
-	at(s.nodes).table = { cols: Array.from({ length: 11 }, (_, i) => `c${i}`), rows: [] };
+	at(s.nodes).table = {
+		cols: Array.from({ length: 11 }, (_, i) => `c${i}`),
+		rows: [],
+	};
 	assert.ok(core.validate(s).errors.some((e) => /cols max 10/.test(e.message)));
 
-	at(s.nodes).table = { cols: ["a"], rows: Array.from({ length: 51 }, () => ["x"]) };
+	at(s.nodes).table = {
+		cols: ["a"],
+		rows: Array.from({ length: 51 }, () => ["x"]),
+	};
 	assert.ok(core.validate(s).errors.some((e) => /rows max 50/.test(e.message)));
 
 	at(s.nodes).table = { cols: ["a", "b"], rows: [["1", "2"], ["3"]] };
@@ -422,7 +490,11 @@ test("table: 10x50 limits are errors, table on non-table node warns, md renders 
 			.validate(badNode({ table: { cols: ["a"], rows: [["1"]] } }))
 			.warnings.some((w) => w.code === "table"),
 	);
-	assert.ok(core.validate(badNode({ table: "nope" })).errors.some((e) => e.code === "table"));
+	assert.ok(
+		core
+			.validate(badNode({ table: "nope" }))
+			.errors.some((e) => e.code === "table"),
+	);
 });
 
 test("multiline label: md uses <br/>, mermaid quotes and escapes", () => {
@@ -431,7 +503,9 @@ test("multiline label: md uses <br/>, mermaid quotes and escapes", () => {
 	const md = core.exportMd(s, core.validate(s));
 	assert.ok(md.includes("line1<br/>line2"));
 	assert.ok(md.includes("#quot;"), '" escaped for mermaid');
-	assert.ok(core.exportMermaid(s).includes('["line1<br/>line2<br/>say #quot;hi#quot;"]'));
+	assert.ok(
+		core.exportMermaid(s).includes('["line1<br/>line2<br/>say #quot;hi#quot;"]'),
+	);
 });
 
 test("zones: mermaid subgraphs contain geometric members only", () => {
@@ -448,7 +522,10 @@ test("zones: mermaid subgraphs contain geometric members only", () => {
 	assert.ok(block.includes("n1["), "n1 inside the zone");
 	assert.ok(!block.includes("n2["), "n2 stays outside");
 	assert.match(mer, /end\n {2}n2\[/, "n2 emitted after the zone closes");
-	assert.match(core.exportMd(s, core.validate(s)), /\| z1 \| auth \| {2}\| n1 \|/);
+	assert.match(
+		core.exportMd(s, core.validate(s)),
+		/\| z1 \| auth \| {2}\| n1 \|/,
+	);
 
 	for (const zone of [
 		{ id: "z1", label: "a", x: 0, y: 0, w: 0, h: 10 },
@@ -463,8 +540,11 @@ test("zones: mermaid subgraphs contain geometric members only", () => {
 	}
 	for (const labelSide of ["top", "bottom", "left", "right", "center"])
 		assert.equal(
-			core.validate(bad({ zones: [{ id: "z1", label: "a", x: 0, y: 0, w: 10, h: 10, labelSide }] }))
-				.errors.length,
+			core.validate(
+				bad({
+					zones: [{ id: "z1", label: "a", x: 0, y: 0, w: 10, h: 10, labelSide }],
+				}),
+			).errors.length,
 			0,
 			`labelSide ${labelSide} is legal`,
 		);
@@ -495,7 +575,11 @@ test("diff covers every field: node w/h/refs/table, edge sides, zones", () => {
 		"zone z1.w",
 	])
 		assert.ok(d.includes(needle), `diff must report ${needle}\n${d}`);
-	assert.equal(core.diffSchemes(a, structuredClone(a)).length, 0, "no changes -> empty");
+	assert.equal(
+		core.diffSchemes(a, structuredClone(a)).length,
+		0,
+		"no changes -> empty",
+	);
 
 	// removals of each kind
 	const c = structuredClone(a);
@@ -531,9 +615,15 @@ test("renderHtml: roundtrip preserves the scheme; escaping survives </script>", 
 	assert.equal(at(back.nodes).label, at(s.nodes).label);
 	assert.ok(!/<\/script><script>alert/.test(html), "break-in escaped");
 	assert.throws(() => core.extractSchemeJson("<html></html>"), core.HtmlError);
-	assert.throws(() => core.renderHtml("<html>no marker</html>", s), core.HtmlError);
 	assert.throws(
-		() => core.extractSchemeJson('<script type="application/json" id="scheme-data">{oops</script>'),
+		() => core.renderHtml("<html>no marker</html>", s),
+		core.HtmlError,
+	);
+	assert.throws(
+		() =>
+			core.extractSchemeJson(
+				'<script type="application/json" id="scheme-data">{oops</script>',
+			),
 		/not valid JSON/,
 	);
 	assert.throws(
@@ -552,7 +642,10 @@ test("path-jail: ../ and absolute escapes refused, inside paths allowed", () => 
 	assert.throws(() => core.jail(dir, ""), core.PathJailError);
 	assert.throws(() => core.jail(dir, "a/../../outside"), core.PathJailError);
 	assert.equal(core.jail(dir, "src/a.ts"), path.join(dir, "src/a.ts"));
-	assert.equal(core.jail(dir, path.join(dir, "src/a.ts")), path.join(dir, "src/a.ts"));
+	assert.equal(
+		core.jail(dir, path.join(dir, "src/a.ts")),
+		path.join(dir, "src/a.ts"),
+	);
 	assert.equal(core.jail(dir, "."), dir);
 });
 
@@ -596,7 +689,10 @@ test("gitmd: .gitignore line and AGENTS.md section are idempotent", () => {
 	// appends to an existing file without eating its last line
 	fs.writeFileSync(path.join(dir, ".gitignore"), "node_modules");
 	assert.equal(core.ensureGitignoreLine(dir, "dist/"), true);
-	assert.match(fs.readFileSync(path.join(dir, ".gitignore"), "utf8"), /^node_modules\ndist\/\n$/);
+	assert.match(
+		fs.readFileSync(path.join(dir, ".gitignore"), "utf8"),
+		/^node_modules\ndist\/\n$/,
+	);
 
 	assert.equal(core.ensureAgentsSection(dir), true);
 	const once = fs.readFileSync(path.join(dir, "AGENTS.md"), "utf8");
@@ -611,7 +707,10 @@ test("readSnapshot: returns the requested rev; missing/corrupt are DataError", (
 	core.saveSchema(dir, core.readRaw(dir)); // rev 2, backup of rev 1 written
 	assert.equal(core.readSnapshot(dir, 1).rev, 1);
 	assert.throws(() => core.readSnapshot(dir, 99), core.DataError);
-	fs.writeFileSync(path.join(dir, core.DIR, "cache", "backup", "rev5-x.json"), "{not json");
+	fs.writeFileSync(
+		path.join(dir, core.DIR, "cache", "backup", "rev5-x.json"),
+		"{not json",
+	);
 	assert.throws(() => core.readSnapshot(dir, 5), core.DataError);
 });
 
@@ -625,7 +724,13 @@ test("readRaw: missing file and invalid JSON are DataError, not raw fs errors", 
 
 // B14: v1 exported jailReal and dirSizeLimitExceeded with zero call sites.
 test("B14 public surface is lean: dead exports gone, live ones present", () => {
-	for (const name of ["jailReal", "dirSizeLimitExceeded", "nextNodeId", "nextEdgeId", "escMermaid"])
+	for (const name of [
+		"jailReal",
+		"dirSizeLimitExceeded",
+		"nextNodeId",
+		"nextEdgeId",
+		"escMermaid",
+	])
 		assert.equal(name in core, false, `${name} must not be exported`);
 	for (const name of [
 		"validate",
@@ -675,7 +780,11 @@ test("checkRefs: reports stale refs only, stays pure", () => {
 	assert.equal(issues.length, 1);
 	assert.equal(at(issues).code, "stale-ref");
 	assert.match(at(issues).message, /src\/gone\.ts/);
-	assert.equal(core.checkRefs(bad({ nodes: null }), () => true).length, 0, "no crash on junk");
+	assert.equal(
+		core.checkRefs(bad({ nodes: null }), () => true).length,
+		0,
+		"no crash on junk",
+	);
 });
 
 test("exports are written atomically and match the final rev", () => {
@@ -689,10 +798,13 @@ test("exports are written atomically and match the final rev", () => {
 	const html = fs.readFileSync(path.join(dir, core.DIR, "scheme.html"), "utf8");
 	assert.equal(core.extractSchemeJson(html).rev, core.readRaw(dir).rev);
 	assert.ok(
-		fs.readFileSync(path.join(dir, "SCHEME.md"), "utf8").includes(`rev: ${core.readRaw(dir).rev}`),
+		fs
+			.readFileSync(path.join(dir, "SCHEME.md"), "utf8")
+			.includes(`rev: ${core.readRaw(dir).rev}`),
 	);
 	assert.equal(
-		fs.readdirSync(path.join(dir, core.DIR)).filter((f) => f.includes(".tmp-")).length,
+		fs.readdirSync(path.join(dir, core.DIR)).filter((f) => f.includes(".tmp-"))
+			.length,
 		0,
 		"no tmp leftovers",
 	);

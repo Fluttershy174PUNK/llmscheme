@@ -190,10 +190,12 @@ function parseArgs(argv: string[]): { flags: Flags; rest: string[] } {
 		if (value === undefined) usage(2, `flag ${a} needs a value`);
 		if (kind === "num") {
 			const n = Number(value);
-			if (!Number.isFinite(n)) usage(2, `flag ${a} needs a number, got "${value}"`);
+			if (!Number.isFinite(n))
+				usage(2, `flag ${a} needs a number, got "${value}"`);
 			(flags as Record<string, unknown>)[key] = n;
 		} else if (kind === "list") {
-			const list = ((flags as Record<string, unknown>)[key] as string[] | undefined) ?? [];
+			const list =
+				((flags as Record<string, unknown>)[key] as string[] | undefined) ?? [];
 			list.push(value);
 			(flags as Record<string, unknown>)[key] = list;
 		} else {
@@ -295,7 +297,13 @@ function out(obj: unknown, human?: string) {
 //
 // `cas` is off for restore, where --rev names the revision to roll back TO and
 // is therefore not a CAS expectation.
-function writeScheme(root: string, scheme: Scheme, op: string, summary: string, cas = true) {
+function writeScheme(
+	root: string,
+	scheme: Scheme,
+	op: string,
+	summary: string,
+	cas = true,
+) {
 	if (cas && flags.rev !== undefined && flags.rev !== scheme.rev)
 		throw new CasError(flags.rev, scheme.rev);
 	return saveSchema(root, scheme, {
@@ -324,7 +332,9 @@ function staleRefs(schemeDirAbs: string, scheme: Scheme) {
 
 function readInputFile(p: string): string {
 	// "-" is stdin; a path is an INPUT source — read only, never written
-	return p === "-" ? fs.readFileSync(0, "utf8") : fs.readFileSync(path.resolve(p), "utf8");
+	return p === "-"
+		? fs.readFileSync(0, "utf8")
+		: fs.readFileSync(path.resolve(p), "utf8");
 }
 
 function parseJson(text: string, source: string): Scheme {
@@ -349,7 +359,9 @@ function parseTable(): TableSpec | undefined {
 			.split(";")
 			.map((line) => line.split("|").map((c) => c.trim()))
 			.slice(0, 50);
-	return flags.tableCols === undefined && flags.tableRows === undefined ? undefined : t;
+	return flags.tableCols === undefined && flags.tableRows === undefined
+		? undefined
+		: t;
 }
 
 function nodePatch(): NodePatch {
@@ -374,7 +386,8 @@ function edgePatch(): EdgePatch {
 	if (flags.style !== undefined) p.style = flags.style as EdgePatch["style"];
 	if (flags.label !== undefined) p.label = flags.label;
 	if (flags.desc !== undefined) p.description = flags.desc;
-	if (flags.fromSide !== undefined) p.fromSide = flags.fromSide as EdgePatch["fromSide"];
+	if (flags.fromSide !== undefined)
+		p.fromSide = flags.fromSide as EdgePatch["fromSide"];
 	if (flags.toSide !== undefined) p.toSide = flags.toSide as EdgePatch["toSide"];
 	return p;
 }
@@ -387,7 +400,8 @@ function zonePatch(): ZonePatch {
 	if (flags.y !== undefined) p.y = flags.y;
 	if (flags.w !== undefined) p.w = flags.w;
 	if (flags.h !== undefined) p.h = flags.h;
-	if (flags.labelSide !== undefined) p.labelSide = flags.labelSide as ZonePatch["labelSide"];
+	if (flags.labelSide !== undefined)
+		p.labelSide = flags.labelSide as ZonePatch["labelSide"];
 	return p;
 }
 
@@ -408,7 +422,12 @@ async function main(): Promise<number> {
 			const root = schemeDir(projectRoot, schemeType());
 			fs.mkdirSync(path.join(root, DIR, "cache"), { recursive: true });
 			if (!fs.existsSync(path.join(root, DIR, "scheme.json")))
-				writeScheme(root, emptyScheme(flags.name ?? path.basename(root)), "init", "init");
+				writeScheme(
+					root,
+					emptyScheme(flags.name ?? path.basename(root)),
+					"init",
+					"init",
+				);
 			// .gitignore and AGENTS.md live at the PROJECT root, not the scheme dir.
 			// Only the per-scheme cache/ is ignored; scheme.json, SCHEME.md and
 			// scheme.html are committed.
@@ -420,7 +439,10 @@ async function main(): Promise<number> {
 			}
 			ensureAgentsSection(projectRoot);
 			const rev = readRaw(root).rev;
-			out({ ok: true, root, rev }, `initialized ${path.join(root, DIR)} (rev ${rev})\n`);
+			out(
+				{ ok: true, root, rev },
+				`initialized ${path.join(root, DIR)} (rev ${rev})\n`,
+			);
 			return 0;
 		}
 
@@ -470,12 +492,18 @@ async function main(): Promise<number> {
 				if (!flags.label) usage(2, "node add requires --label");
 				const n = addNode(s, { ...nodePatch(), label: flags.label, id: flags.id });
 				const r = writeScheme(root, s, "node.add", `node ${n.id} "${n.label}"`);
-				out({ ok: true, rev: r.rev, id: n.id }, `added node ${n.id} (rev ${r.rev})\n`);
+				out(
+					{ ok: true, rev: r.rev, id: n.id },
+					`added node ${n.id} (rev ${r.rev})\n`,
+				);
 			} else if (action === "update") {
 				if (!flags.id) usage(2, "node update requires --id");
 				const n = updateNode(s, flags.id, nodePatch());
 				const r = writeScheme(root, s, "node.update", `node ${n.id}`);
-				out({ ok: true, rev: r.rev, id: n.id }, `updated node ${n.id} (rev ${r.rev})\n`);
+				out(
+					{ ok: true, rev: r.rev, id: n.id },
+					`updated node ${n.id} (rev ${r.rev})\n`,
+				);
 			} else if (action === "remove") {
 				if (!flags.id) usage(2, "node remove requires --id");
 				removeNode(s, flags.id);
@@ -497,13 +525,24 @@ async function main(): Promise<number> {
 					to: flags.to,
 					id: flags.id,
 				});
-				const r = writeScheme(root, s, "edge.add", `edge ${e.id} ${e.from}->${e.to}`);
-				out({ ok: true, rev: r.rev, id: e.id }, `added edge ${e.id} (rev ${r.rev})\n`);
+				const r = writeScheme(
+					root,
+					s,
+					"edge.add",
+					`edge ${e.id} ${e.from}->${e.to}`,
+				);
+				out(
+					{ ok: true, rev: r.rev, id: e.id },
+					`added edge ${e.id} (rev ${r.rev})\n`,
+				);
 			} else if (action === "update") {
 				if (!flags.id) usage(2, "edge update requires --id");
 				const e = updateEdge(s, flags.id, edgePatch());
 				const r = writeScheme(root, s, "edge.update", `edge ${e.id}`);
-				out({ ok: true, rev: r.rev, id: e.id }, `updated edge ${e.id} (rev ${r.rev})\n`);
+				out(
+					{ ok: true, rev: r.rev, id: e.id },
+					`updated edge ${e.id} (rev ${r.rev})\n`,
+				);
 			} else if (action === "remove") {
 				if (!flags.id) usage(2, "edge remove requires --id");
 				removeEdge(s, flags.id);
@@ -530,12 +569,18 @@ async function main(): Promise<number> {
 					id: flags.id,
 				});
 				const r = writeScheme(root, s, "zone.add", `zone ${z.id} "${z.label}"`);
-				out({ ok: true, rev: r.rev, id: z.id }, `added zone ${z.id} (rev ${r.rev})\n`);
+				out(
+					{ ok: true, rev: r.rev, id: z.id },
+					`added zone ${z.id} (rev ${r.rev})\n`,
+				);
 			} else if (action === "update") {
 				if (!flags.id) usage(2, "zone update requires --id");
 				const z = updateZone(s, flags.id, zonePatch());
 				const r = writeScheme(root, s, "zone.update", `zone ${z.id}`);
-				out({ ok: true, rev: r.rev, id: z.id }, `updated zone ${z.id} (rev ${r.rev})\n`);
+				out(
+					{ ok: true, rev: r.rev, id: z.id },
+					`updated zone ${z.id} (rev ${r.rev})\n`,
+				);
 			} else if (action === "remove") {
 				if (!flags.id) usage(2, "zone remove requires --id");
 				removeZone(s, flags.id);
@@ -596,9 +641,19 @@ async function main(): Promise<number> {
 			// and local CAS keeps working for later writes
 			const remoteRev = remote.rev;
 			remote.rev = localRev;
-			const r = writeScheme(root, remote, "pull", `pull ${flags.name} (service rev ${remoteRev})`);
+			const r = writeScheme(
+				root,
+				remote,
+				"pull",
+				`pull ${flags.name} (service rev ${remoteRev})`,
+			);
 			out(
-				{ ok: true, rev: r.rev, name: flags.name, nodes: remote.nodes?.length ?? 0 },
+				{
+					ok: true,
+					rev: r.rev,
+					name: flags.name,
+					nodes: remote.nodes?.length ?? 0,
+				},
 				`pulled ${flags.name} into ${root} (rev ${r.rev})\n`,
 			);
 			return 0;
@@ -608,7 +663,9 @@ async function main(): Promise<number> {
 			const root = resolveScheme(positional[0]);
 			// --from FILE rebuilds exports around a hand-edited/agent payload;
 			// without it, the on-disk scheme is re-exported as is
-			const s = flags.from ? parseJson(readInputFile(flags.from), flags.from) : readRaw(root);
+			const s = flags.from
+				? parseJson(readInputFile(flags.from), flags.from)
+				: readRaw(root);
 			const r = writeScheme(root, s, "sync", "sync exports");
 			out({ ok: true, rev: r.rev }, `synced (rev ${r.rev})\n`);
 			return 0;
@@ -619,12 +676,14 @@ async function main(): Promise<number> {
 			const s = readRaw(root);
 			const wantMd = flags.md || !flags.html;
 			const wantHtml = flags.html || !flags.md;
-			if (wantMd) fs.writeFileSync(path.join(root, "SCHEME.md"), exportMd(s, validate(s)));
+			if (wantMd)
+				fs.writeFileSync(path.join(root, "SCHEME.md"), exportMd(s, validate(s)));
 			if (wantHtml) {
 				const html = generateHtml(s);
 				// Missing editor.html only defeats an EXPLICIT --html request; the
 				// default "render everything" still writes SCHEME.md and reports the gap.
-				if (html !== null) fs.writeFileSync(path.join(root, DIR, "scheme.html"), html);
+				if (html !== null)
+					fs.writeFileSync(path.join(root, DIR, "scheme.html"), html);
 				else if (flags.html) usage(2, "editor.html missing next to the CLI");
 			}
 			out({ ok: true, rev: s.rev }, `rendered exports (rev ${s.rev})\n`);
@@ -644,7 +703,10 @@ async function main(): Promise<number> {
 				old = readSnapshot(root, base);
 			} catch {
 				out(
-					{ ok: false, error: `no snapshot for rev ${base} (cache/backup rotated out?)` },
+					{
+						ok: false,
+						error: `no snapshot for rev ${base} (cache/backup rotated out?)`,
+					},
 					`no snapshot for rev ${base} in cache/backup\n`,
 				);
 				return 1;
@@ -653,7 +715,9 @@ async function main(): Promise<number> {
 			out(
 				{ ok: true, from: base, to: cur.rev, changes },
 				`rev ${base} -> ${cur.rev}\n${
-					changes.length ? `${changes.map((c) => `  ${c}`).join("\n")}\n` : "  (no changes)\n"
+					changes.length
+						? `${changes.map((c) => `  ${c}`).join("\n")}\n`
+						: "  (no changes)\n"
 				}`,
 			);
 			return 0;
@@ -694,7 +758,9 @@ async function main(): Promise<number> {
 							`${e.ts} ${e.actor.padEnd(13)} rev=${String(e.rev).padEnd(4)} ${e.op}: ${e.summary}`,
 					)
 					.join("\n")}${
-					autosaves.length ? `\nautosave:\n${autosaves.map((a) => `  ${a}`).join("\n")}` : ""
+					autosaves.length
+						? `\nautosave:\n${autosaves.map((a) => `  ${a}`).join("\n")}`
+						: ""
 				}\n`,
 			);
 			return 0;
@@ -708,8 +774,17 @@ async function main(): Promise<number> {
 			// CAS: the snapshot lands as a NEW write on top of the current rev,
 			// and --rev here names the revision to roll back TO, not a CAS expectation.
 			snapshot.rev = cur.rev;
-			const r = writeScheme(root, snapshot, "restore", `restore to rev ${flags.rev}`, false);
-			out({ ok: true, rev: r.rev }, `restored rev ${flags.rev} as new rev ${r.rev}\n`);
+			const r = writeScheme(
+				root,
+				snapshot,
+				"restore",
+				`restore to rev ${flags.rev}`,
+				false,
+			);
+			out(
+				{ ok: true, rev: r.rev },
+				`restored rev ${flags.rev} as new rev ${r.rev}\n`,
+			);
 			return 0;
 		}
 
@@ -718,8 +793,10 @@ async function main(): Promise<number> {
 			const problems: string[] = [];
 			const blockDir = path.join(root, DIR);
 			for (const f of ["scheme.json", "VERSION"])
-				if (!fs.existsSync(path.join(blockDir, f))) problems.push(`missing ${DIR}/${f}`);
-			if (!fs.existsSync(path.join(root, "SCHEME.md"))) problems.push("missing SCHEME.md");
+				if (!fs.existsSync(path.join(blockDir, f)))
+					problems.push(`missing ${DIR}/${f}`);
+			if (!fs.existsSync(path.join(root, "SCHEME.md")))
+				problems.push("missing SCHEME.md");
 
 			const s = readRaw(root);
 			problems.push(...validate(s).errors.map((e) => `json: ${e.message}`));
@@ -730,7 +807,8 @@ async function main(): Promise<number> {
 			if (fs.existsSync(md)) {
 				const text = fs.readFileSync(md, "utf8");
 				if (!text.includes(`# ${s.name}`)) problems.push("SCHEME.md name mismatch");
-				if (!text.includes(`rev: ${s.rev}`)) problems.push("SCHEME.md rev mismatch (stale export)");
+				if (!text.includes(`rev: ${s.rev}`))
+					problems.push("SCHEME.md rev mismatch (stale export)");
 			}
 			const htmlFile = path.join(blockDir, "scheme.html");
 			if (fs.existsSync(htmlFile)) {
@@ -740,7 +818,8 @@ async function main(): Promise<number> {
 				else if (Number(m[1]) !== s.rev)
 					problems.push(`scheme.html embedded rev ${m[1]} != ${s.rev} (stale)`);
 				// the editor is opened from disk by a human: keep it single-file small
-				if (html.length > 200 * 1024) problems.push(`scheme.html ${html.length}B > 200KB budget`);
+				if (html.length > 200 * 1024)
+					problems.push(`scheme.html ${html.length}B > 200KB budget`);
 			}
 			problems.push(...staleRefs(root, s).map((i) => i.message));
 
@@ -772,7 +851,10 @@ async function main(): Promise<number> {
 				);
 				return 1;
 			}
-			out({ ok: true, version: s.version }, `format ${s.version} is current; nothing to migrate\n`);
+			out(
+				{ ok: true, version: s.version },
+				`format ${s.version} is current; nothing to migrate\n`,
+			);
 			return 0;
 		}
 

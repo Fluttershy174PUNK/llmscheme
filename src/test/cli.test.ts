@@ -9,7 +9,11 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import * as core from "../core/index.ts";
 
-const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const repo = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"..",
+);
 const BLOCK = path.join(repo, "src", "cli", "block.ts");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "blm-cli-"));
@@ -32,7 +36,11 @@ function run(args: string[], cwd: string, input?: string): Run {
 		return { status: 0, stdout, stderr: "" };
 	} catch (e) {
 		const err = e as { status?: number; stdout?: string; stderr?: string };
-		return { status: err.status ?? -1, stdout: err.stdout ?? "", stderr: err.stderr ?? "" };
+		return {
+			status: err.status ?? -1,
+			stdout: err.stdout ?? "",
+			stderr: err.stderr ?? "",
+		};
 	}
 }
 
@@ -46,22 +54,30 @@ const fresh = () => {
 
 test("CLI runs straight from .ts: init -> node x3 -> edge x2 -> validate -> get", () => {
 	const dir = fresh();
-	assert.equal(run(["node", "add", "--label", "A", "--ref", "src/a.ts"], dir).status, 0);
+	assert.equal(
+		run(["node", "add", "--label", "A", "--ref", "src/a.ts"], dir).status,
+		0,
+	);
 	run(["node", "add", "--label", "B"], dir);
 	run(["node", "add", "--label", "C", "--shape", "diamond"], dir);
 	run(["edge", "add", "--from", "n1", "--to", "n2"], dir);
 	assert.equal(
-		run(["edge", "add", "--from", "n2", "--to", "n3", "--style", "dashed"], dir).status,
+		run(["edge", "add", "--from", "n2", "--to", "n3", "--style", "dashed"], dir)
+			.status,
 		0,
 	);
 
-	const rev = JSON.parse(fs.readFileSync(path.join(dir, core.DIR, "scheme.json"), "utf8")).rev;
+	const rev = JSON.parse(
+		fs.readFileSync(path.join(dir, core.DIR, "scheme.json"), "utf8"),
+	).rev;
 	assert.equal(rev, 6, "init 1 + 3 nodes + 2 edges");
 	assert.equal(run(["validate", "."], dir).status, 0);
 	assert.equal(JSON.parse(run(["get", "--json"], dir).stdout).rev, 6);
 
 	// exports follow every write
-	assert.ok(fs.readFileSync(path.join(dir, "SCHEME.md"), "utf8").includes("rev: 6"));
+	assert.ok(
+		fs.readFileSync(path.join(dir, "SCHEME.md"), "utf8").includes("rev: 6"),
+	);
 	const s = core.readRaw(dir);
 	assert.equal(s.nodes.length, 3);
 	assert.equal(s.edges.length, 2);
@@ -73,7 +89,11 @@ test("init is idempotent: no dup gitignore line, single AGENTS.md section", () =
 	run(["init", proj, "--name", "T"], proj);
 	// .gitignore and AGENTS.md live at the project root
 	const gi = fs.readFileSync(path.join(proj, ".gitignore"), "utf8");
-	assert.equal(gi.split(`${core.SCHEMES_DIR}/`).length - 1, 1, "one gitignore line");
+	assert.equal(
+		gi.split(`${core.SCHEMES_DIR}/`).length - 1,
+		1,
+		"one gitignore line",
+	);
 	const ag = fs.readFileSync(path.join(proj, "AGENTS.md"), "utf8");
 	assert.equal(ag.split(core.AGENTS_START).length - 1, 1, "one AGENTS section");
 	// VERSION lands once, inside the scheme dir
@@ -89,7 +109,10 @@ test("node update/remove: w/h override, table cols/rows, edges cleaned with the 
 	run(["node", "add", "--label", "B"], dir);
 	run(["edge", "add", "--from", "n1", "--to", "n2"], dir);
 
-	run(["node", "update", "--id", "n1", "--label", "A2", "--w", "300", "--h", "90"], dir);
+	run(
+		["node", "update", "--id", "n1", "--label", "A2", "--w", "300", "--h", "90"],
+		dir,
+	);
 	let s = core.readRaw(dir);
 	assert.equal(s.nodes[0]?.label, "A2");
 	assert.equal(s.nodes[0]?.w, 300);
@@ -141,11 +164,25 @@ test("edge/zone add-update-remove", () => {
 	run(["node", "add", "--label", "B"], dir);
 
 	const e = run(
-		["edge", "add", "--from", "n1", "--to", "n2", "--label", "ok", "--from-side", "right"],
+		[
+			"edge",
+			"add",
+			"--from",
+			"n1",
+			"--to",
+			"n2",
+			"--label",
+			"ok",
+			"--from-side",
+			"right",
+		],
 		dir,
 	);
 	assert.equal(e.status, 0);
-	assert.equal(run(["edge", "update", "--id", "e1", "--style", "dashed"], dir).status, 0);
+	assert.equal(
+		run(["edge", "update", "--id", "e1", "--style", "dashed"], dir).status,
+		0,
+	);
 	assert.equal(core.readRaw(dir).edges[0]?.style, "dashed");
 	assert.equal(core.readRaw(dir).edges[0]?.fromSide, "right");
 	assert.equal(run(["edge", "remove", "--id", "e1"], dir).status, 0);
@@ -190,7 +227,10 @@ test("CAS: stale --rev exits 1 with friendly text and writes nothing", () => {
 	assert.match(r.stderr, /^conflict: /);
 	assert.equal(core.readRaw(dir).nodes.length, 1, "nothing written on conflict");
 	// the correct rev is accepted
-	assert.equal(run(["node", "add", "--label", "B", "--rev", String(rev)], dir).status, 0);
+	assert.equal(
+		run(["node", "add", "--label", "B", "--rev", String(rev)], dir).status,
+		0,
+	);
 });
 
 test("put from stdin: CAS against disk, payload rev ignored, exports rebuilt", () => {
@@ -236,7 +276,9 @@ test("validate exits 1 on errors and reports stale refs as warnings", () => {
 	// break it on disk: an unknown shape. Raw JSON, not a SchemeNode — we are
 	// corrupting a file deliberately, so no cast is needed to model it.
 	const file = path.join(dir, core.DIR, "scheme.json");
-	const raw = JSON.parse(fs.readFileSync(file, "utf8")) as { nodes: { shape: string }[] };
+	const raw = JSON.parse(fs.readFileSync(file, "utf8")) as {
+		nodes: { shape: string }[];
+	};
 	if (raw.nodes[0]) raw.nodes[0].shape = "hexagon";
 	fs.writeFileSync(file, JSON.stringify(raw));
 	const bad = run(["validate", "."], dir);
@@ -256,7 +298,23 @@ test("diff reports every changed field and handles a missing snapshot", () => {
 	run(["node", "add", "--label", "A"], dir);
 	const rev = core.readRaw(dir).rev;
 	run(["node", "update", "--id", "n1", "--label", "B", "--w", "300"], dir);
-	run(["zone", "add", "--label", "z", "--x", "0", "--y", "0", "--w", "10", "--h", "10"], dir);
+	run(
+		[
+			"zone",
+			"add",
+			"--label",
+			"z",
+			"--x",
+			"0",
+			"--y",
+			"0",
+			"--w",
+			"10",
+			"--h",
+			"10",
+		],
+		dir,
+	);
 
 	const d = run(["diff", "--rev", String(rev)], dir);
 	assert.equal(d.status, 0);
@@ -265,11 +323,17 @@ test("diff reports every changed field and handles a missing snapshot", () => {
 	assert.match(d.stdout, /zone z1/); // …and missed zones too
 
 	// a rev above current: nothing to compare
-	assert.match(run(["diff", "--rev", String(rev + 50)], dir).stdout, /nothing changed/);
+	assert.match(
+		run(["diff", "--rev", String(rev + 50)], dir).stdout,
+		/nothing changed/,
+	);
 	// a rev below current with its backup present: real diff
 	assert.equal(run(["diff", "--rev", String(rev - 1)], dir).status, 0);
 	// a rev below current whose backup was rotated away -> exit 1, no stacktrace
-	fs.rmSync(path.join(dir, core.DIR, "cache", "backup"), { recursive: true, force: true });
+	fs.rmSync(path.join(dir, core.DIR, "cache", "backup"), {
+		recursive: true,
+		force: true,
+	});
 	const gone = run(["diff", "--rev", "1"], dir);
 	assert.equal(gone.status, 1);
 	assert.match(gone.stdout, /no snapshot for rev 1/);
@@ -295,7 +359,11 @@ test("restore rolls a rev back as a NEW write (history stays append-only)", () =
 	const bad = run(["restore", "--rev", "999"], dir);
 	assert.equal(bad.status, 1);
 	assert.match(bad.stderr, /no snapshot for rev 999/);
-	assert.equal(run(["restore"], dir).status, 2, "missing --rev is a usage error");
+	assert.equal(
+		run(["restore"], dir).status,
+		2,
+		"missing --rev is a usage error",
+	);
 });
 
 test("history shows the journal tape and survives a corrupt line", () => {
@@ -324,7 +392,9 @@ test("sync rebuilds exports around hand-edited json; render does not bump rev", 
 
 	assert.equal(run(["render", "."], dir).status, 0);
 	assert.equal(core.readRaw(dir).rev, s.rev, "render does not bump rev");
-	assert.ok(fs.readFileSync(path.join(dir, "SCHEME.md"), "utf8").includes("hand edited"));
+	assert.ok(
+		fs.readFileSync(path.join(dir, "SCHEME.md"), "utf8").includes("hand edited"),
+	);
 
 	assert.equal(run(["sync", "."], dir).status, 0);
 	assert.equal(core.readRaw(dir).rev, s.rev + 1, "sync is a write");
@@ -341,7 +411,11 @@ test("sync rebuilds exports around hand-edited json; render does not bump rev", 
 test("doctor: clean project passes, stale export and missing files are reported", () => {
 	const dir = fresh();
 	run(["node", "add", "--label", "A"], dir);
-	assert.equal(run(["doctor", "."], dir).status, 0, run(["doctor", "."], dir).stdout);
+	assert.equal(
+		run(["doctor", "."], dir).status,
+		0,
+		run(["doctor", "."], dir).stdout,
+	);
 
 	// stale SCHEME.md
 	fs.writeFileSync(path.join(dir, "SCHEME.md"), "# T\n\nrev: 1\n");
@@ -370,9 +444,16 @@ test("usage errors exit 2 with the usage text, never a stacktrace", () => {
 		["node", "add", "--label", "x", "--x", "notanumber"],
 	] as string[][]) {
 		const r = run(args, dir);
-		assert.equal(r.status, 2, `${args.join(" ")} -> ${r.status} (${r.stderr.slice(0, 80)})`);
+		assert.equal(
+			r.status,
+			2,
+			`${args.join(" ")} -> ${r.status} (${r.stderr.slice(0, 80)})`,
+		);
 		assert.match(r.stderr, /usage: block/);
-		assert.ok(!r.stderr.includes("at Module"), `${args.join(" ")} leaked a stacktrace`);
+		assert.ok(
+			!r.stderr.includes("at Module"),
+			`${args.join(" ")} leaked a stacktrace`,
+		);
 	}
 });
 
@@ -403,7 +484,10 @@ test("arbitrary scheme types: --type accepts any safe word, rejects bad ones", (
 	const proj = tmp();
 	fs.mkdirSync(path.join(proj, ".git"));
 	// a non-standard type (e.g. "db") works and lands in <type>_scheme
-	assert.equal(run(["init", proj, "--name", "DB", "--type", "db"], proj).status, 0);
+	assert.equal(
+		run(["init", proj, "--name", "DB", "--type", "db"], proj).status,
+		0,
+	);
 	assert.ok(fs.existsSync(path.join(core.schemeDir(proj, "db"), "scheme.json")));
 	assert.equal(run(["get", "--type", "db"], proj).status, 0);
 	// unsafe names are rejected with a usage error (2), not a path escape
@@ -426,7 +510,16 @@ test("pull requires --url, --key and --name (never a hardcoded endpoint)", () =>
 	}
 	// unreachable service: a data error (1), not a stacktrace
 	const bad = run(
-		["pull", "--url", "http://127.0.0.1:1", "--key", "llm_x", "--name", "web/auth", dir],
+		[
+			"pull",
+			"--url",
+			"http://127.0.0.1:1",
+			"--key",
+			"llm_x",
+			"--name",
+			"web/auth",
+			dir,
+		],
 		dir,
 	);
 	assert.equal(bad.status, 1);
@@ -460,7 +553,10 @@ test("--json output is machine-readable for every read command", () => {
 	run(["edge", "add", "--from", "n1", "--to", "n1"], dir);
 	for (const cmd of [["get"], ["validate"], ["history"], ["diff"]]) {
 		const r = run([...cmd, "--json", "."], dir);
-		assert.doesNotThrow(() => JSON.parse(r.stdout), `${cmd[0]} --json must parse`);
+		assert.doesNotThrow(
+			() => JSON.parse(r.stdout),
+			`${cmd[0]} --json must parse`,
+		);
 	}
 });
 
