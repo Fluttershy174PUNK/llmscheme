@@ -40,7 +40,10 @@ export interface ApiError extends Error {
 	status: number;
 }
 
-export async function api<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+export async function api<T = unknown>(
+	path: string,
+	init: RequestInit = {},
+): Promise<T> {
 	const headers = new Headers(init.headers);
 	if (!headers.has("content-type") && init.body && typeof init.body === "string")
 		headers.set("content-type", "application/json");
@@ -68,7 +71,10 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}): Pr
 }
 
 // confirm dialog — replaces window.confirm() with a single, themed flow
-export function confirmDialog(message: string, confirmLabel?: string): Promise<boolean> {
+export function confirmDialog(
+	message: string,
+	confirmLabel?: string,
+): Promise<boolean> {
 	return new Promise((resolve) => {
 		const L = labels();
 		const dlg = document.createElement("dialog");
@@ -99,7 +105,10 @@ export function confirmDialog(message: string, confirmLabel?: string): Promise<b
 	});
 }
 
-export function promptDialog(message: string, defaultValue = ""): Promise<string | null> {
+export function promptDialog(
+	message: string,
+	defaultValue = "",
+): Promise<string | null> {
 	return new Promise((resolve) => {
 		const L = labels();
 		const dlg = document.createElement("dialog");
@@ -165,7 +174,8 @@ export function chooseDialog(
 		dlg.append(form);
 		document.body.appendChild(dlg);
 		dlg.addEventListener("close", () => {
-			const v = dlg.returnValue && dlg.returnValue !== "cancel" ? dlg.returnValue : null;
+			const v =
+				dlg.returnValue && dlg.returnValue !== "cancel" ? dlg.returnValue : null;
 			dlg.remove();
 			resolve(v);
 		});
@@ -248,7 +258,11 @@ export function keyDialog(
 			return wrap;
 		};
 
-		form.append(h3, field(keyLabel, apiKey, false), field(mcpLabel, mcpJson, true));
+		form.append(
+			h3,
+			field(keyLabel, apiKey, false),
+			field(mcpLabel, mcpJson, true),
+		);
 		const menu = document.createElement("menu");
 		const ok = document.createElement("button");
 		ok.value = "ok";

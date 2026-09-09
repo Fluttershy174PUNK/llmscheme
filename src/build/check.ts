@@ -10,7 +10,11 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const repo = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"..",
+);
 const src = path.join(repo, "src");
 // v2 layout: SKILL/llmscheme/, SERVICE-MCP/llmscheme/
 const skill = path.join(repo, "SKILL", "llmscheme");
@@ -44,7 +48,9 @@ function walkFiles(target: string): string[] {
 	return fs
 		.readdirSync(target, { withFileTypes: true })
 		.flatMap((e) =>
-			e.isDirectory() ? walkFiles(path.join(target, e.name)) : [path.join(target, e.name)],
+			e.isDirectory()
+				? walkFiles(path.join(target, e.name))
+				: [path.join(target, e.name)],
 		);
 }
 
@@ -67,7 +73,8 @@ for (const [rel, dest] of PAIRS) {
 	for (const f of srcFiles.filter((x) => skillFiles.includes(x))) {
 		const a = path.join(srcRoot, f);
 		const b = path.join(skillRoot, f);
-		if (sha256(a) !== sha256(b)) note(`SKILL/llmscheme/${dest}/${f} differs from src/${rel}/${f}`);
+		if (sha256(a) !== sha256(b))
+			note(`SKILL/llmscheme/${dest}/${f} differs from src/${rel}/${f}`);
 	}
 }
 
@@ -80,9 +87,14 @@ if (!fs.existsSync(manifestFile)) {
 	// a corrupt manifest is itself a finding — report it like every other problem
 	// instead of throwing a stacktrace out of a check script
 	try {
-		manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8")) as Record<string, string>;
+		manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8")) as Record<
+			string,
+			string
+		>;
 	} catch (e) {
-		note(`SKILL/llmscheme/.manifest.json is not valid JSON: ${(e as Error).message}`);
+		note(
+			`SKILL/llmscheme/.manifest.json is not valid JSON: ${(e as Error).message}`,
+		);
 	}
 }
 if (manifest) {
@@ -94,7 +106,8 @@ if (manifest) {
 	}
 	for (const f of walkFiles(skill)) {
 		const rel = path.relative(skill, f).split(path.sep).join("/");
-		if (rel !== ".manifest.json" && !(rel in manifest)) note(`${rel} is not in the manifest`);
+		if (rel !== ".manifest.json" && !(rel in manifest))
+			note(`${rel} is not in the manifest`);
 	}
 }
 
@@ -105,28 +118,37 @@ for (const f of ["VERSION", "SKILL.md"])
 // The editor is built from src/editor/skill/main.ts. Until that entry exists
 // there is nothing to build, so a missing editor.html is not a finding yet —
 // but once it does, the artifact must be present and up to date.
-const editorSourcesExist = fs.existsSync(path.join(repo, "src", "editor", "skill", "main.ts"));
+const editorSourcesExist = fs.existsSync(
+	path.join(repo, "src", "editor", "skill", "main.ts"),
+);
 const editor = path.join(skill, "editor.html");
 if (!fs.existsSync(editor)) {
-	if (editorSourcesExist) note("SKILL/llmscheme/editor.html missing (run npm run build)");
+	if (editorSourcesExist)
+		note("SKILL/llmscheme/editor.html missing (run npm run build)");
 } else {
 	const size = fs.statSync(editor).size;
-	if (size > BUDGET_EDITOR) note(`SKILL/llmscheme/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
+	if (size > BUDGET_EDITOR)
+		note(`SKILL/llmscheme/editor.html ${size}B > budget ${BUDGET_EDITOR}B`);
 
 	// single-file invariants: it is opened from file:// with no network
 	const html = fs.readFileSync(editor, "utf8");
 	const external = [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
 		.map((m) => m[1] as string)
 		.filter((u) => !u.startsWith("data:") && !u.startsWith("#"));
-	if (external.length) note(`editor.html references external files: ${external.join(", ")}`);
+	if (external.length)
+		note(`editor.html references external files: ${external.join(", ")}`);
 	if (!/<script type="application\/json" id="scheme-data">/.test(html))
 		note("editor.html has no scheme-data marker (cannot embed a scheme)");
-	if (!/<script(?:\s[^>]*)?>/.test(html)) note("editor.html has no inline script");
+	if (!/<script(?:\s[^>]*)?>/.test(html))
+		note("editor.html has no inline script");
 	// fonts must be inline for file:// (a relative fetch there is a NetworkError)
 	const fonts = (html.match(/data:font\/woff2;base64/g) ?? []).length;
 	if (fonts !== 2)
-		note(`editor.html inlines ${fonts} woff2 subsets, expected 2 (latin + cyrillic)`);
-	if (/fetch\(["']https?:/.test(html)) note("editor.html fetches an absolute http(s) URL");
+		note(
+			`editor.html inlines ${fonts} woff2 subsets, expected 2 (latin + cyrillic)`,
+		);
+	if (/fetch\(["']https?:/.test(html))
+		note("editor.html fetches an absolute http(s) URL");
 }
 
 // ---- 4. the service artifact: thin HTML, font served separately ----
@@ -140,7 +162,9 @@ const serviceConsole = path.join(mcp, "console.html");
 if (fs.existsSync(serviceConsole)) {
 	const size = fs.statSync(serviceConsole).size;
 	if (size > BUDGET_CONSOLE)
-		note(`SERVICE-MCP/llmscheme/console.html ${size}B > budget ${BUDGET_CONSOLE}B`);
+		note(
+			`SERVICE-MCP/llmscheme/console.html ${size}B > budget ${BUDGET_CONSOLE}B`,
+		);
 	const html = fs.readFileSync(serviceConsole, "utf8");
 	// served over http: the font is a cacheable file, not 26K of base64 per page
 	if (/data:font\/woff2;base64/.test(html))
@@ -155,7 +179,9 @@ if (fs.existsSync(serviceEditor) && fs.existsSync(serviceConsole)) {
 	const edJs = srcOf(fs.readFileSync(serviceEditor, "utf8"));
 	const coJs = srcOf(fs.readFileSync(serviceConsole, "utf8"));
 	if (edJs === coJs)
-		note(`editor.html and console.html share one bundle (${edJs}) — give each its own`);
+		note(
+			`editor.html and console.html share one bundle (${edJs}) — give each its own`,
+		);
 }
 
 // ---- 5. generated files must never carry a formatter's hand ----
@@ -166,7 +192,8 @@ for (const f of [editor, serviceEditor, serviceConsole]) {
 	const html = fs.readFileSync(f, "utf8");
 	// a formatted bundle has readable newlines between statements; a real build
 	// does not. Cheap heuristic, and it catches the exact v1 failure mode.
-	const script = html.match(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/)?.[1] ?? "";
+	const script =
+		html.match(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/)?.[1] ?? "";
 	if (script.length > 20_000 && (script.match(/\n/g) ?? []).length > 500)
 		note(`${path.relative(repo, f)} looks hand-formatted — rebuild it`);
 }

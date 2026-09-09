@@ -557,7 +557,9 @@ test("scheme rename and duplicate", async () => {
 		body: JSON.stringify({ to: "ren/proj2" }),
 	});
 	assert.equal(rn.status, 200);
-	const list1 = (await (await fetch(`${baseUrl}/api/schemes`, { headers: a.headers })).json()) as {
+	const list1 = (await (
+		await fetch(`${baseUrl}/api/schemes`, { headers: a.headers })
+	).json()) as {
 		project: string;
 		name: string;
 	}[];
@@ -571,7 +573,9 @@ test("scheme rename and duplicate", async () => {
 		body: JSON.stringify({ to: "ren/proj3" }),
 	});
 	assert.equal(dup.status, 201);
-	const list2 = (await (await fetch(`${baseUrl}/api/schemes`, { headers: a.headers })).json()) as {
+	const list2 = (await (
+		await fetch(`${baseUrl}/api/schemes`, { headers: a.headers })
+	).json()) as {
 		project: string;
 		name: string;
 	}[];
@@ -636,12 +640,22 @@ test("MCP tools/call round-trip: create_scheme then list_schemes", async () => {
 			body: JSON.stringify({ jsonrpc: "2.0", id: 7, method, params }),
 		});
 
-	const created = await call("tools/call", { name: "create_scheme", arguments: { name: "mcp-made" } });
-	const cj = (await created.json()) as { result: { content: { text: string }[] } };
+	const created = await call("tools/call", {
+		name: "create_scheme",
+		arguments: { name: "mcp-made" },
+	});
+	const cj = (await created.json()) as {
+		result: { content: { text: string }[] };
+	};
 	assert.equal(created.status, 200);
 	assert.match(cj.result.content[0]!.text, /"rev":\s*1/);
 
-	const listed = await call("tools/call", { name: "list_schemes", arguments: {} });
-	const lj = (await listed.json()) as { result: { content: { text: string }[] } };
+	const listed = await call("tools/call", {
+		name: "list_schemes",
+		arguments: {},
+	});
+	const lj = (await listed.json()) as {
+		result: { content: { text: string }[] };
+	};
 	assert.match(lj.result.content[0]!.text, /mcp-made/);
 });

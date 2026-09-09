@@ -13,7 +13,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const repo = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"..",
+);
 
 interface Entry {
 	name: string;
@@ -88,14 +92,18 @@ function sveltePlugin(cssDir: string): {
 				const name = path.basename(a.path, ".svelte") + ".css";
 				const cssFile = path.join(cssDir, name);
 				if (r.css?.code) fs.writeFileSync(cssFile, r.css.code);
-				const js = r.css?.code ? `${r.js.code}\nimport ${JSON.stringify(cssFile)};\n` : r.js.code;
+				const js = r.css?.code
+					? `${r.js.code}\nimport ${JSON.stringify(cssFile)};\n`
+					: r.js.code;
 				return { contents: js, loader: "js", resolveDir: path.dirname(a.path) };
 			});
 		},
 	};
 }
 
-async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: number }> {
+async function buildEntry(
+	e: Entry,
+): Promise<{ js: number; css: number; total: number }> {
 	const tmpDir = path.join(repo, "dist", ".tmp", e.name);
 	fs.rmSync(tmpDir, { recursive: true, force: true });
 	fs.mkdirSync(tmpDir, { recursive: true });
@@ -119,7 +127,12 @@ async function buildEntry(e: Entry): Promise<{ js: number; css: number; total: n
 		plugins: [sveltePlugin(cssDir)],
 		outfile: jsOut,
 		logLevel: "warning",
-		loader: { ".woff2": "dataurl", ".woff": "dataurl", ".png": "dataurl", ".svg": "text" },
+		loader: {
+			".woff2": "dataurl",
+			".woff": "dataurl",
+			".png": "dataurl",
+			".svg": "text",
+		},
 	});
 
 	// CSS is bundled separately so the font loader can differ per artifact.
@@ -235,5 +248,7 @@ for (const e of ENTRIES) {
 		continue;
 	}
 	const r = await buildEntry(e);
-	console.log(`${e.name}: ${e.out} ${r.total}B (js ${r.js}B + css ${r.css}B, font ${e.font})`);
+	console.log(
+		`${e.name}: ${e.out} ${r.total}B (js ${r.js}B + css ${r.css}B, font ${e.font})`,
+	);
 }
