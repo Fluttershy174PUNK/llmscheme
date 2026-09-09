@@ -22,19 +22,28 @@ export function jail(rootAbs: string, rel: string): string {
 
 // v2 layout: the skill keeps several independent schemes per project.
 //   <project>/.llmscheme/
-//     logic_scheme/   ← modules + data flow
+//     logic_scheme/   ← modules + data flow (common default)
 //     code_scheme/    ← call graph / code structure
 //     ui_scheme/      ← screens + routes
+//     …_scheme/       ← any meaning: db, api, auth, pipeline — the agent asks
+//                       the user what to build, it is NOT a fixed set
 // Each scheme dir is a full scheme root (scheme.json + SCHEME.md + scheme.html
 // + cache/ + VERSION inside it). `refs` are still relative to the PROJECT root,
 // not the scheme dir — that is what `projectRootOf` recovers.
 export const SCHEMES_DIR = ".llmscheme";
+// the common three, kept as the documented examples — NOT a hard whitelist
 export const SCHEME_TYPES = ["logic", "code", "ui"] as const;
-export type SchemeType = (typeof SCHEME_TYPES)[number];
+// a scheme type is any safe single word; the dir name is `<type>_scheme`
+export type SchemeType = string;
 
-export const schemeDirName = (t: SchemeType): string => `${t}_scheme`;
+const TYPE_RE = /^[a-z0-9][a-z0-9_-]*$/;
 
-export function schemeDir(projectRoot: string, type: SchemeType): string {
+export const schemeDirName = (t: string): string => {
+	if (!TYPE_RE.test(t)) throw new PathJailError(`bad scheme type "${t}" (use a-z 0-9 _ -)`);
+	return `${t}_scheme`;
+};
+
+export function schemeDir(projectRoot: string, type: string): string {
 	return path.join(projectRoot, SCHEMES_DIR, schemeDirName(type));
 }
 
@@ -67,13 +76,16 @@ export function findSchemeDirs(cwd: string): string[] {
 	for (let dir = path.resolve(cwd); ; ) {
 		const llm = path.join(dir, SCHEMES_DIR);
 		if (fs.existsSync(llm)) {
-			for (const t of SCHEME_TYPES) {
-				const sd = path.join(llm, schemeDirName(t));
+			// any <type>_scheme with a scheme.json is a candidate — the set is
+			// open (logic/code/ui/…), not hardcoded
+			for (const e of fs.readdirSync(llm, { withFileTypes: true })) {
+				if (!e.isDirectory() || !e.name.endsWith("_scheme")) continue;
+				const sd = path.join(llm, e.name);
 				if (fs.existsSync(path.join(sd, "scheme.json"))) hits.push(sd);
 			}
 		}
 		if ((gitRoot && dir === gitRoot) || dir === path.dirname(dir)) break;
 		dir = path.dirname(dir);
 	}
-	return [...new Set(hits)];
+	return [...new Set(hits)].sort();
 }

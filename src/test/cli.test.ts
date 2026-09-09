@@ -399,6 +399,20 @@ test("no scheme found upward exits 2; multiple types asks instead of guessing", 
 	assert.equal(run(["get", core.schemeDir(proj, "logic")], proj).status, 0);
 });
 
+test("arbitrary scheme types: --type accepts any safe word, rejects bad ones", () => {
+	const proj = tmp();
+	fs.mkdirSync(path.join(proj, ".git"));
+	// a non-standard type (e.g. "db") works and lands in <type>_scheme
+	assert.equal(run(["init", proj, "--name", "DB", "--type", "db"], proj).status, 0);
+	assert.ok(fs.existsSync(path.join(core.schemeDir(proj, "db"), "scheme.json")));
+	assert.equal(run(["get", "--type", "db"], proj).status, 0);
+	// unsafe names are rejected with a usage error (2), not a path escape
+	for (const bad of ["../x", "a/b", "", "Has Space", "Àb"]) {
+		const r = run(["init", proj, "--name", "B", "--type", bad], proj);
+		assert.equal(r.status, 2, `--type "${bad}" must be rejected`);
+	}
+});
+
 test("pull requires --url, --key and --name (never a hardcoded endpoint)", () => {
 	const dir = tmp();
 	for (const args of [

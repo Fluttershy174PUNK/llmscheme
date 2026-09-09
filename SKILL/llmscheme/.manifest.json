@@ -1,7 +1,7 @@
 {
-  "SKILL.md": "dcc2ebbf1f662d6f20aafdb1a22eeb0f7d64fc061f670fa0e062a49bc937169a",
+  "SKILL.md": "d796a6147ff2621c969fb483e523bab65f5aba49615ce28386300a2dd3f5ea1d",
   "VERSION": "99b8c9653f7efa8126f7da3ac3d1738fc927e2f35456ba9953d16c6cd00c4d2e",
-  "cli/block.ts": "3f114b12ac84441d3f78ac323e1bdfc21ea1e6ac48ef419cafea2a215877ac8f",
+  "cli/block.ts": "9de63dfd4fd46bfb9bb51202ce890674e962f4e4ef563962b57edfb9b4234c30",
   "core/browser.ts": "1371da619ee9e53b668ae8fe2543ed2e2a8e4702928908b9f04ddbb13e7e91b0",
   "core/diff.ts": "3eb354b1ffd1e5d235f044e886430ed4d66410b505df983573d5623ea4ce4243",
   "core/errors.ts": "45b446b4019af49fc6639e0d9d188874d72ec1ee794c14e4162d0889d6a5dc9f",
@@ -12,7 +12,7 @@
   "core/index.ts": "898be53e445e6289da3b09ffb4ec5822c752dfc15bd2b6b8cf82b52cb14c897b",
   "core/layout.ts": "5110fec2e14ac5e9dce3c3ff2e607c3aef6185c430f8f1f5c15ce404483a8b04",
   "core/ops.ts": "55b07508306cf5a6511f993d736055f859a46ab0584f3a888fd1d6734eed3581",
-  "core/pathjail.ts": "6a4adc3cfbaf585fe4ade8b4ea2d5874801895f6eeb848bc158a3af7e51e4d8d",
+  "core/pathjail.ts": "a399aa216bbe855cf64422289ecc5c1db4be29cd45b1b3d6a66fa424418d90b0",
   "core/renderHtml.ts": "9dd525d40b18ab0e44dad0bd6255214dfea3cf77bfbeba71f3457b0dec2df245",
   "core/saveSchema.ts": "c6ac4f2273d60c1c0cfa8c663cf895966d0939c8e2e3aa6118fd3d96f36825cd",
   "core/types.ts": "230c120fec2175e61b20a6e970c6fe3a1ca1a5ecb21a0dc8699204d9d10424e5",

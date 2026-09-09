@@ -22,7 +22,6 @@ import {
 	schemeDir,
 	projectRootOf,
 	SCHEMES_DIR,
-	SCHEME_TYPES,
 	type SchemeType,
 	readRaw,
 	readSnapshot,
@@ -57,7 +56,7 @@ const SKILL_DIR = path.dirname(HERE); // …/skill or …/src
 const USAGE = `usage: block <command> [project] [options]
 
 commands:
-  init [project] [--type logic|code|ui] [--name N]
+  init [project] [--type NAME] [--name N]
                                    set up .llmscheme/<type>_scheme/ + SCHEME.md
   get [project] [--type T] [--json]   print scheme summary
   validate [project] [--type T] [--json]   errors / warnings / stale refs
@@ -77,7 +76,7 @@ commands:
   version                          print skill + format version
 
 global options:
-  --type T     scheme type: logic | code | ui (default logic)
+  --type T     scheme type: any short name (logic|code|ui are common; default logic)
   --rev N      expected revision for CAS (write commands)
   --json       machine-readable output
   --actor NAME agent|human-json (default agent)
@@ -214,10 +213,13 @@ const [cmd, ...positional] = rest;
 //   (b) --type picks the matching scheme dir;
 //   (c) exactly one scheme dir found -> use it;
 //   (d) multiple and no --type -> ask, never silently pick.
+// scheme type: any safe single word (logic|code|ui are the common three, but
+// a scheme can describe anything — db, api, auth, pipeline). The agent asks the
+// user which scheme to build; it is not a fixed whitelist.
 function schemeType(): SchemeType {
 	if (flags.type === undefined) return "logic";
-	if (SCHEME_TYPES.includes(flags.type)) return flags.type;
-	usage(2, `--type must be one of ${SCHEME_TYPES.join("|")}, got "${flags.type}"`);
+	if (/^[a-z0-9][a-z0-9_-]*$/.test(flags.type)) return flags.type;
+	usage(2, `--type must be a safe name (a-z 0-9 _ -), got "${flags.type}"`);
 }
 
 // an explicit path may be a scheme dir itself or a project root; resolve to a

@@ -575,11 +575,14 @@ test("findSchemeDirs: finds .llmscheme/<type>_scheme upward, stops at git root, 
 	fs.mkdirSync(sibling);
 	assert.deepEqual(core.findSchemeDirs(sibling), []);
 
-	// a second scheme type in the same project is a second candidate
+	// a second scheme type in the same project is a second candidate (any word)
 	mkScheme(proj, "code");
+	mkScheme(proj, "db");
+	// discovery is alphabetical over <type>_scheme dirs
 	assert.deepEqual(core.findSchemeDirs(path.join(proj, "src", "x")), [
-		core.schemeDir(proj, "logic"),
 		core.schemeDir(proj, "code"),
+		core.schemeDir(proj, "db"),
+		core.schemeDir(proj, "logic"),
 	]);
 });
 

@@ -1,6 +1,6 @@
 ---
 name: block-llm
-description: Maintains living logic schemes of the current project in .llmscheme/ (logic_scheme, code_scheme, ui_scheme), plus a human-readable SCHEME.md and an interactive scheme.html editor the user can open by double-click. Use whenever you explore, refactor, or extend a project's architecture, add or remove modules, trace data flow, answer "how does this work", or when the user says "update the scheme", "I edited the scheme - implement it". Also use proactively after any change that adds/removes a module or data flow, even if the user did not ask. Russian triggers: "схема проекта", "обнови схему", "нарисуй архитектуру", "как это работает", "я поправил схему - воплоти".
+description: Maintains living schemes of the current project in .llmscheme/ (a scheme per concern — logic, code, ui, or any other the user asks for), plus a human-readable SCHEME.md and an interactive scheme.html editor the user can open by double-click. On first use ASK which scheme to build; afterwards only UPDATE the schemes that already exist — never create a new scheme unless the user explicitly asks. Use whenever you explore, refactor, or extend a project's architecture, add or remove modules, trace data flow, answer "how does this work", or when the user says "update the scheme", "I edited the scheme - implement it". Russian triggers: "схема проекта", "обнови схему", "нарисуй архитектуру", "как это работает", "я поправил схему - воплоти".
 license: MIT
 compatibility: Requires Node >= 22.18 and Bash. No network, no npm install in the
   target project. Interactive editor needs a Chromium-based browser (or use the
@@ -8,27 +8,43 @@ compatibility: Requires Node >= 22.18 and Bash. No network, no npm install in th
   or an API key.
 ---
 
-# block-llm — живые логические схемы проекта
+# block-llm — живые схемы проекта
 
 Схемы лежат в `<project>/.llmscheme/<type>_scheme/`. В каждой папке схемы:
 `scheme.json` (данные), `SCHEME.md` (читаемый экспорт), `scheme.html`
 (редактор двойным кликом) и `cache/` (журнал, бэкапы, автосейвы). Схема
 описывает ЧТО есть (модули, потоки данных, экраны), а не как написано.
 
-## Три типа схем
+## Какие схемы бывают — спроси, не угадывай
 
-Скилл ведёт до трёх независимых схем на проект. Выбирай ту, которую попросил
-пользователь:
+Схема может описывать **что угодно**. Частые примеры:
 
 | `--type` | папка схемы | что описывает |
 |---|---|---|
-| `logic` | `.llmscheme/logic_scheme/` | модули + потоки данных (вид «архитектура» по умолчанию) |
-| `code` | `.llmscheme/code_scheme/` | граф вызовов / структура кода (функции, классы, файлы) |
+| `logic` | `.llmscheme/logic_scheme/` | модули + потоки данных |
+| `code` | `.llmscheme/code_scheme/` | граф вызовов / структура кода |
 | `ui` | `.llmscheme/ui_scheme/` | экраны, маршруты, UI-компоненты |
+| `db` | `.llmscheme/db_scheme/` | таблицы и связи |
+| `api` | `.llmscheme/api_scheme/` | эндпоинты и вызовы |
+| … | `.llmscheme/<type>_scheme/` | любой смысл по запросу юзера |
 
-**Если пользователь просит схему, но не говорит какую — СПРОСИ.** Предложи три
-варианта; не угадывай. Когда выбрал — передавай `--type` в каждую команду.
-Каждый тип полностью независим — свой счётчик rev, свой журнал, свой SCHEME.md.
+Это НЕ фиксированный список: `--type` принимает любое безопасное слово
+(лат. буквы, цифры, `_`, `-`). Тип схемы — это просто имя папки, а её смысл
+определяет пользователь.
+
+### Главное правило: не плоди схемы сам
+
+1. **Первое обращение** — если в проекте нет `.llmscheme/` (или схемы нужного
+   типа нет), а пользователь хочет схему → **СПРОСИ, схему чего делать**.
+   Предложи варианты под задачу (логика? код? экраны? что-то ещё?) и жди ответа.
+2. **Схема уже есть** — работай только с ней: `validate` + `get` + обновляй.
+   НЕ переинициализируй, НЕ пересобирай с нуля.
+3. **Новые схемы** — создавай ТОЛЬКО по явному запросу пользователя. Кому-то
+   нужна одна `ui`-схема, кому-то `logic` + `code` — решает он, не ты.
+   Никогда не создавай «на всякий случай» и не догенерируй недостающие типы.
+
+Когда выбрал тип — передавай `--type` в каждую команду. Каждый тип полностью
+независим — свой счётчик rev, свой журнал, свой SCHEME.md.
 
 Быстрый путь — схема уже есть: `validate --json --type <T>` + `get --json
 --type <T>` и работай от схемы. НЕ переинициализируй и НЕ пересобирай
