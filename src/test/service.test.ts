@@ -655,7 +655,16 @@ test("MCP tools/call round-trip: create_scheme then list_schemes", async () => {
 		arguments: {},
 	});
 	const lj = (await listed.json()) as {
-		result: { content: { text: string }[] };
+		result: {
+			content: { text: string }[];
+			structuredContent?: unknown;
+		};
 	};
 	assert.match(lj.result.content[0]!.text, /mcp-made/);
+	// structuredContent MUST be an object (MCP spec). A bare array here broke
+	// strict clients (Hermes/pydantic expects a dict). list_schemes wraps the
+	// names: { schemes: [...] }.
+	const sc = lj.result.structuredContent;
+	assert.ok(sc && typeof sc === "object" && !Array.isArray(sc), "structuredContent is an object");
+	assert.ok(Array.isArray((sc as { schemes: string[] }).schemes), "has a schemes array");
 });

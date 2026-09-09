@@ -15,8 +15,11 @@ export function jail(rootAbs: string, rel: string): string {
 	const rootWithSep = rootAbs.endsWith(path.sep) ? rootAbs : rootAbs + path.sep;
 	const inside = (p: string) => p === rootAbs || p.startsWith(rootWithSep);
 	// absolute paths are allowed only if they are already inside root
-	const resolved = path.isAbsolute(rel) ? path.normalize(rel) : path.resolve(rootAbs, rel);
-	if (!inside(resolved)) throw new PathJailError(`path escapes project root: ${rel}`);
+	const resolved = path.isAbsolute(rel)
+		? path.normalize(rel)
+		: path.resolve(rootAbs, rel);
+	if (!inside(resolved))
+		throw new PathJailError(`path escapes project root: ${rel}`);
 	return resolved;
 }
 
@@ -39,7 +42,8 @@ export type SchemeType = string;
 const TYPE_RE = /^[a-z0-9][a-z0-9_-]*$/;
 
 export const schemeDirName = (t: string): string => {
-	if (!TYPE_RE.test(t)) throw new PathJailError(`bad scheme type "${t}" (use a-z 0-9 _ -)`);
+	if (!TYPE_RE.test(t))
+		throw new PathJailError(`bad scheme type "${t}" (use a-z 0-9 _ -)`);
 	return `${t}_scheme`;
 };
 

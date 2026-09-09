@@ -21,9 +21,10 @@ services:
       MCP_ENABLED: "true"
       ORIGIN_ALLOWLIST: ${ORIGIN_ALLOWLIST:-}
     volumes:
-      # schemes + users persist across container restarts; the built HTML
-      # artifacts are COPY'd into the image, so no bind mount is needed.
-      - llm-data:/data
+      # schemes, users, api keys and every cache live in ./data — right next
+      # to this compose file. Back it up by copying that directory. The built
+      # HTML artifacts are COPY'd into the image, so no bind mount is needed.
+      - ./data:/data
     healthcheck:
       test:
         [
@@ -35,6 +36,3 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
-
-volumes:
-  llm-data:

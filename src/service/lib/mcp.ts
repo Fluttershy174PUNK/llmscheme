@@ -339,7 +339,7 @@ const argId = (a: Record<string, unknown>): string => argStr(a, "id");
 export type ToolResult =
 	| Scheme
 	| string
-	| string[]
+	| { schemes: string[] }
 	| { ok: true }
 	| WriteReceipt
 	| DiffResult;
@@ -394,7 +394,13 @@ export function callTool(
 	const s = deps.schemes;
 	switch (name) {
 		case "list_schemes":
-			return s.list(u).map((x) => (x.project ? `${x.project}/${x.name}` : x.name));
+			// structuredContent must be an OBJECT (MCP spec); a bare array breaks
+			// strict clients (Hermes/pydantic expects a dict). Wrap the list.
+			return {
+				schemes: s
+					.list(u)
+					.map((x) => (x.project ? `${x.project}/${x.name}` : x.name)),
+			};
 		case "get_scheme":
 			return s.get(u, argStr(a, "name"));
 		case "get_scheme_md":

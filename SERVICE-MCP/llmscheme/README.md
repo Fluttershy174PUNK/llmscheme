@@ -56,7 +56,9 @@ docker compose up -d
 ```
 
 The container runs the same `node src/service/server.ts` command.
-Schemes and user accounts live in the `llm-data` named volume.
+Schemes, users, API keys and every cache live in `./data` next to the
+compose file (bind-mounted into the container). Back up by copying that
+directory.
 
 The compose file refuses to start without `ADMIN_PASSWORD` set.
 
@@ -307,8 +309,9 @@ This wipes all users and sessions. Schemes are untouched.
 ### Full reset (loses everything)
 
 ```bash
-docker compose down -v      # also removes the named volume
-rm -rf DATA_DIR/
+docker compose down -v      # removes the container and any anonymous volumes
+rm -rf data/                # the bind-mounted state directory
+
 docker compose up -d
 ```
 
